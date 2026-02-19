@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, Plus, Clock, CheckCircle2, AlertCircle } from "lucide-react";
+import { FileText, Plus, Clock, CheckCircle2, AlertCircle, Download } from "lucide-react";
 
 const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   aberta: { label: "Aberta", variant: "default" },
@@ -81,7 +81,7 @@ export default function Solicitacoes() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("solicitacoes_laudo")
-        .select("*, propriedades(nome_propriedade)")
+        .select("*, propriedades(nome_propriedade), laudos(id, status_laudo, caminho_pdf_laudo)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -266,9 +266,30 @@ export default function Solicitacoes() {
                       {s.banco_destino ? ` · ${s.banco_destino}` : ""}
                     </p>
                   </div>
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">
-                    {new Date(s.created_at).toLocaleDateString("pt-BR")}
-                  </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {(() => {
+                      const laudoArr = (s as any).laudos;
+                      const laudo = Array.isArray(laudoArr) ? laudoArr[0] : laudoArr;
+                      if (laudo?.status_laudo === "finalizado" && laudo?.caminho_pdf_laudo) {
+                        return (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={async () => {
+                              const { data } = await supabase.storage.from("laudo-pdfs").createSignedUrl(laudo.caminho_pdf_laudo, 300);
+                              if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+                            }}
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        );
+                      }
+                      return null;
+                    })()}
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      {new Date(s.created_at).toLocaleDateString("pt-BR")}
+                    </span>
+                  </div>
                 </CardContent>
               </Card>
             );
