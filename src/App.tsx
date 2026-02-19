@@ -8,6 +8,8 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppLayout } from "@/components/AppLayout";
 import Auth from "@/pages/Auth";
 import Dashboard from "@/pages/Dashboard";
+import Propriedades from "@/pages/Propriedades";
+import Solicitacoes from "@/pages/Solicitacoes";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +31,8 @@ const App = () => (
               }
             >
               <Route path="/" element={<Dashboard />} />
+              <Route path="/propriedades" element={<Propriedades />} />
+              <Route path="/solicitacoes" element={<Solicitacoes />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
