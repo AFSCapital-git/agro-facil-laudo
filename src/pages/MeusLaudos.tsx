@@ -14,8 +14,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, Camera, CheckCircle2, Clock, Pen, ShieldCheck, Download } from "lucide-react";
+import { FileText, Camera, CheckCircle2, Clock, Pen, ShieldCheck, Download, MapPin, AlertTriangle, Info } from "lucide-react";
 
 const statusLabels: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
   em_vistoria: { label: "Em vistoria", variant: "secondary" },
@@ -34,6 +41,7 @@ interface ChecklistForm {
   resumo_viabilidade: string;
   parecer_final: string;
   observacoes_adicionais: string;
+  pronaf_produto_confirmado_id: string;
 }
 
 export default function MeusLaudos() {
@@ -49,6 +57,7 @@ export default function MeusLaudos() {
     resumo_viabilidade: "",
     parecer_final: "",
     observacoes_adicionais: "",
+    pronaf_produto_confirmado_id: "",
   });
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [signConfirm, setSignConfirm] = useState(false);
@@ -60,7 +69,7 @@ export default function MeusLaudos() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("laudos")
-        .select("*, solicitacoes_laudo(cultura_principal, area_cultivo_ha, valor_solicitado, propriedades(nome_propriedade, endereco))")
+        .select("*, solicitacoes_laudo(cultura_principal, area_cultivo_ha, valor_solicitado, pronaf_produto_id, propriedades(nome_propriedade, endereco, latitude, longitude))")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -80,6 +89,35 @@ export default function MeusLaudos() {
     },
   });
 
+  const { data: pronafProdutos } = useQuery({
+    queryKey: ["pronaf_produtos_ativos"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pronaf_produtos")
+        .select("id, nome, finalidade")
+        .eq("ativo", true)
+        .order("nome");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Documents for the confirmed product
+  const confirmedProductId = form.pronaf_produto_confirmado_id || (selectedLaudo as any)?.solicitacoes_laudo?.pronaf_produto_id;
+  const { data: pronafDocumentos } = useQuery({
+    queryKey: ["pronaf_documentos_laudo", confirmedProductId],
+    enabled: !!confirmedProductId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pronaf_documentos")
+        .select("*")
+        .eq("produto_id", confirmedProductId)
+        .order("ordem");
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const openLaudo = (laudo: any) => {
     setSelectedLaudo(laudo);
     setSignConfirm(false);
@@ -94,14 +132,70 @@ export default function MeusLaudos() {
       resumo_viabilidade: laudo.resumo_viabilidade || "",
       parecer_final: laudo.parecer_final || "",
       observacoes_adicionais: laudo.observacoes_adicionais || "",
+      pronaf_produto_confirmado_id: laudo.pronaf_produto_confirmado_id || "",
     });
   };
 
+  // Geolocation: start visit
+  const iniciarVistoriaMutation = useMutation({
+    mutationFn: async () => {
+      return new Promise<void>((resolve, reject) => {
+        if (!navigator.geolocation) {
+          reject(new Error("Geolocalização não suportada pelo navegador."));
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const { latitude, longitude } = position.coords;
+            const prop = (selectedLaudo as any)?.solicitacoes_laudo?.propriedades;
+            
+            // Check distance if property has coordinates
+            if (prop?.latitude && prop?.longitude) {
+              const dist = haversineDistance(latitude, longitude, prop.latitude, prop.longitude);
+              if (dist > 500) {
+                reject(new Error(`Você está a ${Math.round(dist)}m da propriedade. Aproxime-se (máx. 500m) para iniciar a vistoria.`));
+                return;
+              }
+            }
+
+            const { error } = await supabase
+              .from("laudos")
+              .update({
+                latitude_inicio_vistoria: latitude,
+                longitude_inicio_vistoria: longitude,
+                data_hora_inicio_vistoria: new Date().toISOString(),
+                data_visita_efetiva: new Date().toISOString().split("T")[0],
+              })
+              .eq("id", selectedLaudo.id);
+            if (error) { reject(error); return; }
+            resolve();
+          },
+          (err) => reject(new Error(`Erro ao obter localização: ${err.message}`)),
+          { enableHighAccuracy: true, timeout: 15000 }
+        );
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["meus_laudos"] });
+      toast({ title: "Vistoria iniciada! Localização registrada." });
+      // Refresh selected laudo
+      const updated = { ...selectedLaudo, data_hora_inicio_vistoria: new Date().toISOString() };
+      setSelectedLaudo(updated);
+    },
+    onError: (err: Error) => {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    },
+  });
+
   const saveMutation = useMutation({
     mutationFn: async () => {
+      const { pronaf_produto_confirmado_id, ...rest } = form;
       const { error } = await supabase
         .from("laudos")
-        .update({ ...form })
+        .update({
+          ...rest,
+          pronaf_produto_confirmado_id: pronaf_produto_confirmado_id || null,
+        })
         .eq("id", selectedLaudo.id);
       if (error) throw error;
     },
@@ -116,9 +210,10 @@ export default function MeusLaudos() {
 
   const concluirMutation = useMutation({
     mutationFn: async () => {
+      const { pronaf_produto_confirmado_id, ...rest } = form;
       const { error } = await supabase
         .from("laudos")
-        .update({ ...form, status_laudo: "aguardando_assinatura" })
+        .update({ ...rest, pronaf_produto_confirmado_id: pronaf_produto_confirmado_id || null, status_laudo: "aguardando_assinatura" })
         .eq("id", selectedLaudo.id);
       if (error) throw error;
 
@@ -140,7 +235,6 @@ export default function MeusLaudos() {
 
   const signMutation = useMutation({
     mutationFn: async () => {
-      // Generate hash from laudo content
       const content = JSON.stringify({
         laudo_id: selectedLaudo.id,
         ...form,
@@ -152,10 +246,8 @@ export default function MeusLaudos() {
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 
-      // Get engenheiro_id
       const { data: engId } = await supabase.rpc("get_engenheiro_id");
 
-      // Insert signature record
       const { error: sigErr } = await supabase.from("assinatura_laudo").insert({
         laudo_id: selectedLaudo.id,
         engenheiro_id: engId!,
@@ -165,27 +257,23 @@ export default function MeusLaudos() {
       });
       if (sigErr) throw sigErr;
 
-      // Update laudo status to finalizado
       const { error: laudoErr } = await supabase
         .from("laudos")
         .update({ status_laudo: "finalizado" })
         .eq("id", selectedLaudo.id);
       if (laudoErr) throw laudoErr;
 
-      // Update solicitacao status
       const { error: solErr } = await supabase
         .from("solicitacoes_laudo")
         .update({ status_solicitacao: "finalizada" })
         .eq("id", selectedLaudo.solicitacao_id);
       if (solErr) throw solErr;
 
-      // Generate PDF via edge function
       try {
         await supabase.functions.invoke("generate-laudo-pdf", {
           body: { laudo_id: selectedLaudo.id },
         });
       } catch {
-        // PDF generation is non-blocking
         console.warn("PDF generation failed, can be retried later");
       }
     },
@@ -248,6 +336,8 @@ export default function MeusLaudos() {
 
   const isEditable = selectedLaudo?.status_laudo === "em_vistoria";
   const isAwaitingSignature = selectedLaudo?.status_laudo === "aguardando_assinatura";
+  const hasStartedVisit = !!selectedLaudo?.data_hora_inicio_vistoria;
+  const isOverDeadline = selectedLaudo?.data_limite_visita && new Date(selectedLaudo.data_limite_visita) < new Date();
 
   return (
     <div className="space-y-6">
@@ -271,11 +361,15 @@ export default function MeusLaudos() {
             const sol = (l as any).solicitacoes_laudo;
             const prop = sol?.propriedades;
             const st = statusLabels[l.status_laudo] || { label: l.status_laudo, variant: "outline" as const };
+            const deadlineDate = l.data_limite_visita ? new Date(l.data_limite_visita) : null;
+            const overDeadline = deadlineDate && deadlineDate < new Date() && l.status_laudo === "em_vistoria";
             return (
               <Card key={l.id} className="cursor-pointer hover:ring-1 hover:ring-ring transition-shadow" onClick={() => openLaudo(l)}>
                 <CardContent className="flex items-center gap-4 py-4">
                   {l.status_laudo === "finalizado" ? (
                     <CheckCircle2 className="h-5 w-5 text-success shrink-0" />
+                  ) : overDeadline ? (
+                    <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
                   ) : (
                     <Clock className="h-5 w-5 text-muted-foreground shrink-0" />
                   )}
@@ -283,9 +377,15 @@ export default function MeusLaudos() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium">{prop?.nome_propriedade}</span>
                       <Badge variant={st.variant}>{st.label}</Badge>
+                      {l.data_hora_inicio_vistoria && <Badge variant="outline" className="text-xs">Visita iniciada</Badge>}
                     </div>
                     <p className="text-sm text-muted-foreground">
                       {sol?.cultura_principal} · {sol?.area_cultivo_ha} ha
+                      {deadlineDate && l.status_laudo === "em_vistoria" && (
+                        <span className={overDeadline ? " text-destructive font-medium" : ""}>
+                          {" "}· Prazo: {deadlineDate.toLocaleDateString("pt-BR")}
+                        </span>
+                      )}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -319,7 +419,80 @@ export default function MeusLaudos() {
           </DialogHeader>
 
           <div className="space-y-4">
-            {[
+            {/* Geolocation start button */}
+            {isEditable && !hasStartedVisit && (
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-3">
+                <h3 className="font-display font-semibold flex items-center gap-2">
+                  <MapPin className="h-5 w-5 text-primary" />
+                  Iniciar Vistoria
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Aproxime-se da propriedade (até 500m) e ative sua localização para iniciar a vistoria.
+                  {selectedLaudo?.data_limite_visita && (
+                    <span className={isOverDeadline ? " text-destructive font-medium" : ""}>
+                      {" "}Prazo limite: {new Date(selectedLaudo.data_limite_visita).toLocaleDateString("pt-BR")}
+                    </span>
+                  )}
+                </p>
+                <Button
+                  onClick={() => iniciarVistoriaMutation.mutate()}
+                  disabled={iniciarVistoriaMutation.isPending}
+                  className="gap-2"
+                >
+                  <MapPin className="h-4 w-4" />
+                  {iniciarVistoriaMutation.isPending ? "Obtendo localização..." : "Iniciar por Geolocalização"}
+                </Button>
+              </div>
+            )}
+
+            {hasStartedVisit && isEditable && (
+              <div className="text-xs text-muted-foreground bg-muted rounded-md p-2 flex items-center gap-2">
+                <MapPin className="h-3.5 w-3.5" />
+                Visita iniciada em {new Date(selectedLaudo.data_hora_inicio_vistoria).toLocaleString("pt-BR")}
+              </div>
+            )}
+
+            {/* Product confirmation by engineer */}
+            {isEditable && (
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Confirmar Produto PRONAF</Label>
+                <Select
+                  value={form.pronaf_produto_confirmado_id}
+                  onValueChange={(v) => setForm((f) => ({ ...f, pronaf_produto_confirmado_id: v }))}
+                >
+                  <SelectTrigger><SelectValue placeholder="Selecione o produto confirmado..." /></SelectTrigger>
+                  <SelectContent>
+                    {pronafProdutos?.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.nome} ({p.finalidade})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Required documents for confirmed product */}
+            {pronafDocumentos && pronafDocumentos.length > 0 && (
+              <div className="rounded-md border border-primary/20 bg-primary/5 p-3 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Info className="h-4 w-4 text-primary" />
+                  Documentação exigida (pré-requisitos):
+                </div>
+                <ul className="text-sm text-muted-foreground space-y-1 pl-6 list-disc">
+                  {pronafDocumentos.map((doc) => (
+                    <li key={doc.id}>
+                      {doc.nome_documento}
+                      {doc.obrigatorio && <span className="text-destructive ml-1">*</span>}
+                      {doc.descricao && <span className="text-xs block text-muted-foreground/70">{doc.descricao}</span>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Checklist fields - only show if visit started or viewing */}
+            {(hasStartedVisit || !isEditable) && [
               { key: "situacao_cultura" as const, label: "Situação da Cultura" },
               { key: "tipo_solo" as const, label: "Tipo de Solo" },
               { key: "historico_produtividade" as const, label: "Histórico de Produtividade" },
@@ -342,7 +515,7 @@ export default function MeusLaudos() {
             ))}
 
             {/* Photo upload */}
-            {isEditable && (
+            {isEditable && hasStartedVisit && (
               <div className="space-y-2 border-t pt-4">
                 <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Fotos da Vistoria</Label>
                 <div className="flex items-center gap-2">
@@ -416,7 +589,7 @@ export default function MeusLaudos() {
             )}
 
             {/* Action buttons for editable */}
-            {isEditable && (
+            {isEditable && hasStartedVisit && (
               <div className="flex justify-end gap-2 border-t pt-4">
                 <Button variant="outline" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
                   {saveMutation.isPending ? "Salvando..." : "Salvar Rascunho"}
@@ -431,4 +604,14 @@ export default function MeusLaudos() {
       </Dialog>
     </div>
   );
+}
+
+// Haversine distance in meters
+function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
