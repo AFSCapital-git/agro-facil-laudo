@@ -189,6 +189,36 @@ Deno.serve(async (req) => {
       .update({ caminho_pdf_laudo: pdfPath })
       .eq("id", laudo_id);
 
+    // Auto-create payment record for engineer
+    // Fetch platform config for base value
+    const { data: config } = await supabase
+      .from("configuracoes_plataforma")
+      .select("valor_base_laudo, prazo_padrao_pagamento_dias")
+      .limit(1)
+      .single();
+
+    const valorBase = config?.valor_base_laudo ?? 500;
+    const prazoDias = config?.prazo_padrao_pagamento_dias ?? 7;
+    const dataPrevista = new Date();
+    dataPrevista.setDate(dataPrevista.getDate() + prazoDias);
+
+    // Check if payment already exists
+    const { data: existingPay } = await supabase
+      .from("pagamentos_engenheiro")
+      .select("id")
+      .eq("laudo_id", laudo_id)
+      .maybeSingle();
+
+    if (!existingPay) {
+      await supabase.from("pagamentos_engenheiro").insert({
+        laudo_id: laudo_id,
+        engenheiro_id: laudo.engenheiro_id,
+        valor_bruto: valorBase,
+        status_pagamento: "pendente",
+        data_prevista_pagamento: dataPrevista.toISOString().split("T")[0],
+      });
+    }
+
     return new Response(
       JSON.stringify({ success: true, path: pdfPath }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
