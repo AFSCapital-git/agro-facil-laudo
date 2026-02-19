@@ -142,15 +142,20 @@ export type Database = {
           caminho_pdf_laudo: string | null
           created_at: string
           data_agendada_visita: string | null
+          data_hora_inicio_vistoria: string | null
+          data_limite_visita: string | null
           data_visita_efetiva: string | null
           disponibilidade_hidrica: string | null
           engenheiro_id: string
           garantias_observadas: string | null
           historico_produtividade: string | null
           id: string
+          latitude_inicio_vistoria: number | null
+          longitude_inicio_vistoria: number | null
           observacoes_adicionais: string | null
           observacoes_internas: string | null
           parecer_final: string | null
+          pronaf_produto_confirmado_id: string | null
           recomendacoes_tecnicas: string | null
           resumo_viabilidade: string | null
           riscos_identificados: string | null
@@ -165,15 +170,20 @@ export type Database = {
           caminho_pdf_laudo?: string | null
           created_at?: string
           data_agendada_visita?: string | null
+          data_hora_inicio_vistoria?: string | null
+          data_limite_visita?: string | null
           data_visita_efetiva?: string | null
           disponibilidade_hidrica?: string | null
           engenheiro_id: string
           garantias_observadas?: string | null
           historico_produtividade?: string | null
           id?: string
+          latitude_inicio_vistoria?: number | null
+          longitude_inicio_vistoria?: number | null
           observacoes_adicionais?: string | null
           observacoes_internas?: string | null
           parecer_final?: string | null
+          pronaf_produto_confirmado_id?: string | null
           recomendacoes_tecnicas?: string | null
           resumo_viabilidade?: string | null
           riscos_identificados?: string | null
@@ -188,15 +198,20 @@ export type Database = {
           caminho_pdf_laudo?: string | null
           created_at?: string
           data_agendada_visita?: string | null
+          data_hora_inicio_vistoria?: string | null
+          data_limite_visita?: string | null
           data_visita_efetiva?: string | null
           disponibilidade_hidrica?: string | null
           engenheiro_id?: string
           garantias_observadas?: string | null
           historico_produtividade?: string | null
           id?: string
+          latitude_inicio_vistoria?: number | null
+          longitude_inicio_vistoria?: number | null
           observacoes_adicionais?: string | null
           observacoes_internas?: string | null
           parecer_final?: string | null
+          pronaf_produto_confirmado_id?: string | null
           recomendacoes_tecnicas?: string | null
           resumo_viabilidade?: string | null
           riscos_identificados?: string | null
@@ -213,6 +228,13 @@ export type Database = {
             columns: ["engenheiro_id"]
             isOneToOne: false
             referencedRelation: "engenheiros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "laudos_pronaf_produto_confirmado_id_fkey"
+            columns: ["pronaf_produto_confirmado_id"]
+            isOneToOne: false
+            referencedRelation: "pronaf_produtos"
             referencedColumns: ["id"]
           },
           {
@@ -425,7 +447,9 @@ export type Database = {
           nome: string
           o_que_financia: string
           prazo_reembolso: string
+          tipo_valor_engenheiro: string
           updated_at: string
+          valor_engenheiro: number
         }
         Insert: {
           ativo?: boolean
@@ -440,7 +464,9 @@ export type Database = {
           nome: string
           o_que_financia?: string
           prazo_reembolso?: string
+          tipo_valor_engenheiro?: string
           updated_at?: string
+          valor_engenheiro?: number
         }
         Update: {
           ativo?: boolean
@@ -455,7 +481,9 @@ export type Database = {
           nome?: string
           o_que_financia?: string
           prazo_reembolso?: string
+          tipo_valor_engenheiro?: string
           updated_at?: string
+          valor_engenheiro?: number
         }
         Relationships: []
       }
@@ -515,10 +543,12 @@ export type Database = {
           id: string
           observacoes_produtor: string | null
           produtor_id: string
+          pronaf_produto_id: string | null
           propriedade_id: string
           status_solicitacao: string
           tipo_credito: string
           updated_at: string
+          valor_pagamento_engenheiro: number
           valor_solicitado: number
         }
         Insert: {
@@ -529,10 +559,12 @@ export type Database = {
           id?: string
           observacoes_produtor?: string | null
           produtor_id: string
+          pronaf_produto_id?: string | null
           propriedade_id: string
           status_solicitacao?: string
           tipo_credito?: string
           updated_at?: string
+          valor_pagamento_engenheiro?: number
           valor_solicitado?: number
         }
         Update: {
@@ -543,10 +575,12 @@ export type Database = {
           id?: string
           observacoes_produtor?: string | null
           produtor_id?: string
+          pronaf_produto_id?: string | null
           propriedade_id?: string
           status_solicitacao?: string
           tipo_credito?: string
           updated_at?: string
+          valor_pagamento_engenheiro?: number
           valor_solicitado?: number
         }
         Relationships: [
@@ -555,6 +589,13 @@ export type Database = {
             columns: ["produtor_id"]
             isOneToOne: false
             referencedRelation: "produtores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_laudo_pronaf_produto_id_fkey"
+            columns: ["pronaf_produto_id"]
+            isOneToOne: false
+            referencedRelation: "pronaf_produtos"
             referencedColumns: ["id"]
           },
           {

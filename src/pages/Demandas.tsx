@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ClipboardCheck, MapPin, Sprout, Banknote } from "lucide-react";
+import { ClipboardCheck, MapPin, Banknote } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function Demandas() {
@@ -25,7 +25,7 @@ export default function Demandas() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("solicitacoes_laudo")
-        .select("*, propriedades(nome_propriedade, endereco, area_total_ha)")
+        .select("id, created_at, valor_pagamento_engenheiro, pronaf_produto_id, pronaf_produtos(nome), propriedades(nome_propriedade, endereco, area_total_ha)")
         .eq("status_solicitacao", "aberta")
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -35,11 +35,17 @@ export default function Demandas() {
 
   const aceitarMutation = useMutation({
     mutationFn: async (solicitacaoId: string) => {
+      // Calculate deadline: 5 days from now
+      const dataLimite = new Date();
+      dataLimite.setDate(dataLimite.getDate() + 5);
+      const dataLimiteStr = dataLimite.toISOString().split("T")[0];
+
       // Create laudo linked to this request
       const { error: laudoErr } = await supabase.from("laudos").insert({
         engenheiro_id: engenheiroId!,
         solicitacao_id: solicitacaoId,
         status_laudo: "em_vistoria",
+        data_limite_visita: dataLimiteStr,
       });
       if (laudoErr) throw laudoErr;
 
@@ -52,7 +58,7 @@ export default function Demandas() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["demandas_abertas"] });
-      toast({ title: "Demanda aceita! Vá para Meus Laudos para iniciar a vistoria." });
+      toast({ title: "Demanda aceita! Você tem 5 dias para realizar a visita." });
       navigate("/meus-laudos");
     },
     onError: (err: Error) => {
@@ -67,7 +73,7 @@ export default function Demandas() {
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-2xl font-bold">Demandas Disponíveis</h1>
-        <p className="text-muted-foreground">Solicitações de laudo abertas para aceite.</p>
+        <p className="text-muted-foreground">Veja a localização e o valor antes de aceitar.</p>
       </div>
 
       {isLoading ? (
@@ -83,6 +89,7 @@ export default function Demandas() {
         <div className="grid gap-4">
           {solicitacoes.map((s) => {
             const prop = (s as any).propriedades;
+            const produto = (s as any).pronaf_produtos;
             return (
               <Card key={s.id}>
                 <CardContent className="py-4 space-y-3">
@@ -90,22 +97,18 @@ export default function Demandas() {
                     <div className="space-y-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-display font-semibold">{prop?.nome_propriedade}</span>
-                        <Badge variant="secondary">{s.tipo_credito}</Badge>
+                        {produto && <Badge variant="secondary">{produto.nome}</Badge>}
                       </div>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
                         <span className="flex items-center gap-1">
                           <MapPin className="h-3.5 w-3.5" /> {prop?.endereco}
                         </span>
-                        <span className="flex items-center gap-1">
-                          <Sprout className="h-3.5 w-3.5" /> {s.cultura_principal} · {s.area_cultivo_ha} ha
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Banknote className="h-3.5 w-3.5" /> {formatCurrency(s.valor_solicitado)}
-                        </span>
+                        {s.valor_pagamento_engenheiro > 0 && (
+                          <span className="flex items-center gap-1 text-foreground font-medium">
+                            <Banknote className="h-3.5 w-3.5" /> {formatCurrency(s.valor_pagamento_engenheiro)}
+                          </span>
+                        )}
                       </div>
-                      {s.observacoes_produtor && (
-                        <p className="text-sm text-muted-foreground italic">"{s.observacoes_produtor}"</p>
-                      )}
                     </div>
                     <Button
                       onClick={() => aceitarMutation.mutate(s.id)}
@@ -116,7 +119,7 @@ export default function Demandas() {
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Solicitado em {new Date(s.created_at).toLocaleDateString("pt-BR")}
+                    Solicitado em {new Date(s.created_at).toLocaleDateString("pt-BR")} · Prazo de visita: 5 dias após aceite
                   </p>
                 </CardContent>
               </Card>

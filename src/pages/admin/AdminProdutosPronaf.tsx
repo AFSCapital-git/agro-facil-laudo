@@ -57,6 +57,8 @@ interface PronafProduto {
   carencia: string;
   bonus_adimplencia: string;
   ativo: boolean;
+  valor_engenheiro: number;
+  tipo_valor_engenheiro: string;
 }
 
 interface PronafDocumento {
@@ -78,6 +80,8 @@ const emptyProduto = {
   prazo_reembolso: "",
   carencia: "",
   bonus_adimplencia: "",
+  valor_engenheiro: 0,
+  tipo_valor_engenheiro: "fixo",
 };
 
 export default function AdminProdutosPronaf() {
@@ -201,6 +205,8 @@ export default function AdminProdutosPronaf() {
       prazo_reembolso: p.prazo_reembolso,
       carencia: p.carencia,
       bonus_adimplencia: p.bonus_adimplencia,
+      valor_engenheiro: p.valor_engenheiro ?? 0,
+      tipo_valor_engenheiro: p.tipo_valor_engenheiro ?? "fixo",
     });
     setOpenProduto(true);
   };
@@ -283,6 +289,30 @@ export default function AdminProdutosPronaf() {
               <div>
                 <Label>Bônus de Adimplência</Label>
                 <Input value={form.bonus_adimplencia} onChange={(e) => setForm({ ...form, bonus_adimplencia: e.target.value })} />
+              </div>
+              <div className="border-t pt-3 space-y-3">
+                <h4 className="font-medium text-sm">Precificação do Engenheiro</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Tipo de Valor</Label>
+                    <Select value={form.tipo_valor_engenheiro} onValueChange={(v) => setForm({ ...form, tipo_valor_engenheiro: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="fixo">Valor Fixo (R$)</SelectItem>
+                        <SelectItem value="percentual">Percentual (%)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>{form.tipo_valor_engenheiro === "fixo" ? "Valor (R$)" : "Percentual (%)"}</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={form.valor_engenheiro}
+                      onChange={(e) => setForm({ ...form, valor_engenheiro: parseFloat(e.target.value) || 0 })}
+                    />
+                  </div>
+                </div>
               </div>
               <div className="flex justify-end gap-2">
                 <DialogClose asChild>
@@ -376,6 +406,12 @@ export default function AdminProdutosPronaf() {
                       <div><span className="font-medium">Prazo:</span> {p.prazo_reembolso || "—"}</div>
                       <div><span className="font-medium">Carência:</span> {p.carencia || "—"}</div>
                       <div><span className="font-medium">Bônus:</span> {p.bonus_adimplencia || "—"}</div>
+                      <div>
+                        <span className="font-medium">Pagamento Eng.:</span>{" "}
+                        {p.tipo_valor_engenheiro === "percentual"
+                          ? `${p.valor_engenheiro}%`
+                          : `R$ ${(p.valor_engenheiro ?? 0).toFixed(2)}`}
+                      </div>
                     </div>
                     {p.o_que_financia && (
                       <div className="text-sm">

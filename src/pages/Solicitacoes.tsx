@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, Plus, Clock, CheckCircle2, AlertCircle, Download } from "lucide-react";
+import { FileText, Plus, Clock, CheckCircle2, AlertCircle, Download, Info } from "lucide-react";
 
 const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   aberta: { label: "Aberta", variant: "default" },
@@ -35,7 +35,7 @@ const statusMap: Record<string, { label: string; variant: "default" | "secondary
 
 interface SolicitacaoForm {
   propriedade_id: string;
-  tipo_credito: string;
+  pronaf_produto_id: string;
   cultura_principal: string;
   area_cultivo_ha: string;
   valor_solicitado: string;
@@ -45,7 +45,7 @@ interface SolicitacaoForm {
 
 const emptyForm: SolicitacaoForm = {
   propriedade_id: "",
-  tipo_credito: "custeio",
+  pronaf_produto_id: "",
   cultura_principal: "",
   area_cultivo_ha: "",
   valor_solicitado: "",
@@ -76,27 +76,64 @@ export default function Solicitacoes() {
     },
   });
 
+  const { data: pronafProdutos } = useQuery({
+    queryKey: ["pronaf_produtos_ativos"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pronaf_produtos")
+        .select("id, nome, finalidade, valor_engenheiro, tipo_valor_engenheiro")
+        .eq("ativo", true)
+        .order("nome");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: pronafDocumentos } = useQuery({
+    queryKey: ["pronaf_documentos_produto", form.pronaf_produto_id],
+    enabled: !!form.pronaf_produto_id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pronaf_documentos")
+        .select("*")
+        .eq("produto_id", form.pronaf_produto_id)
+        .order("ordem");
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: solicitacoes, isLoading } = useQuery({
     queryKey: ["solicitacoes"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("solicitacoes_laudo")
-        .select("*, propriedades(nome_propriedade), laudos(id, status_laudo, caminho_pdf_laudo)")
+        .select("*, propriedades(nome_propriedade), laudos(id, status_laudo, caminho_pdf_laudo), pronaf_produtos(nome)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
   });
 
+  // Calculate engineer payment based on selected product
+  const selectedProduto = pronafProdutos?.find((p) => p.id === form.pronaf_produto_id);
+  const valorPagamentoEngenheiro = selectedProduto
+    ? selectedProduto.tipo_valor_engenheiro === "percentual"
+      ? (parseFloat(form.valor_solicitado) || 0) * (selectedProduto.valor_engenheiro / 100)
+      : selectedProduto.valor_engenheiro
+    : 0;
+
   const createMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("solicitacoes_laudo").insert({
         produtor_id: produtorId!,
         propriedade_id: form.propriedade_id,
-        tipo_credito: form.tipo_credito,
+        pronaf_produto_id: form.pronaf_produto_id || null,
+        tipo_credito: selectedProduto?.finalidade || "custeio",
         cultura_principal: form.cultura_principal,
         area_cultivo_ha: parseFloat(form.area_cultivo_ha) || 0,
         valor_solicitado: parseFloat(form.valor_solicitado) || 0,
+        valor_pagamento_engenheiro: valorPagamentoEngenheiro,
         banco_destino: form.banco_destino,
         observacoes_produtor: form.observacoes_produtor,
       });
@@ -140,7 +177,7 @@ export default function Solicitacoes() {
               <Plus className="h-4 w-4" /> Nova Solicitação
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="font-display">Nova Solicitação de Laudo</DialogTitle>
             </DialogHeader>
@@ -156,18 +193,41 @@ export default function Solicitacoes() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Tipo de crédito *</Label>
-                  <Select value={form.tipo_credito} onValueChange={(v) => setForm((f) => ({ ...f, tipo_credito: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="custeio">Custeio</SelectItem>
-                      <SelectItem value="investimento">Investimento</SelectItem>
-                      <SelectItem value="comercializacao">Comercialização</SelectItem>
-                    </SelectContent>
-                  </Select>
+
+              <div className="space-y-2">
+                <Label>Produto PRONAF *</Label>
+                <Select value={form.pronaf_produto_id} onValueChange={(v) => setForm((f) => ({ ...f, pronaf_produto_id: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Selecione o produto..." /></SelectTrigger>
+                  <SelectContent>
+                    {pronafProdutos?.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.nome} ({p.finalidade})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Show required documents for selected product */}
+              {pronafDocumentos && pronafDocumentos.length > 0 && (
+                <div className="rounded-md border border-primary/20 bg-primary/5 p-3 space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Info className="h-4 w-4 text-primary" />
+                    Documentação exigida para este produto:
+                  </div>
+                  <ul className="text-sm text-muted-foreground space-y-1 pl-6 list-disc">
+                    {pronafDocumentos.map((doc) => (
+                      <li key={doc.id}>
+                        {doc.nome_documento}
+                        {doc.obrigatorio && <span className="text-destructive ml-1">*</span>}
+                        {doc.descricao && <span className="text-xs block text-muted-foreground/70">{doc.descricao}</span>}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Cultura principal *</Label>
                   <Input
@@ -177,8 +237,6 @@ export default function Solicitacoes() {
                     required
                   />
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Área de cultivo (ha) *</Label>
                   <Input
@@ -189,6 +247,8 @@ export default function Solicitacoes() {
                     required
                   />
                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Valor solicitado (R$) *</Label>
                   <Input
@@ -199,15 +259,24 @@ export default function Solicitacoes() {
                     required
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label>Banco destino</Label>
+                  <Input
+                    value={form.banco_destino}
+                    onChange={(e) => setForm((f) => ({ ...f, banco_destino: e.target.value }))}
+                    placeholder="Ex: Banco do Brasil"
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Banco destino</Label>
-                <Input
-                  value={form.banco_destino}
-                  onChange={(e) => setForm((f) => ({ ...f, banco_destino: e.target.value }))}
-                  placeholder="Ex: Banco do Brasil"
-                />
-              </div>
+
+              {/* Show calculated engineer payment */}
+              {selectedProduto && valorPagamentoEngenheiro > 0 && (
+                <div className="text-sm text-muted-foreground bg-muted rounded-md p-2">
+                  Valor estimado do laudo para o engenheiro: <strong className="text-foreground">{formatCurrency(valorPagamentoEngenheiro)}</strong>
+                  {selectedProduto.tipo_valor_engenheiro === "percentual" && ` (${selectedProduto.valor_engenheiro}% do valor solicitado)`}
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label>Observações</Label>
                 <Textarea
@@ -219,7 +288,7 @@ export default function Solicitacoes() {
               </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-                <Button type="submit" disabled={createMutation.isPending}>
+                <Button type="submit" disabled={createMutation.isPending || !form.pronaf_produto_id}>
                   {createMutation.isPending ? "Criando..." : "Criar Solicitação"}
                 </Button>
               </div>
@@ -252,6 +321,7 @@ export default function Solicitacoes() {
         <div className="grid gap-4">
           {solicitacoes.map((s) => {
             const st = statusMap[s.status_solicitacao] || { label: s.status_solicitacao, variant: "outline" as const };
+            const produtoNome = (s as any).pronaf_produtos?.nome;
             return (
               <Card key={s.id}>
                 <CardContent className="flex items-center gap-4 py-4">
@@ -260,6 +330,7 @@ export default function Solicitacoes() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium">{(s as any).propriedades?.nome_propriedade}</span>
                       <Badge variant={st.variant}>{st.label}</Badge>
+                      {produtoNome && <Badge variant="outline">{produtoNome}</Badge>}
                     </div>
                     <p className="text-sm text-muted-foreground">
                       {s.cultura_principal} · {s.area_cultivo_ha} ha · {formatCurrency(s.valor_solicitado)}
