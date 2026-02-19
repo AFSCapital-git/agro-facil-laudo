@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -14,7 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, Camera, CheckCircle2, Clock, Pen } from "lucide-react";
+import { FileText, Camera, CheckCircle2, Clock, Pen, ShieldCheck, Download } from "lucide-react";
 
 const statusLabels: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
   em_vistoria: { label: "Em vistoria", variant: "secondary" },
@@ -50,6 +51,7 @@ export default function MeusLaudos() {
     observacoes_adicionais: "",
   });
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [signConfirm, setSignConfirm] = useState(false);
   const { toast } = useToast();
   const qc = useQueryClient();
 
@@ -80,6 +82,7 @@ export default function MeusLaudos() {
 
   const openLaudo = (laudo: any) => {
     setSelectedLaudo(laudo);
+    setSignConfirm(false);
     setForm({
       situacao_cultura: laudo.situacao_cultura || "",
       tipo_solo: laudo.tipo_solo || "",
@@ -119,7 +122,6 @@ export default function MeusLaudos() {
         .eq("id", selectedLaudo.id);
       if (error) throw error;
 
-      // Update solicitacao status
       const { error: solErr } = await supabase
         .from("solicitacoes_laudo")
         .update({ status_solicitacao: "aguardando_assinatura" })
@@ -133,6 +135,67 @@ export default function MeusLaudos() {
     },
     onError: (err: Error) => {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const signMutation = useMutation({
+    mutationFn: async () => {
+      // Generate hash from laudo content
+      const content = JSON.stringify({
+        laudo_id: selectedLaudo.id,
+        ...form,
+        timestamp: new Date().toISOString(),
+      });
+      const encoder = new TextEncoder();
+      const data = encoder.encode(content);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+
+      // Get engenheiro_id
+      const { data: engId } = await supabase.rpc("get_engenheiro_id");
+
+      // Insert signature record
+      const { error: sigErr } = await supabase.from("assinatura_laudo").insert({
+        laudo_id: selectedLaudo.id,
+        engenheiro_id: engId!,
+        hash_assinatura: hashHex,
+        tipo_assinatura: "simples_mvp",
+        ip_assinatura: "",
+      });
+      if (sigErr) throw sigErr;
+
+      // Update laudo status to finalizado
+      const { error: laudoErr } = await supabase
+        .from("laudos")
+        .update({ status_laudo: "finalizado" })
+        .eq("id", selectedLaudo.id);
+      if (laudoErr) throw laudoErr;
+
+      // Update solicitacao status
+      const { error: solErr } = await supabase
+        .from("solicitacoes_laudo")
+        .update({ status_solicitacao: "finalizada" })
+        .eq("id", selectedLaudo.solicitacao_id);
+      if (solErr) throw solErr;
+
+      // Generate PDF via edge function
+      try {
+        await supabase.functions.invoke("generate-laudo-pdf", {
+          body: { laudo_id: selectedLaudo.id },
+        });
+      } catch {
+        // PDF generation is non-blocking
+        console.warn("PDF generation failed, can be retried later");
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["meus_laudos"] });
+      toast({ title: "Laudo assinado e finalizado com sucesso!" });
+      setSelectedLaudo(null);
+    },
+    onError: (err: Error) => {
+      toast({ title: "Erro na assinatura", description: err.message, variant: "destructive" });
     },
   });
 
@@ -167,10 +230,24 @@ export default function MeusLaudos() {
     },
   });
 
+  const handleDownloadPdf = async (laudoId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const laudo = laudos?.find((l) => l.id === laudoId);
+    if (!laudo?.caminho_pdf_laudo) {
+      toast({ title: "PDF ainda não gerado." });
+      return;
+    }
+    const { data } = await supabase.storage.from("laudo-pdfs").createSignedUrl(laudo.caminho_pdf_laudo, 300);
+    if (data?.signedUrl) {
+      window.open(data.signedUrl, "_blank");
+    }
+  };
+
   const set = (field: keyof ChecklistForm) => (e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) =>
     setForm((f) => ({ ...f, [field]: e.target.value }));
 
   const isEditable = selectedLaudo?.status_laudo === "em_vistoria";
+  const isAwaitingSignature = selectedLaudo?.status_laudo === "aguardando_assinatura";
 
   return (
     <div className="space-y-6">
@@ -211,9 +288,16 @@ export default function MeusLaudos() {
                       {sol?.cultura_principal} · {sol?.area_cultivo_ha} ha
                     </p>
                   </div>
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(l.created_at).toLocaleDateString("pt-BR")}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {l.status_laudo === "finalizado" && l.caminho_pdf_laudo && (
+                      <Button size="icon" variant="ghost" onClick={(e) => handleDownloadPdf(l.id, e)}>
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(l.created_at).toLocaleDateString("pt-BR")}
+                    </span>
+                  </div>
                 </CardContent>
               </Card>
             );
@@ -226,8 +310,11 @@ export default function MeusLaudos() {
         <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-display flex items-center gap-2">
-              <Pen className="h-5 w-5" />
-              {isEditable ? "Checklist de Vistoria" : "Detalhes do Laudo"}
+              {isAwaitingSignature ? (
+                <><ShieldCheck className="h-5 w-5" /> Assinar Laudo</>
+              ) : (
+                <><Pen className="h-5 w-5" /> {isEditable ? "Checklist de Vistoria" : "Detalhes do Laudo"}</>
+              )}
             </DialogTitle>
           </DialogHeader>
 
@@ -292,7 +379,43 @@ export default function MeusLaudos() {
               </div>
             )}
 
-            {/* Action buttons */}
+            {/* Signature section */}
+            {isAwaitingSignature && (
+              <div className="space-y-4 border-t pt-4">
+                <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-3">
+                  <h3 className="font-display font-semibold flex items-center gap-2">
+                    <ShieldCheck className="h-5 w-5 text-primary" />
+                    Assinatura Digital
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Ao assinar, você declara que todas as informações contidas neste laudo são verdadeiras
+                    e que a vistoria foi realizada de acordo com as normas técnicas vigentes.
+                  </p>
+                  <div className="flex items-start gap-2">
+                    <Checkbox
+                      id="sign-confirm"
+                      checked={signConfirm}
+                      onCheckedChange={(v) => setSignConfirm(v === true)}
+                    />
+                    <label htmlFor="sign-confirm" className="text-sm leading-tight cursor-pointer">
+                      Declaro que li e confirmo todas as informações do laudo acima e autorizo a assinatura digital.
+                    </label>
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <Button
+                    onClick={() => signMutation.mutate()}
+                    disabled={!signConfirm || signMutation.isPending}
+                    className="gap-2"
+                  >
+                    <ShieldCheck className="h-4 w-4" />
+                    {signMutation.isPending ? "Assinando..." : "Assinar Digitalmente"}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Action buttons for editable */}
             {isEditable && (
               <div className="flex justify-end gap-2 border-t pt-4">
                 <Button variant="outline" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>

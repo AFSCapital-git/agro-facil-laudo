@@ -1,1 +1,4 @@
 project_id = "jffflfjbigfsabrkdnjx"
+
+[functions.generate-laudo-pdf]
+verify_jwt = false
