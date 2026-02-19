@@ -373,6 +373,92 @@ export type Database = {
         }
         Relationships: []
       }
+      pronaf_documentos: {
+        Row: {
+          created_at: string
+          descricao: string
+          id: string
+          nome_documento: string
+          obrigatorio: boolean
+          ordem: number
+          produto_id: string
+        }
+        Insert: {
+          created_at?: string
+          descricao?: string
+          id?: string
+          nome_documento: string
+          obrigatorio?: boolean
+          ordem?: number
+          produto_id: string
+        }
+        Update: {
+          created_at?: string
+          descricao?: string
+          id?: string
+          nome_documento?: string
+          obrigatorio?: boolean
+          ordem?: number
+          produto_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pronaf_documentos_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "pronaf_produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pronaf_produtos: {
+        Row: {
+          ativo: boolean
+          bonus_adimplencia: string
+          carencia: string
+          created_at: string
+          finalidade: string
+          grupo_alvo: string
+          id: string
+          juros: string
+          limite_valor: string
+          nome: string
+          o_que_financia: string
+          prazo_reembolso: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          bonus_adimplencia?: string
+          carencia?: string
+          created_at?: string
+          finalidade?: string
+          grupo_alvo?: string
+          id?: string
+          juros?: string
+          limite_valor?: string
+          nome: string
+          o_que_financia?: string
+          prazo_reembolso?: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          bonus_adimplencia?: string
+          carencia?: string
+          created_at?: string
+          finalidade?: string
+          grupo_alvo?: string
+          id?: string
+          juros?: string
+          limite_valor?: string
+          nome?: string
+          o_que_financia?: string
+          prazo_reembolso?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       propriedades: {
         Row: {
           area_total_ha: number
