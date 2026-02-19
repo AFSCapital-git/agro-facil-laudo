@@ -13,6 +13,10 @@ import Solicitacoes from "@/pages/Solicitacoes";
 import Demandas from "@/pages/Demandas";
 import MeusLaudos from "@/pages/MeusLaudos";
 import Pagamentos from "@/pages/Pagamentos";
+import AdminDashboard from "@/pages/admin/AdminDashboard";
+import AdminEngenheiros from "@/pages/admin/AdminEngenheiros";
+import AdminPagamentos from "@/pages/admin/AdminPagamentos";
+import AdminConfiguracoes from "@/pages/admin/AdminConfiguracoes";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,6 +43,9 @@ const App = () => (
               <Route path="/demandas" element={<Demandas />} />
               <Route path="/meus-laudos" element={<MeusLaudos />} />
               <Route path="/pagamentos" element={<Pagamentos />} />
+              <Route path="/admin/engenheiros" element={<AdminEngenheiros />} />
+              <Route path="/admin/pagamentos" element={<AdminPagamentos />} />
+              <Route path="/admin/configuracoes" element={<AdminConfiguracoes />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
