@@ -22,6 +22,7 @@ import {
   Settings,
   CreditCard,
   BarChart3,
+  Package,
   LogOut,
 } from "lucide-react";
 
@@ -46,6 +47,7 @@ const engenheiroNav: NavItem[] = [
 
 const adminNav: NavItem[] = [
   { title: "Dashboard", icon: Home, path: "/" },
+  { title: "Produtos PRONAF", icon: Package, path: "/admin/produtos-pronaf" },
   { title: "Engenheiros", icon: Users, path: "/admin/engenheiros" },
   { title: "Pagamentos", icon: CreditCard, path: "/admin/pagamentos" },
   { title: "Relatórios", icon: BarChart3, path: "/admin/relatorios" },
