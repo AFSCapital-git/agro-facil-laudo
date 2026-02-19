@@ -10,6 +10,9 @@ import Auth from "@/pages/Auth";
 import Dashboard from "@/pages/Dashboard";
 import Propriedades from "@/pages/Propriedades";
 import Solicitacoes from "@/pages/Solicitacoes";
+import Demandas from "@/pages/Demandas";
+import MeusLaudos from "@/pages/MeusLaudos";
+import Pagamentos from "@/pages/Pagamentos";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +36,9 @@ const App = () => (
               <Route path="/" element={<Dashboard />} />
               <Route path="/propriedades" element={<Propriedades />} />
               <Route path="/solicitacoes" element={<Solicitacoes />} />
+              <Route path="/demandas" element={<Demandas />} />
+              <Route path="/meus-laudos" element={<MeusLaudos />} />
+              <Route path="/pagamentos" element={<Pagamentos />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
