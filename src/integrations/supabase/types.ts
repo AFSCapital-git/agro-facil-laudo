@@ -504,7 +504,9 @@ export type Database = {
     }
     Functions: {
       get_engenheiro_id: { Args: never; Returns: string }
+      get_engenheiro_laudo_solicitacao_ids: { Args: never; Returns: string[] }
       get_produtor_id: { Args: never; Returns: string }
+      get_produtor_solicitacao_ids: { Args: never; Returns: string[] }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
