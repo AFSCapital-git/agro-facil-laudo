@@ -18,7 +18,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { useAiAssistant } from "@/hooks/useAiAssistant";
-import { ClipboardCheck, MapPin, Sprout, Banknote, Check, X, Send, MessageCircle, Sparkles, FileSearch, UserCheck, Loader2, FolderOpen } from "lucide-react";
+import { ClipboardCheck, MapPin, Sprout, Banknote, Check, X, Send, MessageCircle, Sparkles, FileSearch, UserCheck, Loader2, FolderOpen, FileText, CheckCircle2, XCircle, Eye } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 const statusMesaMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -89,6 +89,36 @@ export default function MesaProdutos() {
         return data.map((e) => ({ ...e, nome: profiles?.find((p) => p.id === e.user_id)?.nome || "—" }));
       }
       return [];
+    },
+  });
+
+  // Required docs for the selected solicitation's product
+  const { data: detailPronafDocs } = useQuery({
+    queryKey: ["pronaf_documentos_mesa", selectedSolicitacao?.pronaf_produto_id],
+    enabled: !!selectedSolicitacao?.pronaf_produto_id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pronaf_documentos")
+        .select("*")
+        .eq("produto_id", selectedSolicitacao.pronaf_produto_id)
+        .order("ordem");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Uploaded documents for the selected solicitation
+  const { data: uploadedDocs } = useQuery({
+    queryKey: ["solicitacao_documentos_mesa", selectedSolicitacao?.id],
+    enabled: !!selectedSolicitacao,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("solicitacao_documentos")
+        .select("*")
+        .eq("solicitacao_id", selectedSolicitacao.id)
+        .order("created_at");
+      if (error) throw error;
+      return data;
     },
   });
 
@@ -169,6 +199,18 @@ export default function MesaProdutos() {
       setChatMessage("");
     },
     onError: (err: Error) => toast({ title: "Erro ao enviar", description: err.message, variant: "destructive" }),
+  });
+
+  const updateDocStatusMutation = useMutation({
+    mutationFn: async ({ docId, status }: { docId: string; status: string }) => {
+      const { error } = await supabase.from("solicitacao_documentos").update({ status_documento: status }).eq("id", docId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["solicitacao_documentos_mesa", selectedSolicitacao?.id] });
+      toast({ title: "Status do documento atualizado!" });
+    },
+    onError: (err: Error) => toast({ title: "Erro", description: err.message, variant: "destructive" }),
   });
 
   const formatCurrency = (v: number) =>
@@ -392,6 +434,91 @@ export default function MesaProdutos() {
                       Fechar análise
                     </Button>
                   </div>
+                )}
+              </div>
+
+              {/* Documents section */}
+              <div className="border rounded-md p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-sm flex items-center gap-2">
+                    <FileText className="h-4 w-4" /> Documentação do Produtor
+                  </h4>
+                  <Badge variant={selectedSolicitacao.docs_habilitados ? "default" : "outline"} className="text-xs">
+                    {selectedSolicitacao.docs_habilitados ? "Upload liberado" : "Upload bloqueado"}
+                  </Badge>
+                </div>
+
+                {/* Required docs checklist */}
+                {detailPronafDocs && detailPronafDocs.length > 0 && (
+                  <div className="space-y-2">
+                    {detailPronafDocs.map((doc) => {
+                      const uploaded = uploadedDocs?.find((u) => u.pronaf_documento_id === doc.id);
+                      return (
+                        <div key={doc.id} className="flex items-center justify-between gap-2 rounded-md border p-2 text-sm">
+                          <div className="flex-1 min-w-0">
+                            <span className="font-medium">{doc.nome_documento}</span>
+                            {doc.obrigatorio && <span className="text-destructive ml-1 text-xs">(obrigatório)</span>}
+                          </div>
+                          {uploaded ? (
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs text-muted-foreground truncate max-w-[120px]">{uploaded.nome_arquivo}</span>
+                              <Badge
+                                variant={uploaded.status_documento === "validado" ? "default" : uploaded.status_documento === "recusado" ? "destructive" : "secondary"}
+                                className="text-xs"
+                              >
+                                {uploaded.status_documento}
+                              </Badge>
+                              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => updateDocStatusMutation.mutate({ docId: uploaded.id, status: "validado" })} disabled={updateDocStatusMutation.isPending}>
+                                <CheckCircle2 className="h-3 w-3 text-green-600" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => updateDocStatusMutation.mutate({ docId: uploaded.id, status: "recusado" })} disabled={updateDocStatusMutation.isPending}>
+                                <XCircle className="h-3 w-3 text-destructive" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={async () => {
+                                const { data } = await supabase.storage.from("solicitacao-docs").createSignedUrl(uploaded.caminho_arquivo, 300);
+                                if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+                              }}>
+                                <Eye className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Não enviado</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Additional uploaded docs (without pronaf_documento_id) */}
+                {uploadedDocs?.filter((d) => !d.pronaf_documento_id).map((doc) => (
+                  <div key={doc.id} className="flex items-center justify-between gap-2 rounded-md border p-2 text-sm">
+                    <span className="text-muted-foreground truncate">{doc.nome_arquivo}</span>
+                    <div className="flex items-center gap-1">
+                      <Badge
+                        variant={doc.status_documento === "validado" ? "default" : doc.status_documento === "recusado" ? "destructive" : "secondary"}
+                        className="text-xs"
+                      >
+                        {doc.status_documento}
+                      </Badge>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => updateDocStatusMutation.mutate({ docId: doc.id, status: "validado" })} disabled={updateDocStatusMutation.isPending}>
+                        <CheckCircle2 className="h-3 w-3 text-green-600" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => updateDocStatusMutation.mutate({ docId: doc.id, status: "recusado" })} disabled={updateDocStatusMutation.isPending}>
+                        <XCircle className="h-3 w-3 text-destructive" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={async () => {
+                        const { data } = await supabase.storage.from("solicitacao-docs").createSignedUrl(doc.caminho_arquivo, 300);
+                        if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+                      }}>
+                        <Eye className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+
+                {!uploadedDocs?.length && (!detailPronafDocs?.length) && (
+                  <p className="text-xs text-muted-foreground text-center py-2">Nenhum documento exigido ou enviado.</p>
                 )}
               </div>
 
