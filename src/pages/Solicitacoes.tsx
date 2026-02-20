@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,8 +17,10 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import {
   FileText, Plus, Clock, CheckCircle2, AlertCircle, Download, Info,
-  Upload, Trash2, Eye, ShieldCheck, Banknote, FileWarning,
+  Upload, Trash2, Eye, ShieldCheck, Banknote, FileWarning, MessageCircle, Send,
 } from "lucide-react";
+import { AudioRecorder } from "@/components/chat/AudioRecorder";
+import { AudioPlayer } from "@/components/chat/AudioPlayer";
 import ProductRulesCard from "@/components/solicitacoes/ProductRulesCard";
 
 const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -53,7 +56,10 @@ export default function Solicitacoes() {
   const [open, setOpen] = useState(false);
   const [detailSolicitacao, setDetailSolicitacao] = useState<any | null>(null);
   const [form, setForm] = useState<SolicitacaoForm>(emptyForm);
+  const [chatMessage, setChatMessage] = useState("");
+  const [isUploadingAudio, setIsUploadingAudio] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
   const qc = useQueryClient();
 
   const { data: produtorId } = useQuery({
@@ -208,6 +214,56 @@ export default function Solicitacoes() {
     },
     onError: (err: Error) => toast({ title: "Erro", description: err.message, variant: "destructive" }),
   });
+
+  // Chat queries & mutations
+  const { data: chatMessages } = useQuery({
+    queryKey: ["chat_produtor", detailSolicitacao?.id],
+    enabled: !!detailSolicitacao,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("chat_mensagens")
+        .select("*")
+        .eq("solicitacao_id", detailSolicitacao.id)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const sendChatMutation = useMutation({
+    mutationFn: async ({ audioUrl }: { audioUrl?: string } = {}) => {
+      const { error } = await supabase.from("chat_mensagens").insert({
+        solicitacao_id: detailSolicitacao.id,
+        remetente_id: user!.id,
+        remetente_role: "produtor",
+        mensagem: audioUrl ? "🎤 Mensagem de áudio" : chatMessage,
+        audio_url: audioUrl || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["chat_produtor", detailSolicitacao?.id] });
+      setChatMessage("");
+    },
+    onError: (err: Error) => toast({ title: "Erro ao enviar", description: err.message, variant: "destructive" }),
+  });
+
+  const handleAudioComplete = async (blob: Blob) => {
+    setIsUploadingAudio(true);
+    try {
+      const fileName = `${user!.id}/${Date.now()}.webm`;
+      const { error: uploadError } = await supabase.storage.from("chat-audio").upload(fileName, blob);
+      if (uploadError) throw uploadError;
+      const { data } = await supabase.storage.from("chat-audio").createSignedUrl(fileName, 86400 * 365);
+      if (data?.signedUrl) {
+        sendChatMutation.mutate({ audioUrl: data.signedUrl });
+      }
+    } catch (err: any) {
+      toast({ title: "Erro ao enviar áudio", description: err.message, variant: "destructive" });
+    } finally {
+      setIsUploadingAudio(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -550,6 +606,47 @@ export default function Solicitacoes() {
                       ))}
                     </>
                   )}
+                </div>
+
+                {/* Chat section */}
+                <div className="border-t pt-4 space-y-3">
+                  <h4 className="font-medium text-sm flex items-center gap-2">
+                    <MessageCircle className="h-4 w-4" /> Chat
+                  </h4>
+                  <div className="max-h-48 overflow-y-auto space-y-2 rounded-md border p-3 bg-muted/30">
+                    {!chatMessages?.length ? (
+                      <p className="text-xs text-muted-foreground text-center">Nenhuma mensagem ainda.</p>
+                    ) : (
+                      chatMessages.map((msg) => (
+                        <div key={msg.id} className={`text-sm ${msg.remetente_id === user?.id ? "text-right" : ""}`}>
+                          <span className="text-xs text-muted-foreground">
+                            {msg.remetente_role === "mesa_produtos" ? "Mesa" : msg.remetente_role === "engenheiro" ? "Engenheiro" : "Produtor"}
+                            {" · "}
+                            {new Date(msg.created_at).toLocaleString("pt-BR", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })}
+                          </span>
+                          <p className={`rounded-md p-2 inline-block max-w-[80%] ${msg.remetente_id === user?.id ? "bg-primary text-primary-foreground ml-auto" : "bg-muted"}`}>
+                            {(msg as any).audio_url ? (
+                              <AudioPlayer src={(msg as any).audio_url} />
+                            ) : (
+                              msg.mensagem
+                            )}
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      value={chatMessage}
+                      onChange={(e) => setChatMessage(e.target.value)}
+                      placeholder="Enviar mensagem..."
+                      onKeyDown={(e) => { if (e.key === "Enter" && chatMessage.trim()) sendChatMutation.mutate({}); }}
+                    />
+                    <AudioRecorder onRecordingComplete={handleAudioComplete} disabled={sendChatMutation.isPending} isUploading={isUploadingAudio} />
+                    <Button size="icon" onClick={() => sendChatMutation.mutate({})} disabled={!chatMessage.trim() || sendChatMutation.isPending}>
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             );
