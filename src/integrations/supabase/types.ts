@@ -577,17 +577,23 @@ export type Database = {
           banco_destino: string | null
           created_at: string
           cultura_principal: string
+          data_envio_banco: string | null
+          data_retorno_banco: string | null
           engenheiro_atribuido_id: string | null
           id: string
           notas_mesa: string | null
+          observacoes_banco: string | null
           observacoes_produtor: string | null
           produtor_id: string
           pronaf_produto_id: string | null
           propriedade_id: string
+          status_banco: string
           status_mesa: string
           status_solicitacao: string
           tipo_credito: string
+          tipo_valor_engenheiro_override: string | null
           updated_at: string
+          valor_engenheiro_override: number | null
           valor_pagamento_engenheiro: number
           valor_solicitado: number
         }
@@ -598,17 +604,23 @@ export type Database = {
           banco_destino?: string | null
           created_at?: string
           cultura_principal?: string
+          data_envio_banco?: string | null
+          data_retorno_banco?: string | null
           engenheiro_atribuido_id?: string | null
           id?: string
           notas_mesa?: string | null
+          observacoes_banco?: string | null
           observacoes_produtor?: string | null
           produtor_id: string
           pronaf_produto_id?: string | null
           propriedade_id: string
+          status_banco?: string
           status_mesa?: string
           status_solicitacao?: string
           tipo_credito?: string
+          tipo_valor_engenheiro_override?: string | null
           updated_at?: string
+          valor_engenheiro_override?: number | null
           valor_pagamento_engenheiro?: number
           valor_solicitado?: number
         }
@@ -619,17 +631,23 @@ export type Database = {
           banco_destino?: string | null
           created_at?: string
           cultura_principal?: string
+          data_envio_banco?: string | null
+          data_retorno_banco?: string | null
           engenheiro_atribuido_id?: string | null
           id?: string
           notas_mesa?: string | null
+          observacoes_banco?: string | null
           observacoes_produtor?: string | null
           produtor_id?: string
           pronaf_produto_id?: string | null
           propriedade_id?: string
+          status_banco?: string
           status_mesa?: string
           status_solicitacao?: string
           tipo_credito?: string
+          tipo_valor_engenheiro_override?: string | null
           updated_at?: string
+          valor_engenheiro_override?: number | null
           valor_pagamento_engenheiro?: number
           valor_solicitado?: number
         }
