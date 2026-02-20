@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,33 @@ interface ChecklistForm {
   pronaf_produto_confirmado_id: string;
 }
 
+function MidiaImage({ midia }: { midia: any }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    supabase.storage.from("laudo-media").createSignedUrl(midia.url_arquivo, 3600).then(({ data }) => {
+      if (data?.signedUrl) setUrl(data.signedUrl);
+    });
+  }, [midia.url_arquivo]);
+  if (!url) return <div className="rounded-md bg-muted aspect-square animate-pulse" />;
+  return <img src={url} alt={midia.descricao || "Foto"} className="rounded-md object-cover aspect-square w-full" />;
+}
+
+function MidiaPdfLink({ midia }: { midia: any }) {
+  const handleClick = async () => {
+    const { data } = await supabase.storage.from("laudo-media").createSignedUrl(midia.url_arquivo, 300);
+    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+  };
+  return (
+    <div
+      onClick={handleClick}
+      className="rounded-md bg-muted aspect-square flex flex-col items-center justify-center cursor-pointer hover:bg-muted/80 transition-colors p-2"
+    >
+      <FileText className="h-6 w-6 text-muted-foreground" />
+      <span className="text-xs text-muted-foreground mt-1 truncate w-full text-center">{midia.descricao || "PDF"}</span>
+    </div>
+  );
+}
+
 export default function MeusLaudos() {
   const [selectedLaudo, setSelectedLaudo] = useState<any | null>(null);
   const [form, setForm] = useState<ChecklistForm>({
@@ -59,7 +86,7 @@ export default function MeusLaudos() {
     observacoes_adicionais: "",
     pronaf_produto_confirmado_id: "",
   });
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [signConfirm, setSignConfirm] = useState(false);
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -289,29 +316,31 @@ export default function MeusLaudos() {
 
   const uploadMutation = useMutation({
     mutationFn: async () => {
-      if (!photoFile) return;
-      const ext = photoFile.name.split(".").pop();
-      const path = `${selectedLaudo.id}/${Date.now()}.${ext}`;
+      if (!photoFiles.length) return;
+      for (const file of photoFiles) {
+        const ext = file.name.split(".").pop();
+        const filePath = `${selectedLaudo.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
-      const { error: upErr } = await supabase.storage
-        .from("laudo-media")
-        .upload(path, photoFile);
-      if (upErr) throw upErr;
+        const { error: upErr } = await supabase.storage
+          .from("laudo-media")
+          .upload(filePath, file);
+        if (upErr) throw upErr;
 
-      const { data: urlData } = supabase.storage.from("laudo-media").getPublicUrl(path);
+        const tipo = file.type.startsWith("image/") ? "foto" : "documento";
 
-      const { error: dbErr } = await supabase.from("midia_laudo").insert({
-        laudo_id: selectedLaudo.id,
-        url_arquivo: urlData.publicUrl,
-        tipo: "foto",
-        descricao: photoFile.name,
-      });
-      if (dbErr) throw dbErr;
+        const { error: dbErr } = await supabase.from("midia_laudo").insert({
+          laudo_id: selectedLaudo.id,
+          url_arquivo: filePath,
+          tipo,
+          descricao: file.name,
+        });
+        if (dbErr) throw dbErr;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["midias_laudo", selectedLaudo?.id] });
-      setPhotoFile(null);
-      toast({ title: "Foto enviada!" });
+      setPhotoFiles([]);
+      toast({ title: `${photoFiles.length} arquivo(s) enviado(s)!` });
     },
     onError: (err: Error) => {
       toast({ title: "Erro no upload", description: err.message, variant: "destructive" });
@@ -517,38 +546,45 @@ export default function MeusLaudos() {
             {/* Photo upload */}
             {isEditable && hasStartedVisit && (
               <div className="space-y-2 border-t pt-4">
-                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Fotos da Vistoria</Label>
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Fotos / Documentos da Vistoria</Label>
                 <div className="flex items-center gap-2">
                   <Input
                     type="file"
-                    accept="image/*"
-                    onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
+                    accept="image/*,application/pdf"
+                    multiple
+                    onChange={(e) => setPhotoFiles(Array.from(e.target.files || []))}
                   />
                   <Button
                     size="sm"
                     variant="outline"
-                    disabled={!photoFile || uploadMutation.isPending}
+                    disabled={!photoFiles.length || uploadMutation.isPending}
                     onClick={() => uploadMutation.mutate()}
                     className="gap-1 shrink-0"
                   >
                     <Camera className="h-4 w-4" />
-                    {uploadMutation.isPending ? "Enviando..." : "Enviar"}
+                    {uploadMutation.isPending ? "Enviando..." : `Enviar (${photoFiles.length})`}
                   </Button>
                 </div>
+                {photoFiles.length > 0 && (
+                  <p className="text-xs text-muted-foreground">{photoFiles.map(f => f.name).join(", ")}</p>
+                )}
               </div>
             )}
 
-            {/* Photo gallery */}
+            {/* Media gallery */}
             {midias && midias.length > 0 && (
-              <div className="grid grid-cols-3 gap-2">
-                {midias.map((m) => (
-                  <img
-                    key={m.id}
-                    src={m.url_arquivo}
-                    alt={m.descricao || "Foto"}
-                    className="rounded-md object-cover aspect-square w-full"
-                  />
-                ))}
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Arquivos Enviados ({midias.length})</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {midias.map((m) => {
+                    const isImage = m.tipo === "foto" || m.url_arquivo.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+                    return isImage ? (
+                      <MidiaImage key={m.id} midia={m} />
+                    ) : (
+                      <MidiaPdfLink key={m.id} midia={m} />
+                    );
+                  })}
+                </div>
               </div>
             )}
 
