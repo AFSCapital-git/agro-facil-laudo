@@ -27,6 +27,7 @@ export default function Demandas() {
         .from("solicitacoes_laudo")
         .select("id, created_at, valor_pagamento_engenheiro, pronaf_produto_id, pronaf_produtos(nome), propriedades(nome_propriedade, endereco, area_total_ha)")
         .eq("status_solicitacao", "aberta")
+        .eq("status_mesa", "aprovada")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;

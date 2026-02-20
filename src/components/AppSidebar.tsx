@@ -45,6 +45,10 @@ const engenheiroNav: NavItem[] = [
   { title: "Pagamentos", icon: CreditCard, path: "/pagamentos" },
 ];
 
+const mesaNav: NavItem[] = [
+  { title: "Mesa de Produtos", icon: ClipboardCheck, path: "/mesa" },
+];
+
 const adminNav: NavItem[] = [
   { title: "Dashboard", icon: Home, path: "/" },
   { title: "Produtos PRONAF", icon: Package, path: "/admin/produtos-pronaf" },
@@ -59,8 +63,8 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const navItems = role === "admin" ? adminNav : role === "engenheiro" ? engenheiroNav : produtorNav;
-  const roleLabel = role === "admin" ? "Administrador" : role === "engenheiro" ? "Engenheiro" : "Produtor";
+  const navItems = role === "admin" ? adminNav : role === "mesa_produtos" ? mesaNav : role === "engenheiro" ? engenheiroNav : produtorNav;
+  const roleLabel = role === "admin" ? "Administrador" : role === "mesa_produtos" ? "Mesa de Produtos" : role === "engenheiro" ? "Engenheiro" : "Produtor";
 
   return (
     <Sidebar>
