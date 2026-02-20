@@ -18,7 +18,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { useAiAssistant } from "@/hooks/useAiAssistant";
-import { ClipboardCheck, MapPin, Sprout, Banknote, Check, X, Send, MessageCircle, Sparkles, FileSearch, UserCheck, Loader2, FolderOpen, FileText, CheckCircle2, XCircle, Eye } from "lucide-react";
+import { ClipboardCheck, MapPin, Sprout, Banknote, Check, X, Send, MessageCircle, Sparkles, FileSearch, UserCheck, Loader2, FolderOpen, FileText, CheckCircle2, XCircle, Eye, Video } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { AudioRecorder } from "@/components/chat/AudioRecorder";
 import { AudioPlayer } from "@/components/chat/AudioPlayer";
@@ -618,9 +618,14 @@ export default function MesaProdutos() {
 
               {/* Chat section */}
               <div className="border-t pt-4 space-y-3">
-                <h4 className="font-medium text-sm flex items-center gap-2">
-                  <MessageCircle className="h-4 w-4" /> Chat
-                </h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-sm flex items-center gap-2">
+                    <MessageCircle className="h-4 w-4" /> Chat
+                  </h4>
+                  <Button size="sm" variant="ghost" disabled title="Videochamada — em breve" className="gap-1.5 text-xs text-muted-foreground">
+                    <Video className="h-3.5 w-3.5" /> Vídeo (em breve)
+                  </Button>
+                </div>
                 <div className="max-h-48 overflow-y-auto space-y-2 rounded-md border p-3 bg-muted/30">
                   {!chatMessages?.length ? (
                     <p className="text-xs text-muted-foreground text-center">Nenhuma mensagem ainda.</p>
