@@ -34,6 +34,7 @@ const statusMesaMap: Record<string, { label: string; variant: "default" | "secon
 const pipelineStages = [
   { key: "pendente", label: "Pendentes" },
   { key: "em_analise", label: "Em Análise" },
+  { key: "docs_pendente_eng", label: "Docs Pend. Eng." },
   { key: "docs_ok", label: "Docs OK" },
   { key: "elegibilidade_ok", label: "Elegível" },
   { key: "aprovada", label: "Aprovadas" },
