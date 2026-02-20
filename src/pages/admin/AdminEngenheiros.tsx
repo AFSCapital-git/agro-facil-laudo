@@ -23,10 +23,19 @@ export default function AdminEngenheiros() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("engenheiros")
-        .select("*, profiles:user_id(nome, email)")
+        .select("*")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data;
+
+      // Fetch profiles separately since FK points to auth.users, not profiles
+      const userIds = data.map((e) => e.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, nome, email")
+        .in("id", userIds);
+
+      const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
+      return data.map((e) => ({ ...e, profiles: profileMap.get(e.user_id) || null }));
     },
   });
 
