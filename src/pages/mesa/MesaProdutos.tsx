@@ -18,10 +18,11 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { useAiAssistant } from "@/hooks/useAiAssistant";
-import { ClipboardCheck, MapPin, Sprout, Banknote, Check, X, Send, MessageCircle, Sparkles, FileSearch, UserCheck, Loader2, FolderOpen, FileText, CheckCircle2, XCircle, Eye, Video } from "lucide-react";
+import { ClipboardCheck, MapPin, Sprout, Banknote, Check, X, Send, MessageCircle, Sparkles, FileSearch, UserCheck, Loader2, FolderOpen, FileText, CheckCircle2, XCircle, Eye, Video, RotateCcw } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { AudioRecorder } from "@/components/chat/AudioRecorder";
 import { AudioPlayer } from "@/components/chat/AudioPlayer";
+import StatusTimeline from "@/components/solicitacoes/StatusTimeline";
 
 const statusMesaMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   pendente: { label: "Pendente", variant: "outline" },
@@ -352,6 +353,9 @@ export default function MesaProdutos() {
           </DialogHeader>
           {selectedSolicitacao && (
             <div className="space-y-4">
+              {/* Status Timeline */}
+              <StatusTimeline solicitacao={selectedSolicitacao} />
+
               {/* Info */}
               <div className="grid gap-2 text-sm sm:grid-cols-2">
                 <div><span className="font-medium">Propriedade:</span> {(selectedSolicitacao as any).propriedades?.nome_propriedade}</div>
@@ -636,6 +640,39 @@ export default function MesaProdutos() {
                   <FolderOpen className="h-3.5 w-3.5 mr-1" />
                   {selectedSolicitacao.docs_habilitados ? "Docs Liberados ✓" : "Liberar Documentos"}
                 </Button>
+                {/* Bank send actions */}
+                {selectedSolicitacao.status_mesa === "aprovada" && selectedSolicitacao.status_banco === "nao_enviado" && (
+                  <Button size="sm" onClick={() => {
+                    const updateData: any = {
+                      status_banco: "enviado_banco",
+                      data_envio_banco: new Date().toISOString(),
+                    };
+                    updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "aprovada", extra: updateData });
+                  }} disabled={updateStatusMutation.isPending}>
+                    <Send className="h-3.5 w-3.5 mr-1" /> Enviar ao Banco
+                  </Button>
+                )}
+                {selectedSolicitacao.status_banco === "enviado_banco" && (
+                  <>
+                    <Button size="sm" variant="destructive" onClick={() => {
+                      updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: selectedSolicitacao.status_mesa, extra: { status_banco: "devolvido_banco", data_retorno_banco: new Date().toISOString() } });
+                    }} disabled={updateStatusMutation.isPending}>
+                      <RotateCcw className="h-3.5 w-3.5 mr-1" /> Devolvido pelo Banco
+                    </Button>
+                    <Button size="sm" onClick={() => {
+                      updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: selectedSolicitacao.status_mesa, extra: { status_banco: "aprovado_banco", data_retorno_banco: new Date().toISOString() } });
+                    }} disabled={updateStatusMutation.isPending}>
+                      <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Aprovado pelo Banco
+                    </Button>
+                  </>
+                )}
+                {selectedSolicitacao.status_banco === "devolvido_banco" && (
+                  <Button size="sm" onClick={() => {
+                    updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: selectedSolicitacao.status_mesa, extra: { status_banco: "enviado_banco", data_envio_banco: new Date().toISOString() } });
+                  }} disabled={updateStatusMutation.isPending}>
+                    <Send className="h-3.5 w-3.5 mr-1" /> Reenviar ao Banco
+                  </Button>
+                )}
                 {/* Save payment override without changing status */}
                 <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: selectedSolicitacao.status_mesa })} disabled={updateStatusMutation.isPending}>
                   Salvar Alterações
