@@ -39,7 +39,8 @@ const pipelineStages = [
   { key: "docs_pendente_eng", label: "Docs Pend. Eng." },
   { key: "docs_ok", label: "Docs OK" },
   { key: "elegibilidade_ok", label: "Elegível" },
-  { key: "aprovada", label: "Aprovadas" },
+  { key: "aguardando_laudo", label: "Aguard. Laudo" },
+  { key: "laudo_finalizado", label: "Pronto p/ Banco" },
 ];
 
 export default function MesaProdutos() {
@@ -62,7 +63,7 @@ export default function MesaProdutos() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("solicitacoes_laudo")
-        .select("*, propriedades(nome_propriedade, endereco, area_total_ha), pronaf_produtos(nome, finalidade, valor_engenheiro, tipo_valor_engenheiro), produtores(user_id)")
+        .select("*, propriedades(nome_propriedade, endereco, area_total_ha), pronaf_produtos(nome, finalidade, valor_engenheiro, tipo_valor_engenheiro), produtores(user_id), laudos(id, status_laudo, caminho_pdf_laudo)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       // Fetch producer names via profiles
@@ -252,8 +253,27 @@ export default function MesaProdutos() {
     }
   };
 
-  const filterByStage = (stage: string) =>
-    solicitacoes?.filter((s) => s.status_mesa === stage) ?? [];
+  const filterByStage = (stage: string) => {
+    if (stage === "aguardando_laudo") {
+      return solicitacoes?.filter((s) => {
+        if (s.status_mesa !== "aprovada") return false;
+        const laudos = (s as any).laudos;
+        if (!laudos) return true; // no laudo yet
+        if (Array.isArray(laudos)) return !laudos.some((l: any) => l.status_laudo === "finalizado");
+        return laudos.status_laudo !== "finalizado";
+      }) ?? [];
+    }
+    if (stage === "laudo_finalizado") {
+      return solicitacoes?.filter((s) => {
+        if (s.status_mesa !== "aprovada") return false;
+        const laudos = (s as any).laudos;
+        if (!laudos) return false;
+        if (Array.isArray(laudos)) return laudos.some((l: any) => l.status_laudo === "finalizado");
+        return laudos.status_laudo === "finalizado";
+      }) ?? [];
+    }
+    return solicitacoes?.filter((s) => s.status_mesa === stage) ?? [];
+  };
 
   const renderCard = (s: any) => {
     const prop = (s as any).propriedades;
@@ -564,36 +584,42 @@ export default function MesaProdutos() {
                 </Select>
               </div>
 
-              {/* Action buttons */}
+              {/* Action buttons — sequential flow */}
               <div className="flex flex-wrap gap-2 border-t pt-4">
+                {/* Step 1: pendente → em_analise */}
                 {selectedSolicitacao.status_mesa === "pendente" && (
-                  <Button size="sm" variant="secondary" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "em_analise" })}>
+                  <Button size="sm" variant="secondary" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "em_analise" })} disabled={updateStatusMutation.isPending}>
                     Iniciar Análise
                   </Button>
                 )}
-                {["pendente", "em_analise"].includes(selectedSolicitacao.status_mesa) && (
-                  <Button size="sm" variant="secondary" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "docs_ok" })}>
+                {/* Step 2: em_analise → docs_ok (or docs_pendente_eng) */}
+                {(selectedSolicitacao.status_mesa === "em_analise" || selectedSolicitacao.status_mesa === "docs_pendente_eng") && (
+                  <Button size="sm" variant="secondary" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "docs_ok" })} disabled={updateStatusMutation.isPending}>
                     <Check className="h-3.5 w-3.5 mr-1" /> Docs OK
                   </Button>
                 )}
-                {["docs_ok", "em_analise"].includes(selectedSolicitacao.status_mesa) && (
-                  <Button size="sm" variant="secondary" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "elegibilidade_ok" })}>
+                {/* Step 3: docs_ok → elegibilidade_ok */}
+                {selectedSolicitacao.status_mesa === "docs_ok" && (
+                  <Button size="sm" variant="secondary" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "elegibilidade_ok" })} disabled={updateStatusMutation.isPending}>
                     <Check className="h-3.5 w-3.5 mr-1" /> Elegibilidade OK
                   </Button>
                 )}
-                {selectedSolicitacao.status_mesa !== "aprovada" && selectedSolicitacao.status_mesa !== "rejeitada" && (
-                  <>
-                    <Button size="sm" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "aprovada" })} disabled={updateStatusMutation.isPending}>
-                      <Check className="h-3.5 w-3.5 mr-1" /> Aprovar e Liberar
-                    </Button>
-                    <Button size="sm" variant="destructive" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "rejeitada" })}>
-                      <X className="h-3.5 w-3.5 mr-1" /> Rejeitar
-                    </Button>
-                  </>
+                {/* Step 4: elegibilidade_ok → aprovada */}
+                {selectedSolicitacao.status_mesa === "elegibilidade_ok" && (
+                  <Button size="sm" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "aprovada" })} disabled={updateStatusMutation.isPending}>
+                    <Check className="h-3.5 w-3.5 mr-1" /> Aprovar e Liberar
+                  </Button>
                 )}
-                {selectedSolicitacao.status_mesa !== "docs_pendente_eng" && selectedSolicitacao.status_mesa !== "aprovada" && (
-                  <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "docs_pendente_eng" })}>
+                {/* Side action: solicitar docs ao engenheiro (from em_analise or docs_ok) */}
+                {["em_analise", "docs_ok"].includes(selectedSolicitacao.status_mesa) && (
+                  <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "docs_pendente_eng" })} disabled={updateStatusMutation.isPending}>
                     Solicitar Docs ao Eng.
+                  </Button>
+                )}
+                {/* Reject — available at any non-final stage */}
+                {!["aprovada", "rejeitada"].includes(selectedSolicitacao.status_mesa) && (
+                  <Button size="sm" variant="destructive" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "rejeitada" })} disabled={updateStatusMutation.isPending}>
+                    <X className="h-3.5 w-3.5 mr-1" /> Rejeitar
                   </Button>
                 )}
                 {/* Toggle document upload for producer */}
