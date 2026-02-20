@@ -13,7 +13,9 @@ import Solicitacoes from "@/pages/Solicitacoes";
 import Demandas from "@/pages/Demandas";
 import MeusLaudos from "@/pages/MeusLaudos";
 import Pagamentos from "@/pages/Pagamentos";
+import MesaDashboard from "@/pages/mesa/MesaDashboard";
 import MesaProdutos from "@/pages/mesa/MesaProdutos";
+import MesaEnviosBanco from "@/pages/mesa/MesaEnviosBanco";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminEngenheiros from "@/pages/admin/AdminEngenheiros";
 import AdminPagamentos from "@/pages/admin/AdminPagamentos";
@@ -47,7 +49,9 @@ const App = () => (
               <Route path="/demandas" element={<Demandas />} />
               <Route path="/meus-laudos" element={<MeusLaudos />} />
               <Route path="/pagamentos" element={<Pagamentos />} />
-              <Route path="/mesa" element={<MesaProdutos />} />
+              <Route path="/mesa" element={<MesaDashboard />} />
+              <Route path="/mesa/esteira" element={<MesaProdutos />} />
+              <Route path="/mesa/envios-banco" element={<MesaEnviosBanco />} />
               <Route path="/admin/usuarios" element={<AdminUsuarios />} />
               <Route path="/admin/engenheiros" element={<AdminEngenheiros />} />
               <Route path="/admin/pagamentos" element={<AdminPagamentos />} />
