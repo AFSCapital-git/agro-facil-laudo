@@ -63,8 +63,11 @@ export default function AdminConfiguracoes() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-bold">Configurações</h1>
-        <p className="text-muted-foreground">Configure os parâmetros da plataforma.</p>
+        <h1 className="font-display text-2xl font-bold">Configurações Gerais</h1>
+        <p className="text-muted-foreground">
+          Valores padrão da plataforma. A remuneração do engenheiro é configurada individualmente por produto na aba{" "}
+          <span className="font-medium text-foreground">Produtos PRONAF</span>.
+        </p>
       </div>
 
       <Card className="max-w-lg">
