@@ -51,6 +51,7 @@ const mesaNav: NavItem[] = [
 
 const adminNav: NavItem[] = [
   { title: "Dashboard", icon: Home, path: "/" },
+  { title: "Usuários", icon: Users, path: "/admin/usuarios" },
   { title: "Produtos PRONAF", icon: Package, path: "/admin/produtos-pronaf" },
   { title: "Engenheiros", icon: Users, path: "/admin/engenheiros" },
   { title: "Pagamentos", icon: CreditCard, path: "/admin/pagamentos" },

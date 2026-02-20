@@ -20,6 +20,7 @@ import AdminPagamentos from "@/pages/admin/AdminPagamentos";
 import AdminConfiguracoes from "@/pages/admin/AdminConfiguracoes";
 import AdminRelatorios from "@/pages/admin/AdminRelatorios";
 import AdminProdutosPronaf from "@/pages/admin/AdminProdutosPronaf";
+import AdminUsuarios from "@/pages/admin/AdminUsuarios";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,6 +48,7 @@ const App = () => (
               <Route path="/meus-laudos" element={<MeusLaudos />} />
               <Route path="/pagamentos" element={<Pagamentos />} />
               <Route path="/mesa" element={<MesaProdutos />} />
+              <Route path="/admin/usuarios" element={<AdminUsuarios />} />
               <Route path="/admin/engenheiros" element={<AdminEngenheiros />} />
               <Route path="/admin/pagamentos" element={<AdminPagamentos />} />
               <Route path="/admin/configuracoes" element={<AdminConfiguracoes />} />
