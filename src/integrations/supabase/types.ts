@@ -64,6 +64,7 @@ export type Database = {
       }
       chat_mensagens: {
         Row: {
+          audio_url: string | null
           created_at: string
           id: string
           mensagem: string
@@ -72,6 +73,7 @@ export type Database = {
           solicitacao_id: string | null
         }
         Insert: {
+          audio_url?: string | null
           created_at?: string
           id?: string
           mensagem: string
@@ -80,6 +82,7 @@ export type Database = {
           solicitacao_id?: string | null
         }
         Update: {
+          audio_url?: string | null
           created_at?: string
           id?: string
           mensagem?: string

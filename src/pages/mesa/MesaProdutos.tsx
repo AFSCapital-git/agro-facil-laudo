@@ -20,6 +20,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAiAssistant } from "@/hooks/useAiAssistant";
 import { ClipboardCheck, MapPin, Sprout, Banknote, Check, X, Send, MessageCircle, Sparkles, FileSearch, UserCheck, Loader2, FolderOpen, FileText, CheckCircle2, XCircle, Eye } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { AudioRecorder } from "@/components/chat/AudioRecorder";
+import { AudioPlayer } from "@/components/chat/AudioPlayer";
 
 const statusMesaMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   pendente: { label: "Pendente", variant: "outline" },
@@ -47,6 +49,7 @@ export default function MesaProdutos() {
   const qc = useQueryClient();
   const [selectedSolicitacao, setSelectedSolicitacao] = useState<any | null>(null);
   const [chatMessage, setChatMessage] = useState("");
+  const [isUploadingAudio, setIsUploadingAudio] = useState(false);
   const [notas, setNotas] = useState("");
   const [engenheiroAtribuidoId, setEngenheiroAtribuidoId] = useState("");
   
@@ -186,12 +189,13 @@ export default function MesaProdutos() {
   });
 
   const sendChatMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async ({ audioUrl }: { audioUrl?: string } = {}) => {
       const { error } = await supabase.from("chat_mensagens").insert({
         solicitacao_id: selectedSolicitacao.id,
         remetente_id: user!.id,
         remetente_role: "mesa_produtos",
-        mensagem: chatMessage,
+        mensagem: audioUrl ? "🎤 Mensagem de áudio" : chatMessage,
+        audio_url: audioUrl || null,
       });
       if (error) throw error;
     },
@@ -201,6 +205,23 @@ export default function MesaProdutos() {
     },
     onError: (err: Error) => toast({ title: "Erro ao enviar", description: err.message, variant: "destructive" }),
   });
+
+  const handleAudioComplete = async (blob: Blob) => {
+    setIsUploadingAudio(true);
+    try {
+      const fileName = `${user!.id}/${Date.now()}.webm`;
+      const { error: uploadError } = await supabase.storage.from("chat-audio").upload(fileName, blob);
+      if (uploadError) throw uploadError;
+      const { data } = await supabase.storage.from("chat-audio").createSignedUrl(fileName, 86400 * 365);
+      if (data?.signedUrl) {
+        sendChatMutation.mutate({ audioUrl: data.signedUrl });
+      }
+    } catch (err: any) {
+      toast({ title: "Erro ao enviar áudio", description: err.message, variant: "destructive" });
+    } finally {
+      setIsUploadingAudio(false);
+    }
+  };
 
   const updateDocStatusMutation = useMutation({
     mutationFn: async ({ docId, status }: { docId: string; status: string }) => {
@@ -612,7 +633,11 @@ export default function MesaProdutos() {
                           {new Date(msg.created_at).toLocaleString("pt-BR", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })}
                         </span>
                         <p className={`rounded-md p-2 inline-block max-w-[80%] ${msg.remetente_id === user?.id ? "bg-primary text-primary-foreground ml-auto" : "bg-muted"}`}>
-                          {msg.mensagem}
+                          {(msg as any).audio_url ? (
+                            <AudioPlayer src={(msg as any).audio_url} />
+                          ) : (
+                            msg.mensagem
+                          )}
                         </p>
                       </div>
                     ))
@@ -623,9 +648,10 @@ export default function MesaProdutos() {
                     value={chatMessage}
                     onChange={(e) => setChatMessage(e.target.value)}
                     placeholder="Enviar mensagem..."
-                    onKeyDown={(e) => { if (e.key === "Enter" && chatMessage.trim()) sendChatMutation.mutate(); }}
+                    onKeyDown={(e) => { if (e.key === "Enter" && chatMessage.trim()) sendChatMutation.mutate({}); }}
                   />
-                  <Button size="icon" onClick={() => sendChatMutation.mutate()} disabled={!chatMessage.trim() || sendChatMutation.isPending}>
+                  <AudioRecorder onRecordingComplete={handleAudioComplete} disabled={sendChatMutation.isPending} isUploading={isUploadingAudio} />
+                  <Button size="icon" onClick={() => sendChatMutation.mutate({})} disabled={!chatMessage.trim() || sendChatMutation.isPending}>
                     <Send className="h-4 w-4" />
                   </Button>
                 </div>
