@@ -17,7 +17,9 @@ import {
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
-import { ClipboardCheck, MapPin, Sprout, Banknote, Check, X, Send, MessageCircle } from "lucide-react";
+import { useAiAssistant } from "@/hooks/useAiAssistant";
+import { ClipboardCheck, MapPin, Sprout, Banknote, Check, X, Send, MessageCircle, Sparkles, FileSearch, UserCheck, Loader2 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 
 const statusMesaMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   pendente: { label: "Pendente", variant: "outline" },
@@ -40,6 +42,7 @@ const pipelineStages = [
 export default function MesaProdutos() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const ai = useAiAssistant();
   const qc = useQueryClient();
   const [selectedSolicitacao, setSelectedSolicitacao] = useState<any | null>(null);
   const [chatMessage, setChatMessage] = useState("");
@@ -312,6 +315,73 @@ export default function MesaProdutos() {
                       ? formatCurrency(parseFloat(valorOverride) || 0)
                       : formatCurrency((selectedSolicitacao.valor_solicitado * (parseFloat(valorOverride) || 0)) / 100)}
                   </p>
+                )}
+              </div>
+
+              {/* AI Assistant Panel */}
+              <div className="border rounded-md p-3 space-y-3 bg-muted/30">
+                <h4 className="font-medium text-sm flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" /> Assistente IA
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={ai.isLoading}
+                    onClick={() => ai.analyze("resumo_solicitacao", {
+                      propriedade: (selectedSolicitacao as any).propriedades,
+                      cultura: selectedSolicitacao.cultura_principal,
+                      area: selectedSolicitacao.area_cultivo_ha,
+                      valor: selectedSolicitacao.valor_solicitado,
+                      produto: (selectedSolicitacao as any).pronaf_produtos,
+                      status: selectedSolicitacao.status_mesa,
+                    })}
+                  >
+                    {ai.isLoading ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}
+                    Resumo IA
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={ai.isLoading}
+                    onClick={() => ai.analyze("analise_documentos", {
+                      propriedade: (selectedSolicitacao as any).propriedades,
+                      cultura: selectedSolicitacao.cultura_principal,
+                      area: selectedSolicitacao.area_cultivo_ha,
+                      valor: selectedSolicitacao.valor_solicitado,
+                      produto: (selectedSolicitacao as any).pronaf_produtos,
+                      tipo_credito: selectedSolicitacao.tipo_credito,
+                    })}
+                  >
+                    <FileSearch className="h-3.5 w-3.5 mr-1" /> Análise Docs
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={ai.isLoading}
+                    onClick={() => ai.analyze("sugestao_engenheiro", {
+                      propriedade: (selectedSolicitacao as any).propriedades,
+                      cultura: selectedSolicitacao.cultura_principal,
+                      area: selectedSolicitacao.area_cultivo_ha,
+                      valor: selectedSolicitacao.valor_solicitado,
+                      produto: (selectedSolicitacao as any).pronaf_produtos,
+                    })}
+                  >
+                    <UserCheck className="h-3.5 w-3.5 mr-1" /> Sugestão Eng.
+                  </Button>
+                </div>
+                {ai.isLoading && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Analisando com IA...
+                  </div>
+                )}
+                {ai.result && (
+                  <div className="rounded-md border bg-background p-3 text-sm prose prose-sm max-w-none dark:prose-invert">
+                    <ReactMarkdown>{ai.result}</ReactMarkdown>
+                    <Button size="sm" variant="ghost" className="mt-2 text-xs" onClick={ai.clear}>
+                      Fechar análise
+                    </Button>
+                  </div>
                 )}
               </div>
 
