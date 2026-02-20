@@ -530,7 +530,6 @@ export default function MeusLaudos() {
               { key: "garantias_observadas" as const, label: "Garantias Observadas" },
               { key: "recomendacoes_tecnicas" as const, label: "Recomendações Técnicas" },
               { key: "resumo_viabilidade" as const, label: "Resumo de Viabilidade" },
-              { key: "parecer_final" as const, label: "Parecer Final" },
               { key: "observacoes_adicionais" as const, label: "Observações Adicionais" },
             ].map(({ key, label }) => (
               <div key={key} className="space-y-1">
@@ -542,6 +541,30 @@ export default function MeusLaudos() {
                 )}
               </div>
             ))}
+
+            {/* Parecer Final - select with constrained values */}
+            {(hasStartedVisit || !isEditable) && (
+              <div className="space-y-1">
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Parecer Final</Label>
+                {isEditable ? (
+                  <Select
+                    value={form.parecer_final}
+                    onValueChange={(v) => setForm((f) => ({ ...f, parecer_final: v }))}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Selecione o parecer..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="viavel">Viável</SelectItem>
+                      <SelectItem value="parcialmente_viavel">Parcialmente Viável</SelectItem>
+                      <SelectItem value="inviavel">Inviável</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-sm rounded-md bg-muted p-2">
+                    {form.parecer_final === "viavel" ? "Viável" : form.parecer_final === "parcialmente_viavel" ? "Parcialmente Viável" : form.parecer_final === "inviavel" ? "Inviável" : "—"}
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Photo upload */}
             {isEditable && hasStartedVisit && (
