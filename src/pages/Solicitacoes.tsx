@@ -22,6 +22,7 @@ import {
 import { AudioRecorder } from "@/components/chat/AudioRecorder";
 import { AudioPlayer } from "@/components/chat/AudioPlayer";
 import ProductRulesCard from "@/components/solicitacoes/ProductRulesCard";
+import StatusTimeline from "@/components/solicitacoes/StatusTimeline";
 
 const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   aberta: { label: "Aberta", variant: "default" },
@@ -517,6 +518,9 @@ export default function Solicitacoes() {
             const produto = (detailSolicitacao as any).pronaf_produtos;
             return (
               <div className="space-y-4">
+                {/* Status Timeline */}
+                <StatusTimeline solicitacao={detailSolicitacao} />
+
                 {/* Basic info */}
                 <div className="grid gap-2 text-sm sm:grid-cols-2">
                   <div><span className="font-medium">Propriedade:</span> {(detailSolicitacao as any).propriedades?.nome_propriedade}</div>

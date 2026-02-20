@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Send, RotateCcw, CheckCircle2, MapPin, Banknote } from "lucide-react";
+import StatusTimeline from "@/components/solicitacoes/StatusTimeline";
 
 const statusBancoMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   nao_enviado: { label: "Não enviado", variant: "outline" },
@@ -156,6 +157,8 @@ export default function MesaEnviosBanco() {
           </DialogHeader>
           {selected && (
             <div className="space-y-4">
+              {/* Status Timeline */}
+              <StatusTimeline solicitacao={selected} />
               <div className="grid gap-2 text-sm sm:grid-cols-2">
                 <div><span className="font-medium">Propriedade:</span> {(selected as any).propriedades?.nome_propriedade}</div>
                 <div><span className="font-medium">Valor:</span> {formatCurrency(selected.valor_solicitado)}</div>

@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { FileText, Camera, CheckCircle2, Clock, Pen, ShieldCheck, Download, MapPin, AlertTriangle, Info } from "lucide-react";
+import StatusTimeline from "@/components/solicitacoes/StatusTimeline";
 
 const statusLabels: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
   em_vistoria: { label: "Em vistoria", variant: "secondary" },
@@ -96,7 +97,7 @@ export default function MeusLaudos() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("laudos")
-        .select("*, solicitacoes_laudo(cultura_principal, area_cultivo_ha, valor_solicitado, pronaf_produto_id, propriedades(nome_propriedade, endereco, latitude, longitude))")
+        .select("*, solicitacoes_laudo(cultura_principal, area_cultivo_ha, valor_solicitado, pronaf_produto_id, created_at, aprovado_mesa_em, data_envio_banco, data_retorno_banco, status_banco, status_mesa, propriedades(nome_propriedade, endereco, latitude, longitude))")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -448,6 +449,11 @@ export default function MeusLaudos() {
           </DialogHeader>
 
           <div className="space-y-4">
+            {/* Status Timeline */}
+            {selectedLaudo?.solicitacoes_laudo && (
+              <StatusTimeline solicitacao={selectedLaudo.solicitacoes_laudo} laudo={selectedLaudo} />
+            )}
+
             {/* Geolocation start button */}
             {isEditable && !hasStartedVisit && (
               <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-3">
