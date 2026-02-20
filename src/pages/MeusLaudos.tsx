@@ -246,7 +246,7 @@ export default function MeusLaudos() {
 
       const { error: solErr } = await supabase
         .from("solicitacoes_laudo")
-        .update({ status_solicitacao: "aguardando_assinatura" })
+        .update({ status_solicitacao: "em_andamento" })
         .eq("id", selectedLaudo.solicitacao_id);
       if (solErr) throw solErr;
     },
@@ -292,7 +292,7 @@ export default function MeusLaudos() {
 
       const { error: solErr } = await supabase
         .from("solicitacoes_laudo")
-        .update({ status_solicitacao: "finalizada" })
+        .update({ status_solicitacao: "concluida" })
         .eq("id", selectedLaudo.solicitacao_id);
       if (solErr) throw solErr;
 
