@@ -58,10 +58,20 @@ export default function MesaProdutos() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("solicitacoes_laudo")
-        .select("*, propriedades(nome_propriedade, endereco, area_total_ha), pronaf_produtos(nome, finalidade, valor_engenheiro, tipo_valor_engenheiro), profiles:produtor_id(nome)")
+        .select("*, propriedades(nome_propriedade, endereco, area_total_ha), pronaf_produtos(nome, finalidade, valor_engenheiro, tipo_valor_engenheiro), produtores(user_id)")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data;
+      // Fetch producer names via profiles
+      const produtorUserIds = [...new Set(data?.map((s: any) => s.produtores?.user_id).filter(Boolean))];
+      let profileMap: Record<string, string> = {};
+      if (produtorUserIds.length) {
+        const { data: profiles } = await supabase.from("profiles").select("id, nome").in("id", produtorUserIds);
+        profiles?.forEach((p) => { profileMap[p.id] = p.nome; });
+      }
+      return data?.map((s: any) => ({
+        ...s,
+        produtor_nome: s.produtores?.user_id ? profileMap[s.produtores.user_id] || "—" : "—",
+      })) ?? [];
     },
   });
 
