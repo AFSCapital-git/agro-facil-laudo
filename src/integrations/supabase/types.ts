@@ -62,6 +62,41 @@ export type Database = {
           },
         ]
       }
+      chat_mensagens: {
+        Row: {
+          created_at: string
+          id: string
+          mensagem: string
+          remetente_id: string
+          remetente_role: string
+          solicitacao_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mensagem: string
+          remetente_id: string
+          remetente_role: string
+          solicitacao_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mensagem?: string
+          remetente_id?: string
+          remetente_role?: string
+          solicitacao_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_mensagens_solicitacao_id_fkey"
+            columns: ["solicitacao_id"]
+            isOneToOne: false
+            referencedRelation: "solicitacoes_laudo"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       configuracoes_plataforma: {
         Row: {
           id: string
@@ -536,15 +571,20 @@ export type Database = {
       }
       solicitacoes_laudo: {
         Row: {
+          aprovado_mesa_em: string | null
+          aprovado_mesa_por: string | null
           area_cultivo_ha: number
           banco_destino: string | null
           created_at: string
           cultura_principal: string
+          engenheiro_atribuido_id: string | null
           id: string
+          notas_mesa: string | null
           observacoes_produtor: string | null
           produtor_id: string
           pronaf_produto_id: string | null
           propriedade_id: string
+          status_mesa: string
           status_solicitacao: string
           tipo_credito: string
           updated_at: string
@@ -552,15 +592,20 @@ export type Database = {
           valor_solicitado: number
         }
         Insert: {
+          aprovado_mesa_em?: string | null
+          aprovado_mesa_por?: string | null
           area_cultivo_ha?: number
           banco_destino?: string | null
           created_at?: string
           cultura_principal?: string
+          engenheiro_atribuido_id?: string | null
           id?: string
+          notas_mesa?: string | null
           observacoes_produtor?: string | null
           produtor_id: string
           pronaf_produto_id?: string | null
           propriedade_id: string
+          status_mesa?: string
           status_solicitacao?: string
           tipo_credito?: string
           updated_at?: string
@@ -568,15 +613,20 @@ export type Database = {
           valor_solicitado?: number
         }
         Update: {
+          aprovado_mesa_em?: string | null
+          aprovado_mesa_por?: string | null
           area_cultivo_ha?: number
           banco_destino?: string | null
           created_at?: string
           cultura_principal?: string
+          engenheiro_atribuido_id?: string | null
           id?: string
+          notas_mesa?: string | null
           observacoes_produtor?: string | null
           produtor_id?: string
           pronaf_produto_id?: string | null
           propriedade_id?: string
+          status_mesa?: string
           status_solicitacao?: string
           tipo_credito?: string
           updated_at?: string
@@ -584,6 +634,13 @@ export type Database = {
           valor_solicitado?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "solicitacoes_laudo_engenheiro_atribuido_id_fkey"
+            columns: ["engenheiro_atribuido_id"]
+            isOneToOne: false
+            referencedRelation: "engenheiros"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "solicitacoes_laudo_produtor_id_fkey"
             columns: ["produtor_id"]
@@ -643,6 +700,7 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       is_engenheiro: { Args: never; Returns: boolean }
+      is_mesa_produtos: { Args: never; Returns: boolean }
       is_produtor: { Args: never; Returns: boolean }
     }
     Enums: {
