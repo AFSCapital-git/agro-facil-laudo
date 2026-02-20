@@ -8,21 +8,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, Plus, Clock, CheckCircle2, AlertCircle, Download, Info } from "lucide-react";
+import {
+  FileText, Plus, Clock, CheckCircle2, AlertCircle, Download, Info,
+  Upload, Trash2, Eye, ShieldCheck, Banknote, FileWarning,
+} from "lucide-react";
+import ProductRulesCard from "@/components/solicitacoes/ProductRulesCard";
 
 const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   aberta: { label: "Aberta", variant: "default" },
@@ -55,6 +51,7 @@ const emptyForm: SolicitacaoForm = {
 
 export default function Solicitacoes() {
   const [open, setOpen] = useState(false);
+  const [detailSolicitacao, setDetailSolicitacao] = useState<any | null>(null);
   const [form, setForm] = useState<SolicitacaoForm>(emptyForm);
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -81,7 +78,7 @@ export default function Solicitacoes() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pronaf_produtos")
-        .select("id, nome, finalidade, valor_engenheiro, tipo_valor_engenheiro")
+        .select("*")
         .eq("ativo", true)
         .order("nome");
       if (error) throw error;
@@ -108,14 +105,43 @@ export default function Solicitacoes() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("solicitacoes_laudo")
-        .select("*, propriedades(nome_propriedade), laudos(id, status_laudo, caminho_pdf_laudo), pronaf_produtos(nome)")
+        .select("*, propriedades(nome_propriedade), laudos(id, status_laudo, caminho_pdf_laudo), pronaf_produtos(*)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
   });
 
-  // Calculate engineer payment based on selected product
+  // Detail: docs for selected solicitation's product
+  const { data: detailPronafDocs } = useQuery({
+    queryKey: ["pronaf_documentos_detail", detailSolicitacao?.pronaf_produto_id],
+    enabled: !!detailSolicitacao?.pronaf_produto_id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pronaf_documentos")
+        .select("*")
+        .eq("produto_id", detailSolicitacao.pronaf_produto_id)
+        .order("ordem");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Uploaded documents for the detail solicitation
+  const { data: uploadedDocs } = useQuery({
+    queryKey: ["solicitacao_documentos", detailSolicitacao?.id],
+    enabled: !!detailSolicitacao,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("solicitacao_documentos")
+        .select("*")
+        .eq("solicitacao_id", detailSolicitacao.id)
+        .order("created_at");
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const selectedProduto = pronafProdutos?.find((p) => p.id === form.pronaf_produto_id);
   const valorPagamentoEngenheiro = selectedProduto
     ? selectedProduto.tipo_valor_engenheiro === "percentual"
@@ -150,6 +176,39 @@ export default function Solicitacoes() {
     },
   });
 
+  const uploadDocMutation = useMutation({
+    mutationFn: async ({ file, pronafDocId }: { file: File; pronafDocId?: string }) => {
+      const path = `${detailSolicitacao.id}/${Date.now()}_${file.name}`;
+      const { error: uploadError } = await supabase.storage.from("solicitacao-docs").upload(path, file);
+      if (uploadError) throw uploadError;
+      const { error } = await supabase.from("solicitacao_documentos").insert({
+        solicitacao_id: detailSolicitacao.id,
+        pronaf_documento_id: pronafDocId || null,
+        nome_arquivo: file.name,
+        caminho_arquivo: path,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["solicitacao_documentos", detailSolicitacao?.id] });
+      toast({ title: "Documento enviado!" });
+    },
+    onError: (err: Error) => toast({ title: "Erro ao enviar", description: err.message, variant: "destructive" }),
+  });
+
+  const deleteDocMutation = useMutation({
+    mutationFn: async (doc: any) => {
+      await supabase.storage.from("solicitacao-docs").remove([doc.caminho_arquivo]);
+      const { error } = await supabase.from("solicitacao_documentos").delete().eq("id", doc.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["solicitacao_documentos", detailSolicitacao?.id] });
+      toast({ title: "Documento removido." });
+    },
+    onError: (err: Error) => toast({ title: "Erro", description: err.message, variant: "destructive" }),
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     createMutation.mutate();
@@ -162,6 +221,17 @@ export default function Solicitacoes() {
     if (status === "finalizada") return <CheckCircle2 className="h-4 w-4 text-success" />;
     if (status === "cancelada") return <AlertCircle className="h-4 w-4 text-destructive" />;
     return <Clock className="h-4 w-4 text-muted-foreground" />;
+  };
+
+  const handleFileUpload = (pronafDocId?: string) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".pdf,.jpg,.jpeg,.png,.doc,.docx";
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) uploadDocMutation.mutate({ file, pronafDocId });
+    };
+    input.click();
   };
 
   return (
@@ -208,7 +278,15 @@ export default function Solicitacoes() {
                 </Select>
               </div>
 
-              {/* Show required documents for selected product */}
+              {/* Product rules card on creation */}
+              {selectedProduto && (
+                <ProductRulesCard
+                  produto={selectedProduto}
+                  valorSolicitado={parseFloat(form.valor_solicitado) || 0}
+                />
+              )}
+
+              {/* Required documents */}
               {pronafDocumentos && pronafDocumentos.length > 0 && (
                 <div className="rounded-md border border-primary/20 bg-primary/5 p-3 space-y-2">
                   <div className="flex items-center gap-2 text-sm font-medium">
@@ -269,10 +347,9 @@ export default function Solicitacoes() {
                 </div>
               </div>
 
-              {/* Show calculated engineer payment */}
               {selectedProduto && valorPagamentoEngenheiro > 0 && (
                 <div className="text-sm text-muted-foreground bg-muted rounded-md p-2">
-                  Valor estimado do laudo para o engenheiro: <strong className="text-foreground">{formatCurrency(valorPagamentoEngenheiro)}</strong>
+                  Valor estimado do laudo: <strong className="text-foreground">{formatCurrency(valorPagamentoEngenheiro)}</strong>
                   {selectedProduto.tipo_valor_engenheiro === "percentual" && ` (${selectedProduto.valor_engenheiro}% do valor solicitado)`}
                 </div>
               )}
@@ -323,7 +400,7 @@ export default function Solicitacoes() {
             const st = statusMap[s.status_solicitacao] || { label: s.status_solicitacao, variant: "outline" as const };
             const produtoNome = (s as any).pronaf_produtos?.nome;
             return (
-              <Card key={s.id}>
+              <Card key={s.id} className="cursor-pointer hover:ring-1 hover:ring-ring transition-shadow" onClick={() => setDetailSolicitacao(s)}>
                 <CardContent className="flex items-center gap-4 py-4">
                   <StatusIcon status={s.status_solicitacao} />
                   <div className="flex-1 min-w-0">
@@ -331,6 +408,11 @@ export default function Solicitacoes() {
                       <span className="font-medium">{(s as any).propriedades?.nome_propriedade}</span>
                       <Badge variant={st.variant}>{st.label}</Badge>
                       {produtoNome && <Badge variant="outline">{produtoNome}</Badge>}
+                      {s.docs_habilitados && (
+                        <Badge variant="secondary" className="text-xs gap-1">
+                          <Upload className="h-3 w-3" /> Docs liberados
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-sm text-muted-foreground">
                       {s.cultura_principal} · {s.area_cultivo_ha} ha · {formatCurrency(s.valor_solicitado)}
@@ -346,7 +428,8 @@ export default function Solicitacoes() {
                           <Button
                             size="icon"
                             variant="ghost"
-                            onClick={async () => {
+                            onClick={async (e) => {
+                              e.stopPropagation();
                               const { data } = await supabase.storage.from("laudo-pdfs").createSignedUrl(laudo.caminho_pdf_laudo, 300);
                               if (data?.signedUrl) window.open(data.signedUrl, "_blank");
                             }}
@@ -367,6 +450,112 @@ export default function Solicitacoes() {
           })}
         </div>
       )}
+
+      {/* Detail dialog */}
+      <Dialog open={!!detailSolicitacao} onOpenChange={(v) => { if (!v) setDetailSolicitacao(null); }}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-display">Detalhes da Solicitação</DialogTitle>
+          </DialogHeader>
+          {detailSolicitacao && (() => {
+            const produto = (detailSolicitacao as any).pronaf_produtos;
+            return (
+              <div className="space-y-4">
+                {/* Basic info */}
+                <div className="grid gap-2 text-sm sm:grid-cols-2">
+                  <div><span className="font-medium">Propriedade:</span> {(detailSolicitacao as any).propriedades?.nome_propriedade}</div>
+                  <div><span className="font-medium">Cultura:</span> {detailSolicitacao.cultura_principal}</div>
+                  <div><span className="font-medium">Área:</span> {detailSolicitacao.area_cultivo_ha} ha</div>
+                  <div><span className="font-medium">Valor solicitado:</span> {formatCurrency(detailSolicitacao.valor_solicitado)}</div>
+                  <div><span className="font-medium">Banco:</span> {detailSolicitacao.banco_destino || "—"}</div>
+                  <div><span className="font-medium">Status:</span> <Badge variant={statusMap[detailSolicitacao.status_solicitacao]?.variant}>{statusMap[detailSolicitacao.status_solicitacao]?.label}</Badge></div>
+                </div>
+
+                {/* Product rules */}
+                {produto && (
+                  <ProductRulesCard
+                    produto={produto}
+                    valorSolicitado={detailSolicitacao.valor_solicitado}
+                  />
+                )}
+
+                {/* Document upload section */}
+                <div className="border rounded-md p-4 space-y-3">
+                  <h4 className="font-medium text-sm flex items-center gap-2">
+                    <FileText className="h-4 w-4" /> Documentação
+                  </h4>
+
+                  {!detailSolicitacao.docs_habilitados ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted rounded-md p-3">
+                      <FileWarning className="h-4 w-4 shrink-0" />
+                      <p>O envio de documentos ainda não foi liberado pela Mesa de Produtos. Aguarde a liberação para enviar sua documentação.</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2 text-sm text-success bg-success/10 rounded-md p-2">
+                        <ShieldCheck className="h-4 w-4" />
+                        Envio de documentos habilitado!
+                      </div>
+
+                      {/* Required docs checklist with upload */}
+                      {detailPronafDocs && detailPronafDocs.length > 0 && (
+                        <div className="space-y-2">
+                          {detailPronafDocs.map((doc) => {
+                            const uploaded = uploadedDocs?.find((u) => u.pronaf_documento_id === doc.id);
+                            return (
+                              <div key={doc.id} className="flex items-center justify-between gap-2 rounded-md border p-2 text-sm">
+                                <div className="flex-1 min-w-0">
+                                  <span className="font-medium">{doc.nome_documento}</span>
+                                  {doc.obrigatorio && <span className="text-destructive ml-1 text-xs">(obrigatório)</span>}
+                                  {doc.descricao && <p className="text-xs text-muted-foreground">{doc.descricao}</p>}
+                                </div>
+                                {uploaded ? (
+                                  <div className="flex items-center gap-1">
+                                    <Badge variant="secondary" className="text-xs gap-1">
+                                      <CheckCircle2 className="h-3 w-3" /> {uploaded.nome_arquivo}
+                                    </Badge>
+                                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteDocMutation.mutate(uploaded)}>
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <Button size="sm" variant="outline" onClick={() => handleFileUpload(doc.id)} disabled={uploadDocMutation.isPending}>
+                                    <Upload className="h-3 w-3 mr-1" /> Enviar
+                                  </Button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Additional document upload */}
+                      <Button size="sm" variant="outline" onClick={() => handleFileUpload()} disabled={uploadDocMutation.isPending}>
+                        <Plus className="h-3 w-3 mr-1" /> Enviar outro documento
+                      </Button>
+
+                      {/* List additional uploaded docs */}
+                      {uploadedDocs?.filter((d) => !d.pronaf_documento_id).map((doc) => (
+                        <div key={doc.id} className="flex items-center justify-between gap-2 rounded-md border p-2 text-sm">
+                          <span className="text-muted-foreground">{doc.nome_arquivo}</span>
+                          <div className="flex items-center gap-1">
+                            <Badge variant={doc.status_documento === "validado" ? "default" : doc.status_documento === "recusado" ? "destructive" : "secondary"} className="text-xs">
+                              {doc.status_documento}
+                            </Badge>
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteDocMutation.mutate(doc)}>
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

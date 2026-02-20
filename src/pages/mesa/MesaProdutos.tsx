@@ -18,7 +18,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { useAiAssistant } from "@/hooks/useAiAssistant";
-import { ClipboardCheck, MapPin, Sprout, Banknote, Check, X, Send, MessageCircle, Sparkles, FileSearch, UserCheck, Loader2 } from "lucide-react";
+import { ClipboardCheck, MapPin, Sprout, Banknote, Check, X, Send, MessageCircle, Sparkles, FileSearch, UserCheck, Loader2, FolderOpen } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 const statusMesaMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -437,6 +437,20 @@ export default function MesaProdutos() {
                     Solicitar Docs ao Eng.
                   </Button>
                 )}
+                {/* Toggle document upload for producer */}
+                <Button
+                  size="sm"
+                  variant={selectedSolicitacao.docs_habilitados ? "secondary" : "outline"}
+                  onClick={() => updateStatusMutation.mutate({
+                    id: selectedSolicitacao.id,
+                    status_mesa: selectedSolicitacao.status_mesa,
+                    extra: { docs_habilitados: !selectedSolicitacao.docs_habilitados },
+                  })}
+                  disabled={updateStatusMutation.isPending}
+                >
+                  <FolderOpen className="h-3.5 w-3.5 mr-1" />
+                  {selectedSolicitacao.docs_habilitados ? "Docs Liberados ✓" : "Liberar Documentos"}
+                </Button>
                 {/* Save payment override without changing status */}
                 <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: selectedSolicitacao.status_mesa })} disabled={updateStatusMutation.isPending}>
                   Salvar Alterações

@@ -569,6 +569,57 @@ export type Database = {
           },
         ]
       }
+      solicitacao_documentos: {
+        Row: {
+          caminho_arquivo: string
+          created_at: string
+          id: string
+          nome_arquivo: string
+          observacoes: string | null
+          pronaf_documento_id: string | null
+          solicitacao_id: string
+          status_documento: string
+          updated_at: string
+        }
+        Insert: {
+          caminho_arquivo: string
+          created_at?: string
+          id?: string
+          nome_arquivo: string
+          observacoes?: string | null
+          pronaf_documento_id?: string | null
+          solicitacao_id: string
+          status_documento?: string
+          updated_at?: string
+        }
+        Update: {
+          caminho_arquivo?: string
+          created_at?: string
+          id?: string
+          nome_arquivo?: string
+          observacoes?: string | null
+          pronaf_documento_id?: string | null
+          solicitacao_id?: string
+          status_documento?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solicitacao_documentos_pronaf_documento_id_fkey"
+            columns: ["pronaf_documento_id"]
+            isOneToOne: false
+            referencedRelation: "pronaf_documentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitacao_documentos_solicitacao_id_fkey"
+            columns: ["solicitacao_id"]
+            isOneToOne: false
+            referencedRelation: "solicitacoes_laudo"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       solicitacoes_laudo: {
         Row: {
           aprovado_mesa_em: string | null
@@ -579,6 +630,7 @@ export type Database = {
           cultura_principal: string
           data_envio_banco: string | null
           data_retorno_banco: string | null
+          docs_habilitados: boolean
           engenheiro_atribuido_id: string | null
           id: string
           notas_mesa: string | null
@@ -606,6 +658,7 @@ export type Database = {
           cultura_principal?: string
           data_envio_banco?: string | null
           data_retorno_banco?: string | null
+          docs_habilitados?: boolean
           engenheiro_atribuido_id?: string | null
           id?: string
           notas_mesa?: string | null
@@ -633,6 +686,7 @@ export type Database = {
           cultura_principal?: string
           data_envio_banco?: string | null
           data_retorno_banco?: string | null
+          docs_habilitados?: boolean
           engenheiro_atribuido_id?: string | null
           id?: string
           notas_mesa?: string | null
