@@ -77,6 +77,16 @@ export default function MesaEnviosBanco() {
     return laudos.status_laudo === "finalizado";
   };
 
+  const getLaudoStatus = (s: any): string | null => {
+    const laudos = (s as any).laudos;
+    if (!laudos) return null;
+    if (Array.isArray(laudos)) {
+      if (laudos.length === 0) return null;
+      return laudos[0].status_laudo;
+    }
+    return laudos.status_laudo;
+  };
+
   const renderList = (items: any[]) =>
     !items.length ? (
       <p className="text-sm text-muted-foreground text-center py-8">Nenhum item nesta etapa.</p>
@@ -86,6 +96,7 @@ export default function MesaEnviosBanco() {
           const prop = (s as any).propriedades;
           const produto = (s as any).pronaf_produtos;
           const st = statusBancoMap[(s as any).status_banco] || { label: (s as any).status_banco, variant: "outline" as const };
+          const laudoSt = getLaudoStatus(s);
           return (
             <Card key={s.id} className="cursor-pointer hover:ring-1 hover:ring-ring transition-shadow" onClick={() => openDetail(s)}>
               <CardContent className="py-3 space-y-1">
@@ -94,7 +105,13 @@ export default function MesaEnviosBanco() {
                     <span className="font-display font-semibold text-sm">{prop?.nome_propriedade}</span>
                     <Badge variant={st.variant}>{st.label}</Badge>
                     {produto && <Badge variant="outline">{produto.nome}</Badge>}
-                    {hasFinishedLaudo(s) && <Badge variant="default" className="text-xs">Laudo OK</Badge>}
+                    {hasFinishedLaudo(s) ? (
+                      <Badge variant="default" className="text-xs">Laudo OK</Badge>
+                    ) : laudoSt ? (
+                      <Badge variant="secondary" className="text-xs">Laudo: {laudoSt}</Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-xs">Sem laudo</Badge>
+                    )}
                   </div>
                   <span className="text-xs text-muted-foreground">{formatCurrency(s.valor_solicitado)}</span>
                 </div>
@@ -120,12 +137,12 @@ export default function MesaEnviosBanco() {
       ) : (
         <Tabs defaultValue="prontos">
           <TabsList>
-            <TabsTrigger value="prontos">Prontos p/ Envio ({filterByStatus("nao_enviado").filter(hasFinishedLaudo).length})</TabsTrigger>
+            <TabsTrigger value="prontos">Prontos p/ Envio ({filterByStatus("nao_enviado").length})</TabsTrigger>
             <TabsTrigger value="enviados">Enviados ({filterByStatus("enviado_banco").length})</TabsTrigger>
             <TabsTrigger value="devolvidos">Devolvidos ({filterByStatus("devolvido_banco").length})</TabsTrigger>
             <TabsTrigger value="aprovados">Aprovados ({filterByStatus("aprovado_banco").length})</TabsTrigger>
           </TabsList>
-          <TabsContent value="prontos">{renderList(filterByStatus("nao_enviado").filter(hasFinishedLaudo))}</TabsContent>
+          <TabsContent value="prontos">{renderList(filterByStatus("nao_enviado"))}</TabsContent>
           <TabsContent value="enviados">{renderList(filterByStatus("enviado_banco"))}</TabsContent>
           <TabsContent value="devolvidos">{renderList(filterByStatus("devolvido_banco"))}</TabsContent>
           <TabsContent value="aprovados">{renderList(filterByStatus("aprovado_banco"))}</TabsContent>
