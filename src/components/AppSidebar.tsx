@@ -24,6 +24,7 @@ import {
   BarChart3,
   Package,
   LogOut,
+  Shield,
 } from "lucide-react";
 
 interface NavItem {
@@ -57,6 +58,7 @@ const adminNav: NavItem[] = [
   { title: "Produtos PRONAF", icon: Package, path: "/admin/produtos-pronaf" },
   { title: "Engenheiros", icon: Users, path: "/admin/engenheiros" },
   { title: "Pagamentos", icon: CreditCard, path: "/admin/pagamentos" },
+  { title: "Auditoria", icon: Shield, path: "/admin/auditoria" },
   { title: "Relatórios", icon: BarChart3, path: "/admin/relatorios" },
   { title: "Configurações", icon: Settings, path: "/admin/configuracoes" },
 ];
