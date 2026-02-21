@@ -623,6 +623,53 @@ export type Database = {
           },
         ]
       }
+      solicitacao_eventos: {
+        Row: {
+          autor_id: string | null
+          autor_tipo: string
+          campo_alterado: string | null
+          created_at: string
+          descricao: string | null
+          id: string
+          solicitacao_id: string
+          tipo_evento: string
+          valor_anterior: string | null
+          valor_novo: string | null
+        }
+        Insert: {
+          autor_id?: string | null
+          autor_tipo?: string
+          campo_alterado?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          solicitacao_id: string
+          tipo_evento: string
+          valor_anterior?: string | null
+          valor_novo?: string | null
+        }
+        Update: {
+          autor_id?: string | null
+          autor_tipo?: string
+          campo_alterado?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          solicitacao_id?: string
+          tipo_evento?: string
+          valor_anterior?: string | null
+          valor_novo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solicitacao_eventos_solicitacao_id_fkey"
+            columns: ["solicitacao_id"]
+            isOneToOne: false
+            referencedRelation: "solicitacoes_laudo"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       solicitacoes_laudo: {
         Row: {
           aprovado_mesa_em: string | null

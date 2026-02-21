@@ -27,7 +27,7 @@ export default function Demandas() {
         .from("solicitacoes_laudo")
         .select("id, created_at, valor_pagamento_engenheiro, pronaf_produto_id, pronaf_produtos(nome), propriedades(nome_propriedade, endereco, area_total_ha)")
         .eq("status_solicitacao", "aberta")
-        .eq("status_mesa", "aprovada")
+        .in("status_mesa", ["aguardando_laudo", "pronta_para_banco"])
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -53,7 +53,7 @@ export default function Demandas() {
       // Update request status
       const { error: solErr } = await supabase
         .from("solicitacoes_laudo")
-        .update({ status_solicitacao: "aceita" })
+        .update({ status_solicitacao: "em_andamento" })
         .eq("id", solicitacaoId);
       if (solErr) throw solErr;
     },
