@@ -24,6 +24,10 @@ import AdminRelatorios from "@/pages/admin/AdminRelatorios";
 import AdminProdutosPronaf from "@/pages/admin/AdminProdutosPronaf";
 import AdminUsuarios from "@/pages/admin/AdminUsuarios";
 import AdminAuditoria from "@/pages/admin/AdminAuditoria";
+import AdminBancos from "@/pages/admin/AdminBancos";
+import AdminRegioes from "@/pages/admin/AdminRegioes";
+import AdminBlacklist from "@/pages/admin/AdminBlacklist";
+import AdminSLA from "@/pages/admin/AdminSLA";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -58,6 +62,10 @@ const App = () => (
               <Route path="/admin/pagamentos" element={<AdminPagamentos />} />
               <Route path="/admin/configuracoes" element={<AdminConfiguracoes />} />
               <Route path="/admin/auditoria" element={<AdminAuditoria />} />
+              <Route path="/admin/bancos" element={<AdminBancos />} />
+              <Route path="/admin/regioes" element={<AdminRegioes />} />
+              <Route path="/admin/blacklist" element={<AdminBlacklist />} />
+              <Route path="/admin/sla" element={<AdminSLA />} />
               <Route path="/admin/relatorios" element={<AdminRelatorios />} />
               <Route path="/admin/produtos-pronaf" element={<AdminProdutosPronaf />} />
             </Route>

@@ -25,6 +25,10 @@ import {
   Package,
   LogOut,
   Shield,
+  Landmark,
+  Ban,
+  Clock,
+  Map,
 } from "lucide-react";
 
 interface NavItem {
@@ -57,6 +61,10 @@ const adminNav: NavItem[] = [
   { title: "Usuários", icon: Users, path: "/admin/usuarios" },
   { title: "Produtos PRONAF", icon: Package, path: "/admin/produtos-pronaf" },
   { title: "Engenheiros", icon: Users, path: "/admin/engenheiros" },
+  { title: "Bancos", icon: Landmark, path: "/admin/bancos" },
+  { title: "Regiões", icon: Map, path: "/admin/regioes" },
+  { title: "SLA", icon: Clock, path: "/admin/sla" },
+  { title: "Blacklist", icon: Ban, path: "/admin/blacklist" },
   { title: "Pagamentos", icon: CreditCard, path: "/admin/pagamentos" },
   { title: "Auditoria", icon: Shield, path: "/admin/auditoria" },
   { title: "Relatórios", icon: BarChart3, path: "/admin/relatorios" },
