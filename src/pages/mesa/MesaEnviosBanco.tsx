@@ -35,7 +35,7 @@ export default function MesaEnviosBanco() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("solicitacoes_laudo")
-        .select("*, propriedades(nome_propriedade, endereco), pronaf_produtos(nome), laudos(id, status_laudo, caminho_pdf_laudo)")
+        .select("*, propriedades(nome_propriedade, endereco), pronaf_produtos(nome), laudos(id, status_laudo, caminho_pdf_laudo), bancos_parceiros(nome)")
         .in("status_banco", ["nao_enviado", "enviado", "devolvido", "aprovado", "reprovado"])
         .eq("status_solicitacao", "pronta_para_banco")
         .order("created_at", { ascending: false });
@@ -154,7 +154,7 @@ export default function MesaEnviosBanco() {
               <div className="grid gap-2 text-sm sm:grid-cols-2">
                 <div><span className="font-medium">Propriedade:</span> {(selected as any).propriedades?.nome_propriedade}</div>
                 <div><span className="font-medium">Valor:</span> {formatCurrency(selected.valor_solicitado)}</div>
-                <div><span className="font-medium">Banco destino:</span> {selected.banco_destino || "—"}</div>
+                <div><span className="font-medium">Banco destino:</span> {(selected as any).bancos_parceiros?.nome || selected.banco_destino || "—"}</div>
                 <div><span className="font-medium">Status:</span> {statusBancoMap[(selected as any).status_banco]?.label}</div>
                 {(selected as any).data_envio_banco && (
                   <div><span className="font-medium">Enviado em:</span> {new Date((selected as any).data_envio_banco).toLocaleDateString("pt-BR")}</div>

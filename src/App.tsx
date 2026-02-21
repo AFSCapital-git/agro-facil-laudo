@@ -28,6 +28,8 @@ import AdminBancos from "@/pages/admin/AdminBancos";
 import AdminRegioes from "@/pages/admin/AdminRegioes";
 import AdminBlacklist from "@/pages/admin/AdminBlacklist";
 import AdminSLA from "@/pages/admin/AdminSLA";
+import RelatorioEngenheiro from "@/pages/RelatorioEngenheiro";
+import RelatorioProdutor from "@/pages/RelatorioProdutor";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -54,6 +56,8 @@ const App = () => (
               <Route path="/demandas" element={<Demandas />} />
               <Route path="/meus-laudos" element={<MeusLaudos />} />
               <Route path="/pagamentos" element={<Pagamentos />} />
+              <Route path="/relatorios-engenheiro" element={<RelatorioEngenheiro />} />
+              <Route path="/relatorios-produtor" element={<RelatorioProdutor />} />
               <Route path="/mesa" element={<MesaDashboard />} />
               <Route path="/mesa/esteira" element={<MesaProdutos />} />
               <Route path="/mesa/envios-banco" element={<MesaEnviosBanco />} />

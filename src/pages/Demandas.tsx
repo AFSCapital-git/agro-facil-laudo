@@ -1,14 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ClipboardCheck, MapPin, Banknote } from "lucide-react";
+import { ClipboardCheck, MapPin, Banknote, Ban } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function Demandas() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const qc = useQueryClient();
   const navigate = useNavigate();
 
@@ -17,6 +19,22 @@ export default function Demandas() {
     queryFn: async () => {
       const { data } = await supabase.rpc("get_engenheiro_id");
       return data as string;
+    },
+  });
+
+  const { data: blacklistStatus } = useQuery({
+    queryKey: ["eng_blacklist", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("blacklist")
+        .select("id")
+        .eq("user_id", user!.id)
+        .eq("ativo", true)
+        .eq("tipo", "engenheiro")
+        .limit(1);
+      if (error) throw error;
+      return data && data.length > 0;
     },
   });
 
@@ -67,6 +85,15 @@ export default function Demandas() {
         <p className="text-muted-foreground">Veja a localização e o valor antes de aceitar.</p>
       </div>
 
+      {blacklistStatus === true && (
+        <Card>
+          <CardContent className="flex items-center gap-3 py-4 text-destructive">
+            <Ban className="h-5 w-5 shrink-0" />
+            <p className="text-sm font-medium">Sua conta está suspensa. Você não pode aceitar novas demandas.</p>
+          </CardContent>
+        </Card>
+      )}
+
       {isLoading ? (
         <p className="text-muted-foreground">Carregando...</p>
       ) : !solicitacoes?.length ? (
@@ -103,7 +130,7 @@ export default function Demandas() {
                     </div>
                     <Button
                       onClick={() => aceitarMutation.mutate(s.id)}
-                      disabled={aceitarMutation.isPending || !engenheiroId}
+                      disabled={aceitarMutation.isPending || !engenheiroId || blacklistStatus === true}
                       size="sm"
                     >
                       Aceitar
