@@ -8,9 +8,9 @@ export default function MesaDashboard() {
     queryKey: ["mesa_stats"],
     queryFn: async () => {
       const [pendentes, emAnalise, aprovadas, enviadas, devolvidas, total] = await Promise.all([
-        supabase.from("solicitacoes_laudo").select("id", { count: "exact", head: true }).eq("status_mesa", "pendente"),
-        supabase.from("solicitacoes_laudo").select("id", { count: "exact", head: true }).in("status_mesa", ["em_analise_mesa", "docs_pendentes_produtor", "docs_em_validacao", "elegivel"]),
-        supabase.from("solicitacoes_laudo").select("id", { count: "exact", head: true }).in("status_mesa", ["aguardando_laudo", "pronta_para_banco"]),
+        supabase.from("solicitacoes_laudo").select("id", { count: "exact", head: true }).eq("status_solicitacao", "pendente"),
+        supabase.from("solicitacoes_laudo").select("id", { count: "exact", head: true }).in("status_solicitacao", ["em_analise_mesa", "docs_pendentes_produtor", "docs_em_validacao", "elegivel"]),
+        supabase.from("solicitacoes_laudo").select("id", { count: "exact", head: true }).in("status_solicitacao", ["aguardando_laudo", "pronta_para_banco"]),
         supabase.from("solicitacoes_laudo").select("id", { count: "exact", head: true }).eq("status_banco", "enviado"),
         supabase.from("solicitacoes_laudo").select("id", { count: "exact", head: true }).eq("status_banco", "devolvido"),
         supabase.from("solicitacoes_laudo").select("id", { count: "exact", head: true }),

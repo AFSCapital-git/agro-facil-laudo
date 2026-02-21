@@ -62,6 +62,48 @@ export type Database = {
           },
         ]
       }
+      audit_logs: {
+        Row: {
+          acao: string
+          created_at: string
+          dados_anteriores: Json | null
+          dados_novos: Json | null
+          entidade: string
+          entidade_id: string | null
+          id: string
+          ip: string | null
+          perfil: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          acao: string
+          created_at?: string
+          dados_anteriores?: Json | null
+          dados_novos?: Json | null
+          entidade: string
+          entidade_id?: string | null
+          id?: string
+          ip?: string | null
+          perfil?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          acao?: string
+          created_at?: string
+          dados_anteriores?: Json | null
+          dados_novos?: Json | null
+          entidade?: string
+          entidade_id?: string | null
+          id?: string
+          ip?: string | null
+          perfil?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       chat_mensagens: {
         Row: {
           audio_url: string | null
@@ -283,6 +325,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      login_logs: {
+        Row: {
+          id: string
+          ip: string | null
+          login_at: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          ip?: string | null
+          login_at?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          ip?: string | null
+          login_at?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       midia_laudo: {
         Row: {
@@ -690,7 +756,6 @@ export type Database = {
           pronaf_produto_id: string | null
           propriedade_id: string
           status_banco: string
-          status_mesa: string
           status_solicitacao: string
           tipo_credito: string
           tipo_valor_engenheiro_override: string | null
@@ -718,7 +783,6 @@ export type Database = {
           pronaf_produto_id?: string | null
           propriedade_id: string
           status_banco?: string
-          status_mesa?: string
           status_solicitacao?: string
           tipo_credito?: string
           tipo_valor_engenheiro_override?: string | null
@@ -746,7 +810,6 @@ export type Database = {
           pronaf_produto_id?: string | null
           propriedade_id?: string
           status_banco?: string
-          status_mesa?: string
           status_solicitacao?: string
           tipo_credito?: string
           tipo_valor_engenheiro_override?: string | null
