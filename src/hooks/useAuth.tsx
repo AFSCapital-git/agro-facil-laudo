@@ -42,13 +42,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRole(best);
   };
 
+  const logLogin = async (userId: string) => {
+    try {
+      await supabase.from("login_logs").insert({ user_id: userId });
+    } catch {
+      // silent – non-critical
+    }
+  };
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
           setTimeout(() => fetchRole(session.user.id), 0);
+          if (event === "SIGNED_IN") {
+            logLogin(session.user.id);
+          }
         } else {
           setRole(null);
         }
