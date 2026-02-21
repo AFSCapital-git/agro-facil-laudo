@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, MapPin, ClipboardCheck, CreditCard } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import StatusTimeline from "@/components/solicitacoes/StatusTimeline";
 
 export default function Dashboard() {
   const { role, user } = useAuth();
@@ -38,6 +39,28 @@ export default function Dashboard() {
     },
   });
 
+  const { data: recentSolicitacoes } = useQuery({
+    queryKey: ["dashboard_timeline", role],
+    enabled: role === "produtor" || role === "engenheiro",
+    queryFn: async () => {
+      if (role === "produtor") {
+        const { data } = await supabase
+          .from("solicitacoes_laudo")
+          .select("id, created_at, status_solicitacao, status_mesa, status_banco, aprovado_mesa_em, data_envio_banco, data_retorno_banco, cultura_principal, laudos(id, status_laudo, created_at, updated_at), propriedades:propriedade_id(nome_propriedade)")
+          .order("created_at", { ascending: false })
+          .limit(5);
+        return data ?? [];
+      }
+      // engenheiro
+      const { data } = await supabase
+        .from("laudos")
+        .select("id, status_laudo, created_at, updated_at, solicitacoes_laudo:solicitacao_id(id, created_at, status_solicitacao, status_mesa, status_banco, aprovado_mesa_em, data_envio_banco, data_retorno_banco, cultura_principal, propriedades:propriedade_id(nome_propriedade))")
+        .order("created_at", { ascending: false })
+        .limit(5);
+      return data ?? [];
+    },
+  });
+
   const formatCurrency = (v: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
@@ -68,6 +91,31 @@ export default function Dashboard() {
           </>
         )}
       </div>
+
+      {(role === "produtor" || role === "engenheiro") && recentSolicitacoes && recentSolicitacoes.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="font-display text-lg font-semibold">Andamento das Solicitações</h2>
+          {recentSolicitacoes.map((item: any) => {
+            const sol = role === "produtor" ? item : item.solicitacoes_laudo;
+            const laudo = role === "produtor" ? (Array.isArray(item.laudos) ? item.laudos[0] : item.laudos) : item;
+            const prop = role === "produtor" ? item.propriedades : sol?.propriedades;
+            if (!sol) return null;
+            return (
+              <Card key={sol.id} className="overflow-hidden">
+                <CardHeader className="pb-1 pt-3 px-4">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                    {prop?.nome_propriedade || "Propriedade"} — {sol.cultura_principal || "—"}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-3">
+                  <StatusTimeline solicitacao={sol} laudo={laudo} />
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
