@@ -41,7 +41,7 @@ interface SolicitacaoForm {
   cultura_principal: string;
   area_cultivo_ha: string;
   valor_solicitado: string;
-  banco_destino: string;
+  banco_parceiro_id: string;
   observacoes_produtor: string;
 }
 
@@ -51,7 +51,7 @@ const emptyForm: SolicitacaoForm = {
   cultura_principal: "",
   area_cultivo_ha: "",
   valor_solicitado: "",
-  banco_destino: "",
+  banco_parceiro_id: "",
   observacoes_produtor: "",
 };
 
@@ -95,6 +95,35 @@ export default function Solicitacoes() {
     },
   });
 
+  const { data: bancosParceiros } = useQuery({
+    queryKey: ["bancos_parceiros_ativos"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("bancos_parceiros")
+        .select("*")
+        .eq("ativo", true)
+        .order("nome");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: blacklistStatus } = useQuery({
+    queryKey: ["produtor_blacklist", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("blacklist")
+        .select("id")
+        .eq("user_id", user!.id)
+        .eq("ativo", true)
+        .eq("tipo", "produtor")
+        .limit(1);
+      if (error) throw error;
+      return data && data.length > 0;
+    },
+  });
+
   const { data: pronafDocumentos } = useQuery({
     queryKey: ["pronaf_documentos_produto", form.pronaf_produto_id],
     enabled: !!form.pronaf_produto_id,
@@ -114,7 +143,7 @@ export default function Solicitacoes() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("solicitacoes_laudo")
-        .select("*, propriedades(nome_propriedade), laudos(id, status_laudo, caminho_pdf_laudo), pronaf_produtos(*)")
+        .select("*, propriedades(nome_propriedade), laudos(id, status_laudo, caminho_pdf_laudo), pronaf_produtos(*), bancos_parceiros(nome)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -169,7 +198,8 @@ export default function Solicitacoes() {
         area_cultivo_ha: parseFloat(form.area_cultivo_ha) || 0,
         valor_solicitado: parseFloat(form.valor_solicitado) || 0,
         valor_pagamento_engenheiro: valorPagamentoEngenheiro,
-        banco_destino: form.banco_destino,
+        banco_parceiro_id: form.banco_parceiro_id || null,
+        banco_destino: bancosParceiros?.find((b) => b.id === form.banco_parceiro_id)?.nome || "",
         observacoes_produtor: form.observacoes_produtor,
       });
       if (error) throw error;
@@ -299,10 +329,13 @@ export default function Solicitacoes() {
         <div>
           <h1 className="font-display text-2xl font-bold">Minhas Solicitações</h1>
           <p className="text-muted-foreground">Acompanhe suas solicitações de laudo.</p>
+          {blacklistStatus === true && (
+            <p className="text-sm text-destructive font-medium mt-1">⚠ Sua conta está suspensa. Você não pode criar novas solicitações.</p>
+          )}
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2" disabled={!propriedades?.length}>
+            <Button className="gap-2" disabled={!propriedades?.length || blacklistStatus === true}>
               <Plus className="h-4 w-4" /> Nova Solicitação
             </Button>
           </DialogTrigger>
@@ -398,11 +431,14 @@ export default function Solicitacoes() {
                 </div>
                 <div className="space-y-2">
                   <Label>Banco destino</Label>
-                  <Input
-                    value={form.banco_destino}
-                    onChange={(e) => setForm((f) => ({ ...f, banco_destino: e.target.value }))}
-                    placeholder="Ex: Banco do Brasil"
-                  />
+                  <Select value={form.banco_parceiro_id} onValueChange={(v) => setForm((f) => ({ ...f, banco_parceiro_id: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Selecione o banco..." /></SelectTrigger>
+                    <SelectContent>
+                      {bancosParceiros?.map((b) => (
+                        <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -529,7 +565,7 @@ export default function Solicitacoes() {
                   <div><span className="font-medium">Cultura:</span> {detailSolicitacao.cultura_principal}</div>
                   <div><span className="font-medium">Área:</span> {detailSolicitacao.area_cultivo_ha} ha</div>
                   <div><span className="font-medium">Valor solicitado:</span> {formatCurrency(detailSolicitacao.valor_solicitado)}</div>
-                  <div><span className="font-medium">Banco:</span> {detailSolicitacao.banco_destino || "—"}</div>
+                  <div><span className="font-medium">Banco:</span> {(detailSolicitacao as any).bancos_parceiros?.nome || detailSolicitacao.banco_destino || "—"}</div>
                   <div><span className="font-medium">Status:</span> <Badge variant={statusMap[detailSolicitacao.status_solicitacao]?.variant}>{statusMap[detailSolicitacao.status_solicitacao]?.label}</Badge></div>
                 </div>
 

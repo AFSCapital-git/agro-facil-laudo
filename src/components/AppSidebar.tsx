@@ -41,6 +41,7 @@ const produtorNav: NavItem[] = [
   { title: "Início", icon: Home, path: "/" },
   { title: "Propriedades", icon: MapPin, path: "/propriedades" },
   { title: "Solicitações", icon: FileText, path: "/solicitacoes" },
+  { title: "Meu Histórico", icon: BarChart3, path: "/relatorios-produtor" },
 ];
 
 const engenheiroNav: NavItem[] = [
@@ -48,6 +49,7 @@ const engenheiroNav: NavItem[] = [
   { title: "Demandas", icon: ClipboardCheck, path: "/demandas" },
   { title: "Meus Laudos", icon: FileText, path: "/meus-laudos" },
   { title: "Pagamentos", icon: CreditCard, path: "/pagamentos" },
+  { title: "Relatórios", icon: BarChart3, path: "/relatorios-engenheiro" },
 ];
 
 const mesaNav: NavItem[] = [
