@@ -64,7 +64,7 @@ export default function MesaProdutos() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("solicitacoes_laudo")
-        .select("*, propriedades(nome_propriedade, endereco, area_total_ha), pronaf_produtos(nome, finalidade, valor_engenheiro, tipo_valor_engenheiro), produtores(user_id), laudos(id, status_laudo, caminho_pdf_laudo)")
+        .select("*, propriedades(nome_propriedade, endereco, area_total_ha, regiao_id), pronaf_produtos(nome, finalidade, valor_engenheiro, tipo_valor_engenheiro), produtores(user_id), laudos(id, status_laudo, caminho_pdf_laudo)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       const produtorUserIds = [...new Set(data?.map((s: any) => s.produtores?.user_id).filter(Boolean))];
@@ -80,12 +80,20 @@ export default function MesaProdutos() {
     },
   });
 
+  const { data: slaConfig } = useQuery({
+    queryKey: ["sla_config_mesa"],
+    queryFn: async () => {
+      const { data } = await supabase.from("sla_config").select("*");
+      return data ?? [];
+    },
+  });
+
   const { data: engenheiros } = useQuery({
     queryKey: ["lista_engenheiros"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("engenheiros")
-        .select("id, crea, user_id, area_atuacao")
+        .select("id, crea, user_id, area_atuacao, regiao_id")
         .eq("status_verificacao", "aprovado");
       if (error) throw error;
       if (data?.length) {
@@ -257,13 +265,34 @@ export default function MesaProdutos() {
     return laudos.status_laudo;
   };
 
+  const getSlaStatus = (s: any): { overdue: boolean; hoursLeft: number } | null => {
+    if (!slaConfig?.length) return null;
+    const cfg = slaConfig.find((c) => c.status_solicitacao === s.status_solicitacao);
+    if (!cfg) return null;
+    const created = new Date(s.updated_at || s.created_at).getTime();
+    const deadline = created + cfg.prazo_horas * 3600000;
+    const now = Date.now();
+    return { overdue: now > deadline, hoursLeft: Math.round((deadline - now) / 3600000) };
+  };
+
+  const sortedEngenheiros = (propRegiaoId: string | null) => {
+    if (!engenheiros) return [];
+    if (!propRegiaoId) return engenheiros;
+    return [...engenheiros].sort((a, b) => {
+      const aMatch = (a as any).regiao_id === propRegiaoId ? 0 : 1;
+      const bMatch = (b as any).regiao_id === propRegiaoId ? 0 : 1;
+      return aMatch - bMatch;
+    });
+  };
+
   const renderCard = (s: any) => {
     const prop = (s as any).propriedades;
     const produto = (s as any).pronaf_produtos;
     const st = statusSolicitacaoMap[s.status_solicitacao] || { label: s.status_solicitacao, variant: "outline" as const };
     const laudoSt = getLaudoStatus(s);
+    const sla = getSlaStatus(s);
     return (
-      <Card key={s.id} className="cursor-pointer hover:ring-1 hover:ring-ring transition-shadow" onClick={() => openDetail(s)}>
+      <Card key={s.id} className={`cursor-pointer hover:ring-1 hover:ring-ring transition-shadow ${sla?.overdue ? "border-destructive/50" : ""}`} onClick={() => openDetail(s)}>
         <CardContent className="py-3 space-y-1">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 flex-wrap min-w-0">
@@ -274,6 +303,8 @@ export default function MesaProdutos() {
                   Laudo: {laudoSt === "em_vistoria" ? "em vistoria" : laudoSt === "aguardando_assinatura" ? "aguard. assin." : laudoSt}
                 </Badge>
               )}
+              {sla?.overdue && <Badge variant="destructive" className="text-xs">SLA vencido</Badge>}
+              {sla && !sla.overdue && sla.hoursLeft < 12 && <Badge variant="secondary" className="text-xs">⚠ {sla.hoursLeft}h restantes</Badge>}
             </div>
             <span className="text-xs text-muted-foreground whitespace-nowrap">{new Date(s.created_at).toLocaleDateString("pt-BR")}</span>
           </div>
@@ -552,8 +583,11 @@ export default function MesaProdutos() {
                   <SelectTrigger><SelectValue placeholder="Abrir para todos" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="todos">Abrir para todos</SelectItem>
-                    {engenheiros?.map((eng) => (
-                      <SelectItem key={eng.id} value={eng.id}>{eng.nome} (CREA: {eng.crea})</SelectItem>
+                    {sortedEngenheiros((selectedSolicitacao as any)?.propriedades?.regiao_id).map((eng) => (
+                      <SelectItem key={eng.id} value={eng.id}>
+                        {eng.nome} (CREA: {eng.crea})
+                        {(eng as any).regiao_id === (selectedSolicitacao as any)?.propriedades?.regiao_id && (selectedSolicitacao as any)?.propriedades?.regiao_id ? " ★" : ""}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

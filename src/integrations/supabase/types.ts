@@ -104,6 +104,60 @@ export type Database = {
         }
         Relationships: []
       }
+      bancos_parceiros: {
+        Row: {
+          ativo: boolean
+          codigo: string
+          created_at: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          ativo?: boolean
+          codigo?: string
+          created_at?: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          ativo?: boolean
+          codigo?: string
+          created_at?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: []
+      }
+      blacklist: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          criado_por: string | null
+          id: string
+          motivo: string
+          tipo: string
+          user_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          criado_por?: string | null
+          id?: string
+          motivo?: string
+          tipo: string
+          user_id: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          criado_por?: string | null
+          id?: string
+          motivo?: string
+          tipo?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       chat_mensagens: {
         Row: {
           audio_url: string | null
@@ -147,6 +201,7 @@ export type Database = {
           id: string
           percentual_taxa_plataforma: number
           prazo_padrao_pagamento_dias: number
+          sla_global_dias: number
           updated_at: string
           valor_base_laudo: number
         }
@@ -154,6 +209,7 @@ export type Database = {
           id?: string
           percentual_taxa_plataforma?: number
           prazo_padrao_pagamento_dias?: number
+          sla_global_dias?: number
           updated_at?: string
           valor_base_laudo?: number
         }
@@ -161,6 +217,7 @@ export type Database = {
           id?: string
           percentual_taxa_plataforma?: number
           prazo_padrao_pagamento_dias?: number
+          sla_global_dias?: number
           updated_at?: string
           valor_base_laudo?: number
         }
@@ -178,6 +235,7 @@ export type Database = {
           id: string
           raio_atendimento_km: number | null
           rating: number | null
+          regiao_id: string | null
           status_verificacao: string
           total_laudos_concluidos: number
           updated_at: string
@@ -194,6 +252,7 @@ export type Database = {
           id?: string
           raio_atendimento_km?: number | null
           rating?: number | null
+          regiao_id?: string | null
           status_verificacao?: string
           total_laudos_concluidos?: number
           updated_at?: string
@@ -210,12 +269,21 @@ export type Database = {
           id?: string
           raio_atendimento_km?: number | null
           rating?: number | null
+          regiao_id?: string | null
           status_verificacao?: string
           total_laudos_concluidos?: number
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "engenheiros_regiao_id_fkey"
+            columns: ["regiao_id"]
+            isOneToOne: false
+            referencedRelation: "regioes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       laudos: {
         Row: {
@@ -602,6 +670,7 @@ export type Database = {
           longitude: number | null
           nome_propriedade: string
           produtor_id: string
+          regiao_id: string | null
           updated_at: string
         }
         Insert: {
@@ -614,6 +683,7 @@ export type Database = {
           longitude?: number | null
           nome_propriedade: string
           produtor_id: string
+          regiao_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -626,6 +696,7 @@ export type Database = {
           longitude?: number | null
           nome_propriedade?: string
           produtor_id?: string
+          regiao_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -636,7 +707,56 @@ export type Database = {
             referencedRelation: "produtores"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "propriedades_regiao_id_fkey"
+            columns: ["regiao_id"]
+            isOneToOne: false
+            referencedRelation: "regioes"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      regioes: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          uf: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+          uf: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+          uf?: string
+        }
+        Relationships: []
+      }
+      sla_config: {
+        Row: {
+          created_at: string
+          id: string
+          prazo_horas: number
+          status_solicitacao: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          prazo_horas?: number
+          status_solicitacao: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          prazo_horas?: number
+          status_solicitacao?: string
+        }
+        Relationships: []
       }
       solicitacao_documentos: {
         Row: {
@@ -742,6 +862,7 @@ export type Database = {
           aprovado_mesa_por: string | null
           area_cultivo_ha: number
           banco_destino: string | null
+          banco_parceiro_id: string | null
           created_at: string
           cultura_principal: string
           data_envio_banco: string | null
@@ -769,6 +890,7 @@ export type Database = {
           aprovado_mesa_por?: string | null
           area_cultivo_ha?: number
           banco_destino?: string | null
+          banco_parceiro_id?: string | null
           created_at?: string
           cultura_principal?: string
           data_envio_banco?: string | null
@@ -796,6 +918,7 @@ export type Database = {
           aprovado_mesa_por?: string | null
           area_cultivo_ha?: number
           banco_destino?: string | null
+          banco_parceiro_id?: string | null
           created_at?: string
           cultura_principal?: string
           data_envio_banco?: string | null
@@ -819,6 +942,13 @@ export type Database = {
           valor_solicitado?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "solicitacoes_laudo_banco_parceiro_id_fkey"
+            columns: ["banco_parceiro_id"]
+            isOneToOne: false
+            referencedRelation: "bancos_parceiros"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "solicitacoes_laudo_engenheiro_atribuido_id_fkey"
             columns: ["engenheiro_atribuido_id"]
