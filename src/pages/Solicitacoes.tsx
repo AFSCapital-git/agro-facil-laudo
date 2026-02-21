@@ -25,12 +25,14 @@ import ProductRulesCard from "@/components/solicitacoes/ProductRulesCard";
 import StatusTimeline from "@/components/solicitacoes/StatusTimeline";
 
 const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  aberta: { label: "Aberta", variant: "default" },
-  aguardando_eng: { label: "Aguardando Engenheiro", variant: "secondary" },
-  em_andamento: { label: "Em Andamento", variant: "secondary" },
-  concluida: { label: "Concluída", variant: "default" },
-  cancelada: { label: "Cancelada", variant: "destructive" },
-  ineligivel: { label: "Inelegível", variant: "destructive" },
+  pendente: { label: "Pendente", variant: "outline" },
+  em_analise_mesa: { label: "Em Análise", variant: "secondary" },
+  docs_pendentes_produtor: { label: "Docs Pendentes", variant: "outline" },
+  docs_em_validacao: { label: "Validando Docs", variant: "secondary" },
+  elegivel: { label: "Elegível", variant: "secondary" },
+  reprovada: { label: "Reprovada", variant: "destructive" },
+  aguardando_laudo: { label: "Aguard. Laudo", variant: "secondary" },
+  pronta_para_banco: { label: "Pronta p/ Banco", variant: "default" },
 };
 
 interface SolicitacaoForm {
@@ -275,8 +277,8 @@ export default function Solicitacoes() {
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
   const StatusIcon = ({ status }: { status: string }) => {
-    if (status === "finalizada") return <CheckCircle2 className="h-4 w-4 text-success" />;
-    if (status === "cancelada") return <AlertCircle className="h-4 w-4 text-destructive" />;
+    if (status === "pronta_para_banco") return <CheckCircle2 className="h-4 w-4 text-success" />;
+    if (status === "reprovada") return <AlertCircle className="h-4 w-4 text-destructive" />;
     return <Clock className="h-4 w-4 text-muted-foreground" />;
   };
 

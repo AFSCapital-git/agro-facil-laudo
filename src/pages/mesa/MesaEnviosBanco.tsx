@@ -37,7 +37,7 @@ export default function MesaEnviosBanco() {
         .from("solicitacoes_laudo")
         .select("*, propriedades(nome_propriedade, endereco), pronaf_produtos(nome), laudos(id, status_laudo, caminho_pdf_laudo)")
         .in("status_banco", ["nao_enviado", "enviado", "devolvido", "aprovado", "reprovado"])
-        .eq("status_mesa", "pronta_para_banco")
+        .eq("status_solicitacao", "pronta_para_banco")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;

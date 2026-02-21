@@ -16,7 +16,6 @@ interface StatusTimelineProps {
 
 const eventLabels: Record<string, string> = {
   SOLICITACAO_CRIADA: "Solicitação criada",
-  STATUS_MESA_MUDOU: "Mesa",
   STATUS_SOLICITACAO_MUDOU: "Solicitação",
   STATUS_LAUDO_MUDOU: "Laudo",
   STATUS_BANCO_MUDOU: "Banco",
@@ -24,7 +23,7 @@ const eventLabels: Record<string, string> = {
   ENGENHEIRO_ATRIBUIDO: "Engenheiro atribuído",
 };
 
-const mesaLabels: Record<string, string> = {
+const solicitacaoLabels: Record<string, string> = {
   pendente: "Pendente",
   em_analise_mesa: "Em Análise",
   docs_pendentes_produtor: "Docs Pendentes",
@@ -50,7 +49,6 @@ const laudoLabels: Record<string, string> = {
 };
 
 export default function StatusTimeline({ solicitacao, laudo }: StatusTimelineProps) {
-  // Fetch events from the events table
   const { data: eventos } = useQuery({
     queryKey: ["solicitacao_eventos", solicitacao?.id],
     enabled: !!solicitacao?.id,
@@ -65,11 +63,9 @@ export default function StatusTimeline({ solicitacao, laudo }: StatusTimelinePro
     },
   });
 
-  // Build timeline from events if available, fallback to status-based
   const events: TimelineEvent[] = [];
 
   if (eventos && eventos.length > 0) {
-    // Use events table as source of truth
     eventos.forEach((ev: any) => {
       let label = eventLabels[ev.tipo_evento] || ev.tipo_evento;
       let icon: React.ReactNode = <Circle className="h-3.5 w-3.5" />;
@@ -77,8 +73,8 @@ export default function StatusTimeline({ solicitacao, laudo }: StatusTimelinePro
       if (ev.tipo_evento === "SOLICITACAO_CRIADA") {
         icon = <FileText className="h-3.5 w-3.5" />;
         label = "Solicitação criada";
-      } else if (ev.tipo_evento === "STATUS_MESA_MUDOU") {
-        label = mesaLabels[ev.valor_novo] || ev.valor_novo;
+      } else if (ev.tipo_evento === "STATUS_SOLICITACAO_MUDOU") {
+        label = solicitacaoLabels[ev.valor_novo] || ev.valor_novo;
         icon = ev.valor_novo === "reprovada" ? <XCircle className="h-3.5 w-3.5" /> :
                ev.valor_novo === "elegivel" ? <CheckCircle2 className="h-3.5 w-3.5" /> :
                ev.valor_novo === "pronta_para_banco" ? <Send className="h-3.5 w-3.5" /> :
@@ -98,15 +94,9 @@ export default function StatusTimeline({ solicitacao, laudo }: StatusTimelinePro
         icon = <CheckCircle2 className="h-3.5 w-3.5" />;
       }
 
-      events.push({
-        label,
-        date: ev.created_at,
-        icon,
-        status: "done",
-      });
+      events.push({ label, date: ev.created_at, icon, status: "done" });
     });
 
-    // Add current pending states
     const laudoObj = laudo || (Array.isArray(solicitacao.laudos) ? solicitacao.laudos?.[0] : solicitacao.laudos);
     if (laudoObj && laudoObj.status_laudo !== "finalizado") {
       events.push({
@@ -116,34 +106,22 @@ export default function StatusTimeline({ solicitacao, laudo }: StatusTimelinePro
         status: "active",
       });
     }
-    if (solicitacao.status_banco === "nao_enviado" && solicitacao.status_mesa === "pronta_para_banco") {
-      events.push({
-        label: "Envio ao Banco",
-        date: null,
-        icon: <Send className="h-3.5 w-3.5" />,
-        status: "pending",
-      });
+    if (solicitacao.status_banco === "nao_enviado" && solicitacao.status_solicitacao === "pronta_para_banco") {
+      events.push({ label: "Envio ao Banco", date: null, icon: <Send className="h-3.5 w-3.5" />, status: "pending" });
     }
   } else {
     // Fallback: build from current status fields
-    events.push({
-      label: "Solicitação criada",
-      date: solicitacao.created_at,
-      icon: <FileText className="h-3.5 w-3.5" />,
-      status: "done",
-    });
+    events.push({ label: "Solicitação criada", date: solicitacao.created_at, icon: <FileText className="h-3.5 w-3.5" />, status: "done" });
 
-    // Mesa status
-    const mesaStatus = solicitacao.status_mesa;
-    const mesaDone = ["elegivel", "aguardando_laudo", "pronta_para_banco"].includes(mesaStatus);
+    const solStatus = solicitacao.status_solicitacao;
+    const solDone = ["elegivel", "aguardando_laudo", "pronta_para_banco"].includes(solStatus);
     events.push({
-      label: mesaLabels[mesaStatus] || mesaStatus,
+      label: solicitacaoLabels[solStatus] || solStatus,
       date: solicitacao.aprovado_mesa_em,
-      icon: mesaStatus === "reprovada" ? <XCircle className="h-3.5 w-3.5" /> : <ClipboardCheck className="h-3.5 w-3.5" />,
-      status: mesaDone ? "done" : mesaStatus === "pendente" ? "pending" : "active",
+      icon: solStatus === "reprovada" ? <XCircle className="h-3.5 w-3.5" /> : <ClipboardCheck className="h-3.5 w-3.5" />,
+      status: solDone ? "done" : solStatus === "pendente" ? "pending" : "active",
     });
 
-    // Laudo
     const laudoObj = laudo || (Array.isArray(solicitacao.laudos) ? solicitacao.laudos?.[0] : solicitacao.laudos);
     const laudoFinalizado = laudoObj?.status_laudo === "finalizado";
     const laudoEmAndamento = laudoObj && !laudoFinalizado;
@@ -154,7 +132,6 @@ export default function StatusTimeline({ solicitacao, laudo }: StatusTimelinePro
       status: laudoFinalizado ? "done" : laudoEmAndamento ? "active" : "pending",
     });
 
-    // Banco
     events.push({
       label: bancoLabels[solicitacao.status_banco] || "Envio ao Banco",
       date: solicitacao.data_envio_banco,

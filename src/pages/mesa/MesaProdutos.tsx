@@ -24,7 +24,7 @@ import { AudioRecorder } from "@/components/chat/AudioRecorder";
 import { AudioPlayer } from "@/components/chat/AudioPlayer";
 import StatusTimeline from "@/components/solicitacoes/StatusTimeline";
 
-const statusMesaMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+const statusSolicitacaoMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   pendente: { label: "Pendente", variant: "outline" },
   em_analise_mesa: { label: "Em Análise", variant: "secondary" },
   docs_pendentes_produtor: { label: "Docs Pendentes", variant: "outline" },
@@ -56,7 +56,6 @@ export default function MesaProdutos() {
   const [notas, setNotas] = useState("");
   const [engenheiroAtribuidoId, setEngenheiroAtribuidoId] = useState("");
   
-  // Payment override state
   const [tipoValorOverride, setTipoValorOverride] = useState<"produto" | "fixo" | "percentual">("produto");
   const [valorOverride, setValorOverride] = useState("");
 
@@ -141,17 +140,8 @@ export default function MesaProdutos() {
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status_mesa, extra }: { id: string; status_mesa: string; extra?: any }) => {
-      const updateData: any = { status_mesa, notas_mesa: notas, ...extra };
-      
-      // When moving to aguardando_laudo, set status_solicitacao
-      if (status_mesa === "aguardando_laudo") {
-        updateData.status_solicitacao = engenheiroAtribuidoId ? "aguardando_eng" : "aberta";
-      }
-      // When reprovada
-      if (status_mesa === "reprovada") {
-        updateData.status_solicitacao = "ineligivel";
-      }
+    mutationFn: async ({ id, status_solicitacao, extra }: { id: string; status_solicitacao: string; extra?: any }) => {
+      const updateData: any = { status_solicitacao, notas_mesa: notas, ...extra };
 
       if (engenheiroAtribuidoId) {
         updateData.engenheiro_atribuido_id = engenheiroAtribuidoId;
@@ -254,7 +244,7 @@ export default function MesaProdutos() {
   };
 
   const filterByStage = (stage: string) => {
-    return solicitacoes?.filter((s) => s.status_mesa === stage) ?? [];
+    return solicitacoes?.filter((s) => s.status_solicitacao === stage) ?? [];
   };
 
   const getLaudoStatus = (s: any): string | null => {
@@ -270,7 +260,7 @@ export default function MesaProdutos() {
   const renderCard = (s: any) => {
     const prop = (s as any).propriedades;
     const produto = (s as any).pronaf_produtos;
-    const st = statusMesaMap[s.status_mesa] || { label: s.status_mesa, variant: "outline" as const };
+    const st = statusSolicitacaoMap[s.status_solicitacao] || { label: s.status_solicitacao, variant: "outline" as const };
     const laudoSt = getLaudoStatus(s);
     return (
       <Card key={s.id} className="cursor-pointer hover:ring-1 hover:ring-ring transition-shadow" onClick={() => openDetail(s)}>
@@ -350,10 +340,8 @@ export default function MesaProdutos() {
           </DialogHeader>
           {selectedSolicitacao && (
             <div className="space-y-4">
-              {/* Status Timeline */}
               <StatusTimeline solicitacao={selectedSolicitacao} />
 
-              {/* Info */}
               <div className="grid gap-2 text-sm sm:grid-cols-2">
                 <div><span className="font-medium">Propriedade:</span> {(selectedSolicitacao as any).propriedades?.nome_propriedade}</div>
                 <div><span className="font-medium">Endereço:</span> {(selectedSolicitacao as any).propriedades?.endereco}</div>
@@ -361,7 +349,7 @@ export default function MesaProdutos() {
                 <div><span className="font-medium">Área:</span> {selectedSolicitacao.area_cultivo_ha} ha</div>
                 <div><span className="font-medium">Valor solicitado:</span> {formatCurrency(selectedSolicitacao.valor_solicitado)}</div>
                 <div><span className="font-medium">Produto:</span> {(selectedSolicitacao as any).pronaf_produtos?.nome || "—"}</div>
-                <div><span className="font-medium">Status Mesa:</span> <Badge variant={statusMesaMap[selectedSolicitacao.status_mesa]?.variant}>{statusMesaMap[selectedSolicitacao.status_mesa]?.label}</Badge></div>
+                <div><span className="font-medium">Status:</span> <Badge variant={statusSolicitacaoMap[selectedSolicitacao.status_solicitacao]?.variant}>{statusSolicitacaoMap[selectedSolicitacao.status_solicitacao]?.label}</Badge></div>
                 <div><span className="font-medium">Pgto Eng. atual:</span> {formatCurrency(selectedSolicitacao.valor_pagamento_engenheiro)}</div>
               </div>
 
@@ -426,7 +414,7 @@ export default function MesaProdutos() {
                       area: selectedSolicitacao.area_cultivo_ha,
                       valor: selectedSolicitacao.valor_solicitado,
                       produto: (selectedSolicitacao as any).pronaf_produtos,
-                      status: selectedSolicitacao.status_mesa,
+                      status: selectedSolicitacao.status_solicitacao,
                     })}>
                     {ai.isLoading ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}
                     Resumo IA
@@ -573,74 +561,67 @@ export default function MesaProdutos() {
 
               {/* Action buttons — sequential flow */}
               <div className="flex flex-wrap gap-2 border-t pt-4">
-                {/* pendente → em_analise_mesa */}
-                {selectedSolicitacao.status_mesa === "pendente" && (
-                  <Button size="sm" variant="secondary" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "em_analise_mesa" })} disabled={updateStatusMutation.isPending}>
+                {selectedSolicitacao.status_solicitacao === "pendente" && (
+                  <Button size="sm" variant="secondary" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_solicitacao: "em_analise_mesa" })} disabled={updateStatusMutation.isPending}>
                     Iniciar Análise
                   </Button>
                 )}
 
-                {/* em_analise_mesa → docs_pendentes_produtor (solicitar docs) */}
-                {selectedSolicitacao.status_mesa === "em_analise_mesa" && (
+                {selectedSolicitacao.status_solicitacao === "em_analise_mesa" && (
                   <>
                     <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ 
                       id: selectedSolicitacao.id, 
-                      status_mesa: "docs_pendentes_produtor",
+                      status_solicitacao: "docs_pendentes_produtor",
                       extra: { docs_habilitados: true }
                     })} disabled={updateStatusMutation.isPending}>
                       <FolderOpen className="h-3.5 w-3.5 mr-1" /> Solicitar Docs ao Produtor
                     </Button>
-                    <Button size="sm" variant="secondary" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "docs_em_validacao" })} disabled={updateStatusMutation.isPending}>
+                    <Button size="sm" variant="secondary" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_solicitacao: "docs_em_validacao" })} disabled={updateStatusMutation.isPending}>
                       <Check className="h-3.5 w-3.5 mr-1" /> Docs já enviados, validar
                     </Button>
                   </>
                 )}
 
-                {/* docs_pendentes_produtor → docs_em_validacao (produtor enviou) */}
-                {selectedSolicitacao.status_mesa === "docs_pendentes_produtor" && (
-                  <Button size="sm" variant="secondary" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "docs_em_validacao" })} disabled={updateStatusMutation.isPending}>
+                {selectedSolicitacao.status_solicitacao === "docs_pendentes_produtor" && (
+                  <Button size="sm" variant="secondary" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_solicitacao: "docs_em_validacao" })} disabled={updateStatusMutation.isPending}>
                     <Check className="h-3.5 w-3.5 mr-1" /> Docs Recebidos, Validar
                   </Button>
                 )}
 
-                {/* docs_em_validacao → elegivel */}
-                {selectedSolicitacao.status_mesa === "docs_em_validacao" && (
+                {selectedSolicitacao.status_solicitacao === "docs_em_validacao" && (
                   <>
-                    <Button size="sm" variant="secondary" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "elegivel" })} disabled={updateStatusMutation.isPending}>
+                    <Button size="sm" variant="secondary" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_solicitacao: "elegivel" })} disabled={updateStatusMutation.isPending}>
                       <Check className="h-3.5 w-3.5 mr-1" /> Elegível
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ 
                       id: selectedSolicitacao.id, 
-                      status_mesa: "docs_pendentes_produtor"
+                      status_solicitacao: "docs_pendentes_produtor"
                     })} disabled={updateStatusMutation.isPending}>
                       <RotateCcw className="h-3.5 w-3.5 mr-1" /> Docs Insuficientes
                     </Button>
                   </>
                 )}
 
-                {/* elegivel → aguardando_laudo (assign engineer) or pronta_para_banco */}
-                {selectedSolicitacao.status_mesa === "elegivel" && (
+                {selectedSolicitacao.status_solicitacao === "elegivel" && (
                   <>
-                    <Button size="sm" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "aguardando_laudo" })} disabled={updateStatusMutation.isPending}>
+                    <Button size="sm" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_solicitacao: "aguardando_laudo" })} disabled={updateStatusMutation.isPending}>
                       <Check className="h-3.5 w-3.5 mr-1" /> Liberar p/ Engenheiro
                     </Button>
-                    <Button size="sm" variant="secondary" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "pronta_para_banco" })} disabled={updateStatusMutation.isPending}>
+                    <Button size="sm" variant="secondary" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_solicitacao: "pronta_para_banco" })} disabled={updateStatusMutation.isPending}>
                       <Send className="h-3.5 w-3.5 mr-1" /> Pronta p/ Banco
                     </Button>
                   </>
                 )}
 
-                {/* aguardando_laudo → pronta_para_banco (concomitante) */}
-                {selectedSolicitacao.status_mesa === "aguardando_laudo" && (
-                  <Button size="sm" variant="secondary" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "pronta_para_banco" })} disabled={updateStatusMutation.isPending}>
+                {selectedSolicitacao.status_solicitacao === "aguardando_laudo" && (
+                  <Button size="sm" variant="secondary" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_solicitacao: "pronta_para_banco" })} disabled={updateStatusMutation.isPending}>
                     <Send className="h-3.5 w-3.5 mr-1" /> Marcar Pronta p/ Banco
                   </Button>
                 )}
 
-                {/* Bank send actions from pronta_para_banco */}
-                {selectedSolicitacao.status_mesa === "pronta_para_banco" && selectedSolicitacao.status_banco === "nao_enviado" && (
+                {selectedSolicitacao.status_solicitacao === "pronta_para_banco" && selectedSolicitacao.status_banco === "nao_enviado" && (
                   <Button size="sm" onClick={() => {
-                    updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "pronta_para_banco", extra: { status_banco: "enviado", data_envio_banco: new Date().toISOString() } });
+                    updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_solicitacao: "pronta_para_banco", extra: { status_banco: "enviado", data_envio_banco: new Date().toISOString() } });
                   }} disabled={updateStatusMutation.isPending}>
                     <Send className="h-3.5 w-3.5 mr-1" /> Enviar ao Banco
                   </Button>
@@ -648,12 +629,12 @@ export default function MesaProdutos() {
                 {selectedSolicitacao.status_banco === "enviado" && (
                   <>
                     <Button size="sm" variant="destructive" onClick={() => {
-                      updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: selectedSolicitacao.status_mesa, extra: { status_banco: "devolvido", data_retorno_banco: new Date().toISOString() } });
+                      updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_solicitacao: selectedSolicitacao.status_solicitacao, extra: { status_banco: "devolvido", data_retorno_banco: new Date().toISOString() } });
                     }} disabled={updateStatusMutation.isPending}>
                       <RotateCcw className="h-3.5 w-3.5 mr-1" /> Devolvido pelo Banco
                     </Button>
                     <Button size="sm" onClick={() => {
-                      updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: selectedSolicitacao.status_mesa, extra: { status_banco: "aprovado", data_retorno_banco: new Date().toISOString() } });
+                      updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_solicitacao: selectedSolicitacao.status_solicitacao, extra: { status_banco: "aprovado", data_retorno_banco: new Date().toISOString() } });
                     }} disabled={updateStatusMutation.isPending}>
                       <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Aprovado pelo Banco
                     </Button>
@@ -661,26 +642,24 @@ export default function MesaProdutos() {
                 )}
                 {selectedSolicitacao.status_banco === "devolvido" && (
                   <Button size="sm" onClick={() => {
-                    updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: selectedSolicitacao.status_mesa, extra: { status_banco: "enviado", data_envio_banco: new Date().toISOString() } });
+                    updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_solicitacao: selectedSolicitacao.status_solicitacao, extra: { status_banco: "enviado", data_envio_banco: new Date().toISOString() } });
                   }} disabled={updateStatusMutation.isPending}>
                     <Send className="h-3.5 w-3.5 mr-1" /> Reenviar ao Banco
                   </Button>
                 )}
 
-                {/* Reject — available at any non-final stage */}
-                {!["reprovada", "pronta_para_banco"].includes(selectedSolicitacao.status_mesa) && (
-                  <Button size="sm" variant="destructive" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "reprovada" })} disabled={updateStatusMutation.isPending}>
+                {!["reprovada", "pronta_para_banco"].includes(selectedSolicitacao.status_solicitacao) && (
+                  <Button size="sm" variant="destructive" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_solicitacao: "reprovada" })} disabled={updateStatusMutation.isPending}>
                     <X className="h-3.5 w-3.5 mr-1" /> Reprovar
                   </Button>
                 )}
 
-                {/* Toggle document upload */}
                 <Button
                   size="sm"
                   variant={selectedSolicitacao.docs_habilitados ? "secondary" : "outline"}
                   onClick={() => updateStatusMutation.mutate({
                     id: selectedSolicitacao.id,
-                    status_mesa: selectedSolicitacao.status_mesa,
+                    status_solicitacao: selectedSolicitacao.status_solicitacao,
                     extra: { docs_habilitados: !selectedSolicitacao.docs_habilitados },
                   })}
                   disabled={updateStatusMutation.isPending}
@@ -689,8 +668,7 @@ export default function MesaProdutos() {
                   {selectedSolicitacao.docs_habilitados ? "Docs Liberados ✓" : "Liberar Documentos"}
                 </Button>
 
-                {/* Save without status change */}
-                <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: selectedSolicitacao.status_mesa })} disabled={updateStatusMutation.isPending}>
+                <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_solicitacao: selectedSolicitacao.status_solicitacao })} disabled={updateStatusMutation.isPending}>
                   Salvar Alterações
                 </Button>
               </div>

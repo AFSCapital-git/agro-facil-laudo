@@ -97,7 +97,7 @@ export default function MeusLaudos() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("laudos")
-        .select("*, solicitacoes_laudo(cultura_principal, area_cultivo_ha, valor_solicitado, pronaf_produto_id, created_at, aprovado_mesa_em, data_envio_banco, data_retorno_banco, status_banco, status_mesa, propriedades(nome_propriedade, endereco, latitude, longitude))")
+        .select("*, solicitacoes_laudo(cultura_principal, area_cultivo_ha, valor_solicitado, pronaf_produto_id, created_at, aprovado_mesa_em, data_envio_banco, data_retorno_banco, status_banco, status_solicitacao, propriedades(nome_propriedade, endereco, latitude, longitude))")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -245,11 +245,7 @@ export default function MeusLaudos() {
         .eq("id", selectedLaudo.id);
       if (error) throw error;
 
-      const { error: solErr } = await supabase
-        .from("solicitacoes_laudo")
-        .update({ status_solicitacao: "em_andamento" })
-        .eq("id", selectedLaudo.solicitacao_id);
-      if (solErr) throw solErr;
+      // status_solicitacao is managed by Mesa, no update needed here
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["meus_laudos"] });
@@ -291,11 +287,7 @@ export default function MeusLaudos() {
         .eq("id", selectedLaudo.id);
       if (laudoErr) throw laudoErr;
 
-      const { error: solErr } = await supabase
-        .from("solicitacoes_laudo")
-        .update({ status_solicitacao: "concluida" })
-        .eq("id", selectedLaudo.solicitacao_id);
-      if (solErr) throw solErr;
+      // status_solicitacao is managed by Mesa, no update needed here
 
       try {
         await supabase.functions.invoke("generate-laudo-pdf", {

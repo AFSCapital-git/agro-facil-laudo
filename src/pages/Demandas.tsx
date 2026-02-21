@@ -26,8 +26,7 @@ export default function Demandas() {
       const { data, error } = await supabase
         .from("solicitacoes_laudo")
         .select("id, created_at, valor_pagamento_engenheiro, pronaf_produto_id, pronaf_produtos(nome), propriedades(nome_propriedade, endereco, area_total_ha)")
-        .eq("status_solicitacao", "aberta")
-        .in("status_mesa", ["aguardando_laudo", "pronta_para_banco"])
+        .in("status_solicitacao", ["aguardando_laudo", "pronta_para_banco"])
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -36,12 +35,10 @@ export default function Demandas() {
 
   const aceitarMutation = useMutation({
     mutationFn: async (solicitacaoId: string) => {
-      // Calculate deadline: 5 days from now
       const dataLimite = new Date();
       dataLimite.setDate(dataLimite.getDate() + 5);
       const dataLimiteStr = dataLimite.toISOString().split("T")[0];
 
-      // Create laudo linked to this request
       const { error: laudoErr } = await supabase.from("laudos").insert({
         engenheiro_id: engenheiroId!,
         solicitacao_id: solicitacaoId,
@@ -49,13 +46,6 @@ export default function Demandas() {
         data_limite_visita: dataLimiteStr,
       });
       if (laudoErr) throw laudoErr;
-
-      // Update request status
-      const { error: solErr } = await supabase
-        .from("solicitacoes_laudo")
-        .update({ status_solicitacao: "em_andamento" })
-        .eq("id", solicitacaoId);
-      if (solErr) throw solErr;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["demandas_abertas"] });

@@ -16,12 +16,12 @@ export default function Dashboard() {
     queryKey: ["produtor_stats"],
     enabled: role === "produtor",
     queryFn: async () => {
-      const [props, sols, laudos] = await Promise.all([
+      const [props, sols, aprovados] = await Promise.all([
         supabase.from("propriedades").select("id", { count: "exact", head: true }),
-        supabase.from("solicitacoes_laudo").select("id", { count: "exact", head: true }).neq("status_solicitacao", "finalizada"),
-        supabase.from("solicitacoes_laudo").select("id", { count: "exact", head: true }).eq("status_solicitacao", "finalizada"),
+        supabase.from("solicitacoes_laudo").select("id", { count: "exact", head: true }).neq("status_solicitacao", "reprovada"),
+        supabase.from("solicitacoes_laudo").select("id", { count: "exact", head: true }).eq("status_banco", "aprovado"),
       ]);
-      return { props: props.count ?? 0, sols: sols.count ?? 0, laudos: laudos.count ?? 0 };
+      return { props: props.count ?? 0, sols: sols.count ?? 0, laudos: aprovados.count ?? 0 };
     },
   });
 
@@ -30,7 +30,7 @@ export default function Dashboard() {
     enabled: role === "engenheiro",
     queryFn: async () => {
       const [demandas, laudos, pagPend] = await Promise.all([
-        supabase.from("solicitacoes_laudo").select("id", { count: "exact", head: true }).eq("status_solicitacao", "aberta"),
+        supabase.from("solicitacoes_laudo").select("id", { count: "exact", head: true }).in("status_solicitacao", ["aguardando_laudo", "pronta_para_banco"]),
         supabase.from("laudos").select("id", { count: "exact", head: true }).neq("status_laudo", "finalizado"),
         supabase.from("pagamentos_engenheiro").select("valor_bruto").eq("status_pagamento", "pendente"),
       ]);
@@ -46,15 +46,14 @@ export default function Dashboard() {
       if (role === "produtor") {
         const { data } = await supabase
           .from("solicitacoes_laudo")
-          .select("id, created_at, status_solicitacao, status_mesa, status_banco, aprovado_mesa_em, data_envio_banco, data_retorno_banco, cultura_principal, laudos(id, status_laudo, created_at, updated_at), propriedades:propriedade_id(nome_propriedade)")
+          .select("id, created_at, status_solicitacao, status_banco, aprovado_mesa_em, data_envio_banco, data_retorno_banco, cultura_principal, laudos(id, status_laudo, created_at, updated_at), propriedades:propriedade_id(nome_propriedade)")
           .order("created_at", { ascending: false })
           .limit(5);
         return data ?? [];
       }
-      // engenheiro
       const { data } = await supabase
         .from("laudos")
-        .select("id, status_laudo, created_at, updated_at, solicitacoes_laudo:solicitacao_id(id, created_at, status_solicitacao, status_mesa, status_banco, aprovado_mesa_em, data_envio_banco, data_retorno_banco, cultura_principal, propriedades:propriedade_id(nome_propriedade))")
+        .select("id, status_laudo, created_at, updated_at, solicitacoes_laudo:solicitacao_id(id, created_at, status_solicitacao, status_banco, aprovado_mesa_em, data_envio_banco, data_retorno_banco, cultura_principal, propriedades:propriedade_id(nome_propriedade))")
         .order("created_at", { ascending: false })
         .limit(5);
       return data ?? [];
@@ -80,7 +79,7 @@ export default function Dashboard() {
           <>
             <DashCard icon={MapPin} title="Propriedades" value={String(prodStats?.props ?? "—")} desc="cadastradas" />
             <DashCard icon={FileText} title="Solicitações" value={String(prodStats?.sols ?? "—")} desc="ativas" />
-            <DashCard icon={ClipboardCheck} title="Laudos" value={String(prodStats?.laudos ?? "—")} desc="finalizados" />
+            <DashCard icon={ClipboardCheck} title="Aprovados" value={String(prodStats?.laudos ?? "—")} desc="pelo banco" />
           </>
         )}
         {role === "engenheiro" && (
