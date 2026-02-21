@@ -13,14 +13,15 @@ import {
   Tabs, TabsContent, TabsList, TabsTrigger,
 } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Send, RotateCcw, CheckCircle2, MapPin, Banknote } from "lucide-react";
+import { Send, RotateCcw, CheckCircle2, MapPin, Banknote, XCircle } from "lucide-react";
 import StatusTimeline from "@/components/solicitacoes/StatusTimeline";
 
 const statusBancoMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   nao_enviado: { label: "Não enviado", variant: "outline" },
-  enviado_banco: { label: "Enviado ao Banco", variant: "secondary" },
-  devolvido_banco: { label: "Devolvido pelo Banco", variant: "destructive" },
-  aprovado_banco: { label: "Aprovado pelo Banco", variant: "default" },
+  enviado: { label: "Enviado ao Banco", variant: "secondary" },
+  devolvido: { label: "Devolvido pelo Banco", variant: "destructive" },
+  aprovado: { label: "Aprovado pelo Banco", variant: "default" },
+  reprovado: { label: "Reprovado pelo Banco", variant: "destructive" },
 };
 
 export default function MesaEnviosBanco() {
@@ -29,15 +30,14 @@ export default function MesaEnviosBanco() {
   const [selected, setSelected] = useState<any | null>(null);
   const [obs, setObs] = useState("");
 
-  // Fetch only items with finalized laudos (ready for bank) or already sent
   const { data: solicitacoes, isLoading } = useQuery({
     queryKey: ["mesa_envios_banco"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("solicitacoes_laudo")
         .select("*, propriedades(nome_propriedade, endereco), pronaf_produtos(nome), laudos(id, status_laudo, caminho_pdf_laudo)")
-        .in("status_banco", ["nao_enviado", "enviado_banco", "devolvido_banco", "aprovado_banco"])
-        .eq("status_mesa", "aprovada")
+        .in("status_banco", ["nao_enviado", "enviado", "devolvido", "aprovado", "reprovado"])
+        .eq("status_mesa", "pronta_para_banco")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -47,8 +47,8 @@ export default function MesaEnviosBanco() {
   const updateBanco = useMutation({
     mutationFn: async ({ id, status_banco }: { id: string; status_banco: string }) => {
       const updateData: any = { status_banco, observacoes_banco: obs };
-      if (status_banco === "enviado_banco") updateData.data_envio_banco = new Date().toISOString();
-      if (status_banco === "devolvido_banco" || status_banco === "aprovado_banco") updateData.data_retorno_banco = new Date().toISOString();
+      if (status_banco === "enviado") updateData.data_envio_banco = new Date().toISOString();
+      if (["devolvido", "aprovado", "reprovado"].includes(status_banco)) updateData.data_retorno_banco = new Date().toISOString();
       const { error } = await supabase.from("solicitacoes_laudo").update(updateData).eq("id", id);
       if (error) throw error;
     },
@@ -70,13 +70,6 @@ export default function MesaEnviosBanco() {
 
   const filterByStatus = (status: string) =>
     solicitacoes?.filter((s) => (s as any).status_banco === status) ?? [];
-
-  const hasFinishedLaudo = (s: any) => {
-    const laudos = (s as any).laudos;
-    if (!laudos) return false;
-    if (Array.isArray(laudos)) return laudos.some((l: any) => l.status_laudo === "finalizado");
-    return laudos.status_laudo === "finalizado";
-  };
 
   const getLaudoStatus = (s: any): string | null => {
     const laudos = (s as any).laudos;
@@ -106,12 +99,10 @@ export default function MesaEnviosBanco() {
                     <span className="font-display font-semibold text-sm">{prop?.nome_propriedade}</span>
                     <Badge variant={st.variant}>{st.label}</Badge>
                     {produto && <Badge variant="outline">{produto.nome}</Badge>}
-                    {hasFinishedLaudo(s) ? (
-                      <Badge variant="default" className="text-xs">Laudo OK</Badge>
-                    ) : laudoSt ? (
-                      <Badge variant="secondary" className="text-xs">Laudo: {laudoSt}</Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-xs">Sem laudo</Badge>
+                    {laudoSt && (
+                      <Badge variant={laudoSt === "finalizado" ? "default" : "secondary"} className="text-xs">
+                        Laudo: {laudoSt === "em_vistoria" ? "em vistoria" : laudoSt === "aguardando_assinatura" ? "aguard. assin." : laudoSt}
+                      </Badge>
                     )}
                   </div>
                   <span className="text-xs text-muted-foreground">{formatCurrency(s.valor_solicitado)}</span>
@@ -139,14 +130,16 @@ export default function MesaEnviosBanco() {
         <Tabs defaultValue="prontos">
           <TabsList>
             <TabsTrigger value="prontos">Prontos p/ Envio ({filterByStatus("nao_enviado").length})</TabsTrigger>
-            <TabsTrigger value="enviados">Enviados ({filterByStatus("enviado_banco").length})</TabsTrigger>
-            <TabsTrigger value="devolvidos">Devolvidos ({filterByStatus("devolvido_banco").length})</TabsTrigger>
-            <TabsTrigger value="aprovados">Aprovados ({filterByStatus("aprovado_banco").length})</TabsTrigger>
+            <TabsTrigger value="enviados">Enviados ({filterByStatus("enviado").length})</TabsTrigger>
+            <TabsTrigger value="devolvidos">Devolvidos ({filterByStatus("devolvido").length})</TabsTrigger>
+            <TabsTrigger value="aprovados">Aprovados ({filterByStatus("aprovado").length})</TabsTrigger>
+            <TabsTrigger value="reprovados">Reprovados ({filterByStatus("reprovado").length})</TabsTrigger>
           </TabsList>
           <TabsContent value="prontos">{renderList(filterByStatus("nao_enviado"))}</TabsContent>
-          <TabsContent value="enviados">{renderList(filterByStatus("enviado_banco"))}</TabsContent>
-          <TabsContent value="devolvidos">{renderList(filterByStatus("devolvido_banco"))}</TabsContent>
-          <TabsContent value="aprovados">{renderList(filterByStatus("aprovado_banco"))}</TabsContent>
+          <TabsContent value="enviados">{renderList(filterByStatus("enviado"))}</TabsContent>
+          <TabsContent value="devolvidos">{renderList(filterByStatus("devolvido"))}</TabsContent>
+          <TabsContent value="aprovados">{renderList(filterByStatus("aprovado"))}</TabsContent>
+          <TabsContent value="reprovados">{renderList(filterByStatus("reprovado"))}</TabsContent>
         </Tabs>
       )}
 
@@ -157,7 +150,6 @@ export default function MesaEnviosBanco() {
           </DialogHeader>
           {selected && (
             <div className="space-y-4">
-              {/* Status Timeline */}
               <StatusTimeline solicitacao={selected} />
               <div className="grid gap-2 text-sm sm:grid-cols-2">
                 <div><span className="font-medium">Propriedade:</span> {(selected as any).propriedades?.nome_propriedade}</div>
@@ -179,22 +171,25 @@ export default function MesaEnviosBanco() {
 
               <div className="flex flex-wrap gap-2">
                 {(selected as any).status_banco === "nao_enviado" && (
-                  <Button size="sm" onClick={() => updateBanco.mutate({ id: selected.id, status_banco: "enviado_banco" })} disabled={updateBanco.isPending}>
+                  <Button size="sm" onClick={() => updateBanco.mutate({ id: selected.id, status_banco: "enviado" })} disabled={updateBanco.isPending}>
                     <Send className="h-3.5 w-3.5 mr-1" /> Marcar como Enviado
                   </Button>
                 )}
-                {(selected as any).status_banco === "enviado_banco" && (
+                {(selected as any).status_banco === "enviado" && (
                   <>
-                    <Button size="sm" variant="destructive" onClick={() => updateBanco.mutate({ id: selected.id, status_banco: "devolvido_banco" })} disabled={updateBanco.isPending}>
+                    <Button size="sm" variant="destructive" onClick={() => updateBanco.mutate({ id: selected.id, status_banco: "devolvido" })} disabled={updateBanco.isPending}>
                       <RotateCcw className="h-3.5 w-3.5 mr-1" /> Devolvido
                     </Button>
-                    <Button size="sm" onClick={() => updateBanco.mutate({ id: selected.id, status_banco: "aprovado_banco" })} disabled={updateBanco.isPending}>
+                    <Button size="sm" onClick={() => updateBanco.mutate({ id: selected.id, status_banco: "aprovado" })} disabled={updateBanco.isPending}>
                       <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Aprovado pelo Banco
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => updateBanco.mutate({ id: selected.id, status_banco: "reprovado" })} disabled={updateBanco.isPending}>
+                      <XCircle className="h-3.5 w-3.5 mr-1" /> Reprovado pelo Banco
                     </Button>
                   </>
                 )}
-                {(selected as any).status_banco === "devolvido_banco" && (
-                  <Button size="sm" onClick={() => updateBanco.mutate({ id: selected.id, status_banco: "enviado_banco" })} disabled={updateBanco.isPending}>
+                {(selected as any).status_banco === "devolvido" && (
+                  <Button size="sm" onClick={() => updateBanco.mutate({ id: selected.id, status_banco: "enviado" })} disabled={updateBanco.isPending}>
                     <Send className="h-3.5 w-3.5 mr-1" /> Reenviar ao Banco
                   </Button>
                 )}

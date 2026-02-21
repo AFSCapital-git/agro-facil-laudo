@@ -26,11 +26,11 @@ import StatusTimeline from "@/components/solicitacoes/StatusTimeline";
 
 const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   aberta: { label: "Aberta", variant: "default" },
-  aceita: { label: "Aceita", variant: "secondary" },
-  em_vistoria: { label: "Em vistoria", variant: "secondary" },
-  aguardando_assinatura: { label: "Aguardando assinatura", variant: "outline" },
-  finalizada: { label: "Finalizada", variant: "default" },
+  aguardando_eng: { label: "Aguardando Engenheiro", variant: "secondary" },
+  em_andamento: { label: "Em Andamento", variant: "secondary" },
+  concluida: { label: "Concluída", variant: "default" },
   cancelada: { label: "Cancelada", variant: "destructive" },
+  ineligivel: { label: "Inelegível", variant: "destructive" },
 };
 
 interface SolicitacaoForm {

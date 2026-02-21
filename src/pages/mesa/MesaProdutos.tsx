@@ -26,22 +26,23 @@ import StatusTimeline from "@/components/solicitacoes/StatusTimeline";
 
 const statusMesaMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   pendente: { label: "Pendente", variant: "outline" },
-  em_analise: { label: "Em análise", variant: "secondary" },
-  docs_ok: { label: "Docs OK", variant: "secondary" },
-  elegibilidade_ok: { label: "Elegível", variant: "secondary" },
-  aprovada: { label: "Aprovada", variant: "default" },
-  rejeitada: { label: "Rejeitada", variant: "destructive" },
-  docs_pendente_eng: { label: "Docs pendente (eng.)", variant: "outline" },
+  em_analise_mesa: { label: "Em Análise", variant: "secondary" },
+  docs_pendentes_produtor: { label: "Docs Pendentes", variant: "outline" },
+  docs_em_validacao: { label: "Docs em Validação", variant: "secondary" },
+  elegivel: { label: "Elegível", variant: "secondary" },
+  reprovada: { label: "Reprovada", variant: "destructive" },
+  aguardando_laudo: { label: "Aguard. Laudo", variant: "secondary" },
+  pronta_para_banco: { label: "Pronta p/ Banco", variant: "default" },
 };
 
 const pipelineStages = [
   { key: "pendente", label: "Pendentes" },
-  { key: "em_analise", label: "Em Análise" },
-  { key: "docs_pendente_eng", label: "Docs Pend. Eng." },
-  { key: "docs_ok", label: "Docs OK" },
-  { key: "elegibilidade_ok", label: "Elegível" },
+  { key: "em_analise_mesa", label: "Em Análise" },
+  { key: "docs_pendentes_produtor", label: "Docs Pendentes" },
+  { key: "docs_em_validacao", label: "Docs Validação" },
+  { key: "elegivel", label: "Elegível" },
   { key: "aguardando_laudo", label: "Aguard. Laudo" },
-  { key: "laudo_finalizado", label: "Pronto p/ Banco" },
+  { key: "pronta_para_banco", label: "Pronto p/ Banco" },
 ];
 
 export default function MesaProdutos() {
@@ -67,7 +68,6 @@ export default function MesaProdutos() {
         .select("*, propriedades(nome_propriedade, endereco, area_total_ha), pronaf_produtos(nome, finalidade, valor_engenheiro, tipo_valor_engenheiro), produtores(user_id), laudos(id, status_laudo, caminho_pdf_laudo)")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      // Fetch producer names via profiles
       const produtorUserIds = [...new Set(data?.map((s: any) => s.produtores?.user_id).filter(Boolean))];
       let profileMap: Record<string, string> = {};
       if (produtorUserIds.length) {
@@ -98,7 +98,6 @@ export default function MesaProdutos() {
     },
   });
 
-  // Required docs for the selected solicitation's product
   const { data: detailPronafDocs } = useQuery({
     queryKey: ["pronaf_documentos_mesa", selectedSolicitacao?.pronaf_produto_id],
     enabled: !!selectedSolicitacao?.pronaf_produto_id,
@@ -113,7 +112,6 @@ export default function MesaProdutos() {
     },
   });
 
-  // Uploaded documents for the selected solicitation
   const { data: uploadedDocs } = useQuery({
     queryKey: ["solicitacao_documentos_mesa", selectedSolicitacao?.id],
     enabled: !!selectedSolicitacao,
@@ -146,11 +144,15 @@ export default function MesaProdutos() {
     mutationFn: async ({ id, status_mesa, extra }: { id: string; status_mesa: string; extra?: any }) => {
       const updateData: any = { status_mesa, notas_mesa: notas, ...extra };
       
-      if (status_mesa === "aprovada") {
-        updateData.aprovado_mesa_em = new Date().toISOString();
-        updateData.aprovado_mesa_por = user?.id;
-        updateData.status_solicitacao = "aberta";
+      // When moving to aguardando_laudo, set status_solicitacao
+      if (status_mesa === "aguardando_laudo") {
+        updateData.status_solicitacao = engenheiroAtribuidoId ? "aguardando_eng" : "aberta";
       }
+      // When reprovada
+      if (status_mesa === "reprovada") {
+        updateData.status_solicitacao = "ineligivel";
+      }
+
       if (engenheiroAtribuidoId) {
         updateData.engenheiro_atribuido_id = engenheiroAtribuidoId;
       }
@@ -159,7 +161,6 @@ export default function MesaProdutos() {
       if (tipoValorOverride !== "produto" && valorOverride) {
         updateData.tipo_valor_engenheiro_override = tipoValorOverride;
         updateData.valor_engenheiro_override = parseFloat(valorOverride) || 0;
-        // Calculate actual payment
         const sol = selectedSolicitacao;
         if (tipoValorOverride === "fixo") {
           updateData.valor_pagamento_engenheiro = parseFloat(valorOverride) || 0;
@@ -167,7 +168,6 @@ export default function MesaProdutos() {
           updateData.valor_pagamento_engenheiro = (sol.valor_solicitado * (parseFloat(valorOverride) || 0)) / 100;
         }
       } else if (tipoValorOverride === "produto") {
-        // Use product defaults
         const produto = (selectedSolicitacao as any).pronaf_produtos;
         if (produto) {
           if (produto.tipo_valor_engenheiro === "fixo") {
@@ -244,7 +244,6 @@ export default function MesaProdutos() {
     setSelectedSolicitacao(s);
     setNotas(s.notas_mesa || "");
     setEngenheiroAtribuidoId(s.engenheiro_atribuido_id || "");
-    // Load payment override state
     if ((s as any).tipo_valor_engenheiro_override) {
       setTipoValorOverride((s as any).tipo_valor_engenheiro_override);
       setValorOverride(String((s as any).valor_engenheiro_override ?? ""));
@@ -255,31 +254,24 @@ export default function MesaProdutos() {
   };
 
   const filterByStage = (stage: string) => {
-    if (stage === "aguardando_laudo") {
-      return solicitacoes?.filter((s) => {
-        if (s.status_mesa !== "aprovada") return false;
-        const laudos = (s as any).laudos;
-        if (!laudos) return true; // no laudo yet
-        if (Array.isArray(laudos)) return !laudos.some((l: any) => l.status_laudo === "finalizado");
-        return laudos.status_laudo !== "finalizado";
-      }) ?? [];
-    }
-    if (stage === "laudo_finalizado") {
-      return solicitacoes?.filter((s) => {
-        if (s.status_mesa !== "aprovada") return false;
-        const laudos = (s as any).laudos;
-        if (!laudos) return false;
-        if (Array.isArray(laudos)) return laudos.some((l: any) => l.status_laudo === "finalizado");
-        return laudos.status_laudo === "finalizado";
-      }) ?? [];
-    }
     return solicitacoes?.filter((s) => s.status_mesa === stage) ?? [];
+  };
+
+  const getLaudoStatus = (s: any): string | null => {
+    const laudos = (s as any).laudos;
+    if (!laudos) return null;
+    if (Array.isArray(laudos)) {
+      if (laudos.length === 0) return null;
+      return laudos[0].status_laudo;
+    }
+    return laudos.status_laudo;
   };
 
   const renderCard = (s: any) => {
     const prop = (s as any).propriedades;
     const produto = (s as any).pronaf_produtos;
     const st = statusMesaMap[s.status_mesa] || { label: s.status_mesa, variant: "outline" as const };
+    const laudoSt = getLaudoStatus(s);
     return (
       <Card key={s.id} className="cursor-pointer hover:ring-1 hover:ring-ring transition-shadow" onClick={() => openDetail(s)}>
         <CardContent className="py-3 space-y-1">
@@ -287,6 +279,11 @@ export default function MesaProdutos() {
             <div className="flex items-center gap-2 flex-wrap min-w-0">
               <span className="font-display font-semibold text-sm">{prop?.nome_propriedade}</span>
               {produto && <Badge variant="outline" className="text-xs">{produto.nome}</Badge>}
+              {laudoSt && (
+                <Badge variant={laudoSt === "finalizado" ? "default" : "secondary"} className="text-xs">
+                  Laudo: {laudoSt === "em_vistoria" ? "em vistoria" : laudoSt === "aguardando_assinatura" ? "aguard. assin." : laudoSt}
+                </Badge>
+              )}
             </div>
             <span className="text-xs text-muted-foreground whitespace-nowrap">{new Date(s.created_at).toLocaleDateString("pt-BR")}</span>
           </div>
@@ -306,7 +303,7 @@ export default function MesaProdutos() {
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-2xl font-bold">Esteira de Solicitações</h1>
-        <p className="text-muted-foreground">Pipeline completo: documentação → elegibilidade → aprovação → engenheiro.</p>
+        <p className="text-muted-foreground">Pipeline completo: documentação → elegibilidade → laudo → banco.</p>
       </div>
 
       {isLoading ? (
@@ -319,7 +316,7 @@ export default function MesaProdutos() {
                 {stage.label} ({filterByStage(stage.key).length})
               </TabsTrigger>
             ))}
-            <TabsTrigger value="rejeitada">Rejeitadas ({filterByStage("rejeitada").length})</TabsTrigger>
+            <TabsTrigger value="reprovada">Reprovadas ({filterByStage("reprovada").length})</TabsTrigger>
           </TabsList>
           {pipelineStages.map((stage) => (
             <TabsContent key={stage.key} value={stage.key}>
@@ -333,13 +330,13 @@ export default function MesaProdutos() {
               )}
             </TabsContent>
           ))}
-          <TabsContent value="rejeitada">
-            {!filterByStage("rejeitada").length ? (
+          <TabsContent value="reprovada">
+            {!filterByStage("reprovada").length ? (
               <Card><CardContent className="flex flex-col items-center gap-3 py-12">
-                <p className="text-muted-foreground">Nenhuma solicitação rejeitada.</p>
+                <p className="text-muted-foreground">Nenhuma solicitação reprovada.</p>
               </CardContent></Card>
             ) : (
-              <div className="grid gap-3">{filterByStage("rejeitada").map(renderCard)}</div>
+              <div className="grid gap-3">{filterByStage("reprovada").map(renderCard)}</div>
             )}
           </TabsContent>
         </Tabs>
@@ -422,10 +419,7 @@ export default function MesaProdutos() {
                   <Sparkles className="h-4 w-4 text-primary" /> Assistente IA
                 </h4>
                 <div className="flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={ai.isLoading}
+                  <Button size="sm" variant="outline" disabled={ai.isLoading}
                     onClick={() => ai.analyze("resumo_solicitacao", {
                       propriedade: (selectedSolicitacao as any).propriedades,
                       cultura: selectedSolicitacao.cultura_principal,
@@ -433,15 +427,11 @@ export default function MesaProdutos() {
                       valor: selectedSolicitacao.valor_solicitado,
                       produto: (selectedSolicitacao as any).pronaf_produtos,
                       status: selectedSolicitacao.status_mesa,
-                    })}
-                  >
+                    })}>
                     {ai.isLoading ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}
                     Resumo IA
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={ai.isLoading}
+                  <Button size="sm" variant="outline" disabled={ai.isLoading}
                     onClick={() => ai.analyze("analise_documentos", {
                       propriedade: (selectedSolicitacao as any).propriedades,
                       cultura: selectedSolicitacao.cultura_principal,
@@ -449,22 +439,17 @@ export default function MesaProdutos() {
                       valor: selectedSolicitacao.valor_solicitado,
                       produto: (selectedSolicitacao as any).pronaf_produtos,
                       tipo_credito: selectedSolicitacao.tipo_credito,
-                    })}
-                  >
+                    })}>
                     <FileSearch className="h-3.5 w-3.5 mr-1" /> Análise Docs
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={ai.isLoading}
+                  <Button size="sm" variant="outline" disabled={ai.isLoading}
                     onClick={() => ai.analyze("sugestao_engenheiro", {
                       propriedade: (selectedSolicitacao as any).propriedades,
                       cultura: selectedSolicitacao.cultura_principal,
                       area: selectedSolicitacao.area_cultivo_ha,
                       valor: selectedSolicitacao.valor_solicitado,
                       produto: (selectedSolicitacao as any).pronaf_produtos,
-                    })}
-                  >
+                    })}>
                     <UserCheck className="h-3.5 w-3.5 mr-1" /> Sugestão Eng.
                   </Button>
                 </div>
@@ -494,7 +479,6 @@ export default function MesaProdutos() {
                   </Badge>
                 </div>
 
-                {/* Required docs checklist */}
                 {detailPronafDocs && detailPronafDocs.length > 0 && (
                   <div className="space-y-2">
                     {detailPronafDocs.map((doc) => {
@@ -536,7 +520,6 @@ export default function MesaProdutos() {
                   </div>
                 )}
 
-                {/* Additional uploaded docs (without pronaf_documento_id) */}
                 {uploadedDocs?.filter((d) => !d.pronaf_documento_id).map((doc) => (
                   <div key={doc.id} className="flex items-center justify-between gap-2 rounded-md border p-2 text-sm">
                     <span className="text-muted-foreground truncate">{doc.nome_arquivo}</span>
@@ -590,43 +573,108 @@ export default function MesaProdutos() {
 
               {/* Action buttons — sequential flow */}
               <div className="flex flex-wrap gap-2 border-t pt-4">
-                {/* Step 1: pendente → em_analise */}
+                {/* pendente → em_analise_mesa */}
                 {selectedSolicitacao.status_mesa === "pendente" && (
-                  <Button size="sm" variant="secondary" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "em_analise" })} disabled={updateStatusMutation.isPending}>
+                  <Button size="sm" variant="secondary" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "em_analise_mesa" })} disabled={updateStatusMutation.isPending}>
                     Iniciar Análise
                   </Button>
                 )}
-                {/* Step 2: em_analise → docs_ok (or docs_pendente_eng) */}
-                {(selectedSolicitacao.status_mesa === "em_analise" || selectedSolicitacao.status_mesa === "docs_pendente_eng") && (
-                  <Button size="sm" variant="secondary" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "docs_ok" })} disabled={updateStatusMutation.isPending}>
-                    <Check className="h-3.5 w-3.5 mr-1" /> Docs OK
+
+                {/* em_analise_mesa → docs_pendentes_produtor (solicitar docs) */}
+                {selectedSolicitacao.status_mesa === "em_analise_mesa" && (
+                  <>
+                    <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ 
+                      id: selectedSolicitacao.id, 
+                      status_mesa: "docs_pendentes_produtor",
+                      extra: { docs_habilitados: true }
+                    })} disabled={updateStatusMutation.isPending}>
+                      <FolderOpen className="h-3.5 w-3.5 mr-1" /> Solicitar Docs ao Produtor
+                    </Button>
+                    <Button size="sm" variant="secondary" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "docs_em_validacao" })} disabled={updateStatusMutation.isPending}>
+                      <Check className="h-3.5 w-3.5 mr-1" /> Docs já enviados, validar
+                    </Button>
+                  </>
+                )}
+
+                {/* docs_pendentes_produtor → docs_em_validacao (produtor enviou) */}
+                {selectedSolicitacao.status_mesa === "docs_pendentes_produtor" && (
+                  <Button size="sm" variant="secondary" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "docs_em_validacao" })} disabled={updateStatusMutation.isPending}>
+                    <Check className="h-3.5 w-3.5 mr-1" /> Docs Recebidos, Validar
                   </Button>
                 )}
-                {/* Step 3: docs_ok → elegibilidade_ok */}
-                {selectedSolicitacao.status_mesa === "docs_ok" && (
-                  <Button size="sm" variant="secondary" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "elegibilidade_ok" })} disabled={updateStatusMutation.isPending}>
-                    <Check className="h-3.5 w-3.5 mr-1" /> Elegibilidade OK
+
+                {/* docs_em_validacao → elegivel */}
+                {selectedSolicitacao.status_mesa === "docs_em_validacao" && (
+                  <>
+                    <Button size="sm" variant="secondary" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "elegivel" })} disabled={updateStatusMutation.isPending}>
+                      <Check className="h-3.5 w-3.5 mr-1" /> Elegível
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ 
+                      id: selectedSolicitacao.id, 
+                      status_mesa: "docs_pendentes_produtor"
+                    })} disabled={updateStatusMutation.isPending}>
+                      <RotateCcw className="h-3.5 w-3.5 mr-1" /> Docs Insuficientes
+                    </Button>
+                  </>
+                )}
+
+                {/* elegivel → aguardando_laudo (assign engineer) or pronta_para_banco */}
+                {selectedSolicitacao.status_mesa === "elegivel" && (
+                  <>
+                    <Button size="sm" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "aguardando_laudo" })} disabled={updateStatusMutation.isPending}>
+                      <Check className="h-3.5 w-3.5 mr-1" /> Liberar p/ Engenheiro
+                    </Button>
+                    <Button size="sm" variant="secondary" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "pronta_para_banco" })} disabled={updateStatusMutation.isPending}>
+                      <Send className="h-3.5 w-3.5 mr-1" /> Pronta p/ Banco
+                    </Button>
+                  </>
+                )}
+
+                {/* aguardando_laudo → pronta_para_banco (concomitante) */}
+                {selectedSolicitacao.status_mesa === "aguardando_laudo" && (
+                  <Button size="sm" variant="secondary" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "pronta_para_banco" })} disabled={updateStatusMutation.isPending}>
+                    <Send className="h-3.5 w-3.5 mr-1" /> Marcar Pronta p/ Banco
                   </Button>
                 )}
-                {/* Step 4: elegibilidade_ok → aprovada */}
-                {selectedSolicitacao.status_mesa === "elegibilidade_ok" && (
-                  <Button size="sm" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "aprovada" })} disabled={updateStatusMutation.isPending}>
-                    <Check className="h-3.5 w-3.5 mr-1" /> Aprovar e Liberar
+
+                {/* Bank send actions from pronta_para_banco */}
+                {selectedSolicitacao.status_mesa === "pronta_para_banco" && selectedSolicitacao.status_banco === "nao_enviado" && (
+                  <Button size="sm" onClick={() => {
+                    updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "pronta_para_banco", extra: { status_banco: "enviado", data_envio_banco: new Date().toISOString() } });
+                  }} disabled={updateStatusMutation.isPending}>
+                    <Send className="h-3.5 w-3.5 mr-1" /> Enviar ao Banco
                   </Button>
                 )}
-                {/* Side action: solicitar docs ao engenheiro (from em_analise or docs_ok) */}
-                {["em_analise", "docs_ok"].includes(selectedSolicitacao.status_mesa) && (
-                  <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "docs_pendente_eng" })} disabled={updateStatusMutation.isPending}>
-                    Solicitar Docs ao Eng.
+                {selectedSolicitacao.status_banco === "enviado" && (
+                  <>
+                    <Button size="sm" variant="destructive" onClick={() => {
+                      updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: selectedSolicitacao.status_mesa, extra: { status_banco: "devolvido", data_retorno_banco: new Date().toISOString() } });
+                    }} disabled={updateStatusMutation.isPending}>
+                      <RotateCcw className="h-3.5 w-3.5 mr-1" /> Devolvido pelo Banco
+                    </Button>
+                    <Button size="sm" onClick={() => {
+                      updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: selectedSolicitacao.status_mesa, extra: { status_banco: "aprovado", data_retorno_banco: new Date().toISOString() } });
+                    }} disabled={updateStatusMutation.isPending}>
+                      <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Aprovado pelo Banco
+                    </Button>
+                  </>
+                )}
+                {selectedSolicitacao.status_banco === "devolvido" && (
+                  <Button size="sm" onClick={() => {
+                    updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: selectedSolicitacao.status_mesa, extra: { status_banco: "enviado", data_envio_banco: new Date().toISOString() } });
+                  }} disabled={updateStatusMutation.isPending}>
+                    <Send className="h-3.5 w-3.5 mr-1" /> Reenviar ao Banco
                   </Button>
                 )}
+
                 {/* Reject — available at any non-final stage */}
-                {!["aprovada", "rejeitada"].includes(selectedSolicitacao.status_mesa) && (
-                  <Button size="sm" variant="destructive" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "rejeitada" })} disabled={updateStatusMutation.isPending}>
-                    <X className="h-3.5 w-3.5 mr-1" /> Rejeitar
+                {!["reprovada", "pronta_para_banco"].includes(selectedSolicitacao.status_mesa) && (
+                  <Button size="sm" variant="destructive" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "reprovada" })} disabled={updateStatusMutation.isPending}>
+                    <X className="h-3.5 w-3.5 mr-1" /> Reprovar
                   </Button>
                 )}
-                {/* Toggle document upload for producer */}
+
+                {/* Toggle document upload */}
                 <Button
                   size="sm"
                   variant={selectedSolicitacao.docs_habilitados ? "secondary" : "outline"}
@@ -640,40 +688,8 @@ export default function MesaProdutos() {
                   <FolderOpen className="h-3.5 w-3.5 mr-1" />
                   {selectedSolicitacao.docs_habilitados ? "Docs Liberados ✓" : "Liberar Documentos"}
                 </Button>
-                {/* Bank send actions */}
-                {selectedSolicitacao.status_mesa === "aprovada" && selectedSolicitacao.status_banco === "nao_enviado" && (
-                  <Button size="sm" onClick={() => {
-                    const updateData: any = {
-                      status_banco: "enviado_banco",
-                      data_envio_banco: new Date().toISOString(),
-                    };
-                    updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: "aprovada", extra: updateData });
-                  }} disabled={updateStatusMutation.isPending}>
-                    <Send className="h-3.5 w-3.5 mr-1" /> Enviar ao Banco
-                  </Button>
-                )}
-                {selectedSolicitacao.status_banco === "enviado_banco" && (
-                  <>
-                    <Button size="sm" variant="destructive" onClick={() => {
-                      updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: selectedSolicitacao.status_mesa, extra: { status_banco: "devolvido_banco", data_retorno_banco: new Date().toISOString() } });
-                    }} disabled={updateStatusMutation.isPending}>
-                      <RotateCcw className="h-3.5 w-3.5 mr-1" /> Devolvido pelo Banco
-                    </Button>
-                    <Button size="sm" onClick={() => {
-                      updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: selectedSolicitacao.status_mesa, extra: { status_banco: "aprovado_banco", data_retorno_banco: new Date().toISOString() } });
-                    }} disabled={updateStatusMutation.isPending}>
-                      <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Aprovado pelo Banco
-                    </Button>
-                  </>
-                )}
-                {selectedSolicitacao.status_banco === "devolvido_banco" && (
-                  <Button size="sm" onClick={() => {
-                    updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: selectedSolicitacao.status_mesa, extra: { status_banco: "enviado_banco", data_envio_banco: new Date().toISOString() } });
-                  }} disabled={updateStatusMutation.isPending}>
-                    <Send className="h-3.5 w-3.5 mr-1" /> Reenviar ao Banco
-                  </Button>
-                )}
-                {/* Save payment override without changing status */}
+
+                {/* Save without status change */}
                 <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ id: selectedSolicitacao.id, status_mesa: selectedSolicitacao.status_mesa })} disabled={updateStatusMutation.isPending}>
                   Salvar Alterações
                 </Button>
