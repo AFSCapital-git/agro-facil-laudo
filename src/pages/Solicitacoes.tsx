@@ -218,7 +218,7 @@ export default function Solicitacoes() {
         propriedade_id: form.propriedade_id,
         pronaf_produto_id: form.pronaf_produto_id || null,
         tipo_credito: selectedProduto?.finalidade || "custeio",
-        cultura_principal: form.cultura_principal,
+        cultura_principal: form.cultura_principal.startsWith("__outro:") ? form.cultura_principal.replace("__outro:", "").toUpperCase().trim() : form.cultura_principal,
         area_cultivo_ha: parseFloat(form.area_cultivo_ha) || 0,
         valor_solicitado: parseFloat(form.valor_solicitado) || 0,
         valor_pagamento_engenheiro: valorPagamentoEngenheiro,
@@ -468,7 +468,16 @@ export default function Solicitacoes() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Atividade / Cultura principal *</Label>
-                  <Select value={form.cultura_principal} onValueChange={(v) => setForm((f) => ({ ...f, cultura_principal: v }))}>
+                  <Select
+                    value={form.cultura_principal.startsWith("__outro:") ? "__outro" : form.cultura_principal}
+                    onValueChange={(v) => {
+                      if (v === "__outro") {
+                        setForm((f) => ({ ...f, cultura_principal: "__outro:" }));
+                      } else {
+                        setForm((f) => ({ ...f, cultura_principal: v }));
+                      }
+                    }}
+                  >
                     <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__label_graos" disabled className="font-semibold text-xs text-muted-foreground">— Grãos e Cereais —</SelectItem>
@@ -534,9 +543,18 @@ export default function Solicitacoes() {
                       <SelectItem value="Agroindústria">Agroindústria</SelectItem>
                       <SelectItem value="Energia solar / Bioenergia">Energia solar / Bioenergia</SelectItem>
                       <SelectItem value="Infraestrutura rural">Infraestrutura rural</SelectItem>
-                      <SelectItem value="Outro">Outro</SelectItem>
+                      <SelectItem value="__outro">Outro (digitar)</SelectItem>
                     </SelectContent>
                   </Select>
+                  {form.cultura_principal.startsWith("__outro:") && (
+                    <Input
+                      className="uppercase mt-2"
+                      placeholder="Digite a atividade / cultura"
+                      value={form.cultura_principal.replace("__outro:", "")}
+                      onChange={(e) => setForm((f) => ({ ...f, cultura_principal: `__outro:${e.target.value}` }))}
+                      required
+                    />
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Área de cultivo (ha) *</Label>
