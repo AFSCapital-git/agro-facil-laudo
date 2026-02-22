@@ -467,13 +467,76 @@ export default function Solicitacoes() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Cultura principal *</Label>
-                  <Input
-                    value={form.cultura_principal}
-                    onChange={(e) => setForm((f) => ({ ...f, cultura_principal: e.target.value }))}
-                    placeholder="Ex: Soja, Milho"
-                    required
-                  />
+                  <Label>Atividade / Cultura principal *</Label>
+                  <Select value={form.cultura_principal} onValueChange={(v) => setForm((f) => ({ ...f, cultura_principal: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__label_graos" disabled className="font-semibold text-xs text-muted-foreground">— Grãos e Cereais —</SelectItem>
+                      <SelectItem value="Soja">Soja</SelectItem>
+                      <SelectItem value="Milho">Milho</SelectItem>
+                      <SelectItem value="Arroz">Arroz</SelectItem>
+                      <SelectItem value="Feijão">Feijão</SelectItem>
+                      <SelectItem value="Trigo">Trigo</SelectItem>
+                      <SelectItem value="Sorgo">Sorgo</SelectItem>
+                      <SelectItem value="Aveia">Aveia</SelectItem>
+                      <SelectItem value="Cevada">Cevada</SelectItem>
+
+                      <SelectItem value="__label_hortifruti" disabled className="font-semibold text-xs text-muted-foreground">— Hortifrutigranjeiros —</SelectItem>
+                      <SelectItem value="Mandioca">Mandioca</SelectItem>
+                      <SelectItem value="Batata">Batata</SelectItem>
+                      <SelectItem value="Tomate">Tomate</SelectItem>
+                      <SelectItem value="Cebola">Cebola</SelectItem>
+                      <SelectItem value="Alho">Alho</SelectItem>
+                      <SelectItem value="Hortaliças (diversas)">Hortaliças (diversas)</SelectItem>
+                      <SelectItem value="Frutas (diversas)">Frutas (diversas)</SelectItem>
+                      <SelectItem value="Banana">Banana</SelectItem>
+                      <SelectItem value="Laranja">Laranja</SelectItem>
+                      <SelectItem value="Uva">Uva</SelectItem>
+                      <SelectItem value="Maçã">Maçã</SelectItem>
+                      <SelectItem value="Manga">Manga</SelectItem>
+                      <SelectItem value="Açaí">Açaí</SelectItem>
+
+                      <SelectItem value="__label_industriais" disabled className="font-semibold text-xs text-muted-foreground">— Culturas Industriais —</SelectItem>
+                      <SelectItem value="Café">Café</SelectItem>
+                      <SelectItem value="Cana-de-açúcar">Cana-de-açúcar</SelectItem>
+                      <SelectItem value="Algodão">Algodão</SelectItem>
+                      <SelectItem value="Tabaco">Tabaco</SelectItem>
+                      <SelectItem value="Cacau">Cacau</SelectItem>
+                      <SelectItem value="Dendê / Palma">Dendê / Palma</SelectItem>
+                      <SelectItem value="Borracha / Seringueira">Borracha / Seringueira</SelectItem>
+
+                      <SelectItem value="__label_pecuaria" disabled className="font-semibold text-xs text-muted-foreground">— Pecuária —</SelectItem>
+                      <SelectItem value="Bovinocultura de corte">Bovinocultura de corte</SelectItem>
+                      <SelectItem value="Bovinocultura de leite">Bovinocultura de leite</SelectItem>
+                      <SelectItem value="Suinocultura">Suinocultura</SelectItem>
+                      <SelectItem value="Avicultura">Avicultura</SelectItem>
+                      <SelectItem value="Ovinocultura">Ovinocultura</SelectItem>
+                      <SelectItem value="Caprinocultura">Caprinocultura</SelectItem>
+                      <SelectItem value="Apicultura">Apicultura</SelectItem>
+                      <SelectItem value="Equinocultura">Equinocultura</SelectItem>
+                      <SelectItem value="Bubalinocultura">Bubalinocultura</SelectItem>
+
+                      <SelectItem value="__label_aqui" disabled className="font-semibold text-xs text-muted-foreground">— Aquicultura e Pesca —</SelectItem>
+                      <SelectItem value="Piscicultura">Piscicultura</SelectItem>
+                      <SelectItem value="Carcinicultura">Carcinicultura</SelectItem>
+                      <SelectItem value="Aquicultura (outros)">Aquicultura (outros)</SelectItem>
+
+                      <SelectItem value="__label_florestal" disabled className="font-semibold text-xs text-muted-foreground">— Florestal —</SelectItem>
+                      <SelectItem value="Eucalipto">Eucalipto</SelectItem>
+                      <SelectItem value="Pinus">Pinus</SelectItem>
+                      <SelectItem value="Teca">Teca</SelectItem>
+                      <SelectItem value="Reflorestamento (outros)">Reflorestamento (outros)</SelectItem>
+                      <SelectItem value="Extrativismo vegetal">Extrativismo vegetal</SelectItem>
+
+                      <SelectItem value="__label_outros" disabled className="font-semibold text-xs text-muted-foreground">— Outros —</SelectItem>
+                      <SelectItem value="Pastagem / Formação de pasto">Pastagem / Formação de pasto</SelectItem>
+                      <SelectItem value="Irrigação">Irrigação</SelectItem>
+                      <SelectItem value="Agroindústria">Agroindústria</SelectItem>
+                      <SelectItem value="Energia solar / Bioenergia">Energia solar / Bioenergia</SelectItem>
+                      <SelectItem value="Infraestrutura rural">Infraestrutura rural</SelectItem>
+                      <SelectItem value="Outro">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Área de cultivo (ha) *</Label>
