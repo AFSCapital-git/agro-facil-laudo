@@ -1539,7 +1539,7 @@ export default function MesaProdutos() {
                     chatMessages.map((msg) => (
                       <div key={msg.id} className={`text-sm ${msg.remetente_id === user?.id ? "text-right" : ""}`}>
                         <span className="text-xs text-muted-foreground">
-                          {msg.remetente_role === "mesa_produtos" ? "Mesa" : msg.remetente_role === "engenheiro" ? "Engenheiro" : "Produtor"}
+                          {msg.remetente_role === "mesa_produtos" ? "Mesa" : msg.remetente_role === "engenheiro" ? "Engenheiro" : msg.remetente_role === "banco" ? "Banco" : "Produtor"}
                           {" · "}
                           {new Date(msg.created_at).toLocaleString("pt-BR", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })}
                         </span>
