@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import type { PropriedadeFormData } from "@/pages/Propriedades";
 
 const UF_LIST = [
@@ -53,6 +55,24 @@ interface Props {
 }
 
 export default function PropriedadeForm({ form, setForm, onSubmit, onCancel, isPending, isEdit }: Props) {
+  const [municipios, setMunicipios] = useState<string[]>([]);
+  const [loadingMunicipios, setLoadingMunicipios] = useState(false);
+
+  useEffect(() => {
+    if (!form.uf) {
+      setMunicipios([]);
+      return;
+    }
+    setLoadingMunicipios(true);
+    fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${form.uf}/municipios?orderBy=nome`)
+      .then((r) => r.json())
+      .then((data: { nome: string }[]) => {
+        setMunicipios(data.map((m) => m.nome));
+      })
+      .catch(() => setMunicipios([]))
+      .finally(() => setLoadingMunicipios(false));
+  }, [form.uf]);
+
   const set = (field: keyof PropriedadeFormData) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [field]: e.target.value }));
 
@@ -70,17 +90,28 @@ export default function PropriedadeForm({ form, setForm, onSubmit, onCancel, isP
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label>Município *</Label>
-          <Input value={form.municipio} onChange={set("municipio")} required placeholder="Ex: Uberlândia" />
-        </div>
-        <div className="space-y-2">
           <Label>UF *</Label>
-          <Select value={form.uf} onValueChange={setSelect("uf")}>
+          <Select value={form.uf} onValueChange={(v) => { setForm((f) => ({ ...f, uf: v, municipio: "" })); }}>
             <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
             <SelectContent>
               {UF_LIST.map((uf) => (
                 <SelectItem key={uf} value={uf}>{uf}</SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>Município *</Label>
+          <Select value={form.municipio} onValueChange={setSelect("municipio")} disabled={!form.uf || loadingMunicipios}>
+            <SelectTrigger>
+              <SelectValue placeholder={loadingMunicipios ? "Carregando..." : form.uf ? "Selecione o município" : "Selecione o UF primeiro"} />
+            </SelectTrigger>
+            <SelectContent>
+              <ScrollArea className="h-60">
+                {municipios.map((m) => (
+                  <SelectItem key={m} value={m}>{m}</SelectItem>
+                ))}
+              </ScrollArea>
             </SelectContent>
           </Select>
         </div>
