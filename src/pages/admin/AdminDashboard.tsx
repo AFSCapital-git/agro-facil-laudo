@@ -1,14 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, FileText, CreditCard, MapPin, ClipboardCheck, Clock, CheckCircle2 } from "lucide-react";
+import { Users, FileText, CreditCard, MapPin, ClipboardCheck, Clock, CheckCircle2, LayoutDashboard } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
 import {
   ChartContainer, ChartTooltip, ChartTooltipContent,
 } from "@/components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AdminDashboard() {
-  const { data: stats } = useQuery({
+  const { data: stats, isLoading } = useQuery({
     queryKey: ["admin_stats"],
     queryFn: async () => {
       const [produtores, engenheiros, laudos, pagPendentes, solicitacoes] = await Promise.all([
@@ -36,7 +39,7 @@ export default function AdminDashboard() {
     },
   });
 
-  const { data: recentLogins } = useQuery({
+  const { data: recentLogins, isLoading: loadingLogins } = useQuery({
     queryKey: ["admin_recent_logins"],
     queryFn: async () => {
       const { data } = await supabase
@@ -44,7 +47,6 @@ export default function AdminDashboard() {
         .select("login_at")
         .gte("login_at", new Date(Date.now() - 7 * 86400000).toISOString())
         .order("login_at", { ascending: true });
-      // group by day
       const byDay: Record<string, number> = {};
       (data ?? []).forEach((l) => {
         const day = l.login_at.slice(0, 10);
@@ -71,11 +73,11 @@ export default function AdminDashboard() {
   const COLORS = [
     "hsl(var(--primary))",
     "hsl(var(--accent))",
-    "hsl(var(--secondary))",
+    "hsl(var(--secondary-foreground))",
     "hsl(210 60% 50%)",
-    "hsl(150 50% 45%)",
-    "hsl(0 60% 50%)",
-    "hsl(45 80% 50%)",
+    "hsl(var(--success))",
+    "hsl(var(--destructive))",
+    "hsl(var(--warning))",
     "hsl(280 50% 55%)",
   ];
 
@@ -86,32 +88,36 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-bold">Painel Admin</h1>
-        <p className="text-muted-foreground">Visão geral da plataforma AgroLaudo.</p>
-      </div>
+      <PageHeader
+        icon={<LayoutDashboard className="h-5 w-5" />}
+        title="Painel Admin"
+        description="Visão geral da plataforma AgroLaudo."
+      />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={MapPin} title="Produtores" value={String(stats?.produtores ?? "—")} />
-        <StatCard icon={Users} title="Engenheiros" value={String(stats?.engenheiros ?? "—")} />
-        <StatCard icon={FileText} title="Laudos" value={String(stats?.laudos ?? "—")} />
-        <StatCard icon={CreditCard} title="Pgto Pendente" value={formatCurrency(stats?.totalPendente ?? 0)} />
+        <StatCard loading={isLoading} icon={<MapPin className="h-4 w-4" />} title="Produtores" value={String(stats?.produtores ?? "0")} delay={0} />
+        <StatCard loading={isLoading} icon={<Users className="h-4 w-4" />} title="Engenheiros" value={String(stats?.engenheiros ?? "0")} delay={75} />
+        <StatCard loading={isLoading} icon={<FileText className="h-4 w-4" />} title="Laudos" value={String(stats?.laudos ?? "0")} delay={150} />
+        <StatCard loading={isLoading} icon={<CreditCard className="h-4 w-4" />} title="Pgto Pendente" value={formatCurrency(stats?.totalPendente ?? 0)} delay={225} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard icon={ClipboardCheck} title="Total Solicitações" value={String(stats?.totalSolicitacoes ?? "—")} />
-        <StatCard icon={Clock} title="Em Análise" value={String((stats?.statusCounts?.em_analise_mesa ?? 0) + (stats?.statusCounts?.docs_em_validacao ?? 0))} />
-        <StatCard icon={CheckCircle2} title="Prontas p/ Banco" value={String(stats?.statusCounts?.pronta_para_banco ?? 0)} />
+        <StatCard loading={isLoading} icon={<ClipboardCheck className="h-4 w-4" />} title="Total Solicitações" value={String(stats?.totalSolicitacoes ?? "0")} delay={300} />
+        <StatCard loading={isLoading} icon={<Clock className="h-4 w-4" />} title="Em Análise" value={String((stats?.statusCounts?.em_analise_mesa ?? 0) + (stats?.statusCounts?.docs_em_validacao ?? 0))} delay={375} />
+        <StatCard loading={isLoading} icon={<CheckCircle2 className="h-4 w-4" />} title="Prontas p/ Banco" value={String(stats?.statusCounts?.pronta_para_banco ?? 0)} delay={450} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        {/* Status distribution */}
-        <Card>
+        <Card className="opacity-0 animate-slide-up" style={{ animationDelay: "500ms", animationFillMode: "forwards" }}>
           <CardHeader>
             <CardTitle className="text-sm font-medium text-muted-foreground">Distribuição de Status</CardTitle>
           </CardHeader>
           <CardContent>
-            {pieData.length > 0 ? (
+            {isLoading ? (
+              <div className="flex items-center justify-center h-[250px]">
+                <Skeleton className="h-[180px] w-[180px] rounded-full" />
+              </div>
+            ) : pieData.length > 0 ? (
               <ChartContainer config={{}} className="h-[250px] w-full">
                 <PieChart>
                   <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={({ name, value }) => `${name}: ${value}`}>
@@ -123,46 +129,41 @@ export default function AdminDashboard() {
                 </PieChart>
               </ChartContainer>
             ) : (
-              <p className="text-sm text-muted-foreground">Sem dados.</p>
+              <div className="flex items-center justify-center h-[250px] text-muted-foreground text-sm">
+                Sem dados disponíveis.
+              </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Login activity */}
-        <Card>
+        <Card className="opacity-0 animate-slide-up" style={{ animationDelay: "575ms", animationFillMode: "forwards" }}>
           <CardHeader>
             <CardTitle className="text-sm font-medium text-muted-foreground">Logins (últimos 7 dias)</CardTitle>
           </CardHeader>
           <CardContent>
-            {(recentLogins ?? []).length > 0 ? (
+            {loadingLogins ? (
+              <div className="flex items-end gap-2 h-[250px] pb-8">
+                {Array.from({ length: 7 }).map((_, i) => (
+                  <Skeleton key={i} className="flex-1 rounded-t" style={{ height: `${40 + Math.random() * 60}%` }} />
+                ))}
+              </div>
+            ) : (recentLogins ?? []).length > 0 ? (
               <ChartContainer config={{ logins: { label: "Logins", color: "hsl(var(--primary))" } }} className="h-[250px] w-full">
                 <BarChart data={recentLogins}>
                   <XAxis dataKey="day" fontSize={12} />
                   <YAxis allowDecimals={false} fontSize={12} />
-                  <Bar dataKey="logins" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="logins" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
                   <ChartTooltip content={<ChartTooltipContent />} />
                 </BarChart>
               </ChartContainer>
             ) : (
-              <p className="text-sm text-muted-foreground">Sem dados.</p>
+              <div className="flex items-center justify-center h-[250px] text-muted-foreground text-sm">
+                Sem dados disponíveis.
+              </div>
             )}
           </CardContent>
         </Card>
       </div>
     </div>
-  );
-}
-
-function StatCard({ icon: Icon, title, value }: { icon: React.ComponentType<{ className?: string }>; title: string; value: string }) {
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        <Icon className="h-4 w-4 text-muted-foreground" />
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold font-display">{value}</div>
-      </CardContent>
-    </Card>
   );
 }
