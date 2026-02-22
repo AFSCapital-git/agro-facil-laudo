@@ -18,7 +18,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { useAiAssistant } from "@/hooks/useAiAssistant";
-import { ClipboardCheck, MapPin, Sprout, Banknote, Check, X, Send, MessageCircle, Sparkles, FileSearch, UserCheck, Loader2, FolderOpen, FileText, CheckCircle2, XCircle, Eye, Video, RotateCcw } from "lucide-react";
+import { ClipboardCheck, MapPin, Sprout, Banknote, Check, X, Send, MessageCircle, Sparkles, FileSearch, UserCheck, Loader2, FolderOpen, FileText, CheckCircle2, XCircle, Eye, Video, RotateCcw, ChevronDown, ChevronUp, AlertTriangle, CheckCircle } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { AudioRecorder } from "@/components/chat/AudioRecorder";
 import { AudioPlayer } from "@/components/chat/AudioPlayer";
@@ -58,13 +58,14 @@ export default function MesaProdutos() {
   
   const [tipoValorOverride, setTipoValorOverride] = useState<"produto" | "fixo" | "percentual">("produto");
   const [valorOverride, setValorOverride] = useState("");
+  const [showPropDetails, setShowPropDetails] = useState(false);
 
   const { data: solicitacoes, isLoading } = useQuery({
     queryKey: ["mesa_solicitacoes"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("solicitacoes_laudo")
-        .select("*, propriedades(nome_propriedade, endereco, area_total_ha, regiao_id), pronaf_produtos(nome, finalidade, valor_engenheiro, tipo_valor_engenheiro), produtores(user_id), laudos(id, status_laudo, caminho_pdf_laudo)")
+        .select("*, propriedades(nome_propriedade, endereco, area_total_ha, regiao_id, municipio, uf, latitude, longitude, codigo_car, matricula_imovel, numero_ccir, numero_itr, tipo_posse, area_reserva_legal_ha, area_app_ha, fonte_agua, tipo_solo), pronaf_produtos(nome, finalidade, valor_engenheiro, tipo_valor_engenheiro), produtores(user_id), laudos(id, status_laudo, caminho_pdf_laudo)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       const produtorUserIds = [...new Set(data?.map((s: any) => s.produtores?.user_id).filter(Boolean))];
@@ -240,6 +241,7 @@ export default function MesaProdutos() {
 
   const openDetail = (s: any) => {
     setSelectedSolicitacao(s);
+    setShowPropDetails(false);
     setNotas(s.notas_mesa || "");
     setEngenheiroAtribuidoId(s.engenheiro_atribuido_id || "");
     if ((s as any).tipo_valor_engenheiro_override) {
@@ -383,6 +385,90 @@ export default function MesaProdutos() {
                 <div><span className="font-medium">Status:</span> <Badge variant={statusSolicitacaoMap[selectedSolicitacao.status_solicitacao]?.variant}>{statusSolicitacaoMap[selectedSolicitacao.status_solicitacao]?.label}</Badge></div>
                 <div><span className="font-medium">Pgto Eng. atual:</span> {formatCurrency(selectedSolicitacao.valor_pagamento_engenheiro)}</div>
               </div>
+
+              {/* Dados Cadastrais da Propriedade */}
+              {(() => {
+                const prop = (selectedSolicitacao as any).propriedades;
+                if (!prop) return null;
+
+                const TIPO_POSSE_LABELS: Record<string, string> = {
+                  propria: "Própria", arrendada: "Arrendada", parceria: "Parceria",
+                  comodato: "Comodato", posse: "Posse", assentamento: "Assentamento",
+                };
+                const FONTE_AGUA_LABELS: Record<string, string> = {
+                  rio: "Rio", nascente: "Nascente", "poço_artesiano": "Poço artesiano",
+                  represa: "Represa / Açude", irrigacao: "Irrigação", sequeiro: "Sequeiro", outro: "Outro",
+                };
+                const TIPO_SOLO_LABELS: Record<string, string> = {
+                  argiloso: "Argiloso", arenoso: "Arenoso", siltoso: "Siltoso",
+                  humifero: "Humífero", misto: "Misto",
+                };
+
+                const checks = [
+                  { label: "Município/UF", ok: !!prop.municipio && !!prop.uf, value: prop.municipio ? `${prop.municipio}/${prop.uf}` : "Não informado" },
+                  { label: "Matrícula do imóvel", ok: !!prop.matricula_imovel, value: prop.matricula_imovel || "Não informado" },
+                  { label: "Código CAR", ok: !!prop.codigo_car, value: prop.codigo_car || "Não informado" },
+                  { label: "Nº CCIR (INCRA)", ok: !!prop.numero_ccir, value: prop.numero_ccir || "Não informado" },
+                  { label: "Nº ITR", ok: !!prop.numero_itr, value: prop.numero_itr || "Não informado" },
+                  { label: "Tipo de posse", ok: !!prop.tipo_posse, value: TIPO_POSSE_LABELS[prop.tipo_posse] || prop.tipo_posse || "Não informado" },
+                  { label: "Área total (ha)", ok: prop.area_total_ha > 0, value: prop.area_total_ha ? `${prop.area_total_ha} ha` : "Não informado" },
+                  { label: "Reserva legal (ha)", ok: prop.area_reserva_legal_ha != null, value: prop.area_reserva_legal_ha != null ? `${prop.area_reserva_legal_ha} ha` : "Não informado" },
+                  { label: "APP (ha)", ok: prop.area_app_ha != null, value: prop.area_app_ha != null ? `${prop.area_app_ha} ha` : "Não informado" },
+                  { label: "Tipo de solo", ok: !!prop.tipo_solo, value: TIPO_SOLO_LABELS[prop.tipo_solo] || prop.tipo_solo || "Não informado" },
+                  { label: "Fonte de água", ok: !!prop.fonte_agua, value: FONTE_AGUA_LABELS[prop.fonte_agua] || prop.fonte_agua || "Não informado" },
+                  { label: "Geolocalização", ok: prop.latitude != null && prop.longitude != null, value: prop.latitude != null ? `${prop.latitude}, ${prop.longitude}` : "Não informado" },
+                ];
+
+                const missing = checks.filter(c => !c.ok).length;
+                const total = checks.length;
+                const allOk = missing === 0;
+
+                return (
+                  <div className="border rounded-md overflow-hidden">
+                    <button
+                      type="button"
+                      className="w-full flex items-center justify-between p-3 bg-muted/30 hover:bg-muted/50 transition-colors text-left"
+                      onClick={() => setShowPropDetails(!showPropDetails)}
+                    >
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium text-sm">Dados Cadastrais da Propriedade</span>
+                        {allOk ? (
+                          <Badge variant="default" className="text-xs gap-1"><CheckCircle className="h-3 w-3" /> Completo</Badge>
+                        ) : (
+                          <Badge variant="destructive" className="text-xs gap-1"><AlertTriangle className="h-3 w-3" /> {missing} campo{missing > 1 ? "s" : ""} pendente{missing > 1 ? "s" : ""}</Badge>
+                        )}
+                      </div>
+                      {showPropDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </button>
+                    {showPropDetails && (
+                      <div className="p-3 space-y-1">
+                        <div className="grid gap-1 sm:grid-cols-2">
+                          {checks.map((c) => (
+                            <div key={c.label} className="flex items-start gap-2 text-xs py-1">
+                              {c.ok ? (
+                                <CheckCircle2 className="h-3.5 w-3.5 text-green-600 mt-0.5 shrink-0" />
+                              ) : (
+                                <XCircle className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
+                              )}
+                              <div>
+                                <span className="font-medium">{c.label}:</span>{" "}
+                                <span className={c.ok ? "text-muted-foreground" : "text-destructive"}>{c.value}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        {!allOk && (
+                          <p className="text-xs text-destructive mt-2 flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            Cadastro incompleto — solicite ao produtor a atualização dos dados via chat.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Payment override */}
               <div className="border rounded-md p-3 space-y-3 bg-muted/30">
