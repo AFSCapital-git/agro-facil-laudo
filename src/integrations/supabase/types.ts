@@ -527,6 +527,45 @@ export type Database = {
           },
         ]
       }
+      notificacoes: {
+        Row: {
+          created_at: string
+          entidade: string | null
+          entidade_id: string | null
+          id: string
+          lida: boolean
+          link: string | null
+          mensagem: string
+          tipo: string
+          titulo: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entidade?: string | null
+          entidade_id?: string | null
+          id?: string
+          lida?: boolean
+          link?: string | null
+          mensagem?: string
+          tipo?: string
+          titulo: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entidade?: string | null
+          entidade_id?: string | null
+          id?: string
+          lida?: boolean
+          link?: string | null
+          mensagem?: string
+          tipo?: string
+          titulo?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pagamentos_engenheiro: {
         Row: {
           created_at: string
@@ -1118,6 +1157,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      criar_notificacao: {
+        Args: {
+          _entidade?: string
+          _entidade_id?: string
+          _link?: string
+          _mensagem?: string
+          _tipo?: string
+          _titulo: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
       get_banco_parceiro_id: { Args: never; Returns: string }
       get_engenheiro_id: { Args: never; Returns: string }
       get_engenheiro_laudo_solicitacao_ids: { Args: never; Returns: string[] }
