@@ -1131,6 +1131,7 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
+      is_banco: { Args: never; Returns: boolean }
       is_engenheiro: { Args: never; Returns: boolean }
       is_mesa_produtos: { Args: never; Returns: boolean }
       is_produtor: { Args: never; Returns: boolean }

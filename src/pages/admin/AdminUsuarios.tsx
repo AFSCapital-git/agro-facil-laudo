@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Users, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 
-type AppRole = "produtor" | "engenheiro" | "admin" | "mesa_produtos";
+type AppRole = "produtor" | "engenheiro" | "admin" | "mesa_produtos" | "banco";
 
 interface UserWithRole {
   id: string;
@@ -85,6 +85,7 @@ export default function AdminUsuarios() {
       engenheiro: "Engenheiro",
       admin: "Administrador",
       mesa_produtos: "Mesa de Produtos",
+      banco: "Banco Parceiro",
     };
     return role ? labels[role] ?? role : "Sem papel";
   };
@@ -169,6 +170,7 @@ function UserRow({
               <SelectItem value="produtor">Produtor</SelectItem>
               <SelectItem value="engenheiro">Engenheiro</SelectItem>
               <SelectItem value="mesa_produtos">Mesa de Produtos</SelectItem>
+              <SelectItem value="banco">Banco Parceiro</SelectItem>
               <SelectItem value="admin">Administrador</SelectItem>
             </SelectContent>
           </Select>

@@ -30,6 +30,7 @@ import {
   Clock,
   Map,
   ToggleLeft,
+  ShieldCheck,
 } from "lucide-react";
 
 interface NavItem {
@@ -59,6 +60,10 @@ const mesaNav: NavItem[] = [
   { title: "Envios ao Banco", icon: CreditCard, path: "/mesa/envios-banco" },
 ];
 
+const bancoNav: NavItem[] = [
+  { title: "Painel", icon: Home, path: "/banco" },
+];
+
 const adminNav: NavItem[] = [
   { title: "Dashboard", icon: Home, path: "/" },
   { title: "Usuários", icon: Users, path: "/admin/usuarios" },
@@ -66,6 +71,7 @@ const adminNav: NavItem[] = [
   { title: "Engenheiros", icon: Users, path: "/admin/engenheiros" },
   { title: "Bancos", icon: Landmark, path: "/admin/bancos" },
   { title: "Regiões", icon: Map, path: "/admin/regioes" },
+  { title: "ZARC", icon: ShieldCheck, path: "/admin/zarc" },
   { title: "SLA", icon: Clock, path: "/admin/sla" },
   { title: "Blacklist", icon: Ban, path: "/admin/blacklist" },
   { title: "Pagamentos", icon: CreditCard, path: "/admin/pagamentos" },
@@ -80,8 +86,8 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const navItems = role === "admin" ? adminNav : role === "mesa_produtos" ? mesaNav : role === "engenheiro" ? engenheiroNav : produtorNav;
-  const roleLabel = role === "admin" ? "Administrador" : role === "mesa_produtos" ? "Mesa de Produtos" : role === "engenheiro" ? "Engenheiro" : "Produtor";
+  const navItems = role === "admin" ? adminNav : role === "mesa_produtos" ? mesaNav : role === "banco" ? bancoNav : role === "engenheiro" ? engenheiroNav : produtorNav;
+  const roleLabel = role === "admin" ? "Administrador" : role === "mesa_produtos" ? "Mesa de Produtos" : role === "banco" ? "Banco Parceiro" : role === "engenheiro" ? "Engenheiro" : "Produtor";
 
   return (
     <Sidebar>

@@ -2,7 +2,7 @@ import { useState, useEffect, createContext, useContext, ReactNode } from "react
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 
-type AppRole = "produtor" | "engenheiro" | "admin" | "mesa_produtos";
+type AppRole = "produtor" | "engenheiro" | "admin" | "mesa_produtos" | "banco";
 
 interface AuthContextType {
   user: User | null;
@@ -36,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     // Prioritize admin role if user has multiple roles
-    const priority: AppRole[] = ["admin", "mesa_produtos", "engenheiro", "produtor"];
+    const priority: AppRole[] = ["admin", "mesa_produtos", "banco", "engenheiro", "produtor"];
     const roles = data.map((r) => r.role as AppRole);
     const best = priority.find((p) => roles.includes(p)) ?? roles[0];
     setRole(best);
