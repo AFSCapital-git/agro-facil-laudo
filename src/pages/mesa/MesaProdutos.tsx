@@ -18,7 +18,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { useAiAssistant } from "@/hooks/useAiAssistant";
-import { ClipboardCheck, MapPin, Sprout, Banknote, Check, X, Send, MessageCircle, Sparkles, FileSearch, UserCheck, Loader2, FolderOpen, FileText, CheckCircle2, XCircle, Eye, Video, RotateCcw, ChevronDown, ChevronUp, AlertTriangle, CheckCircle } from "lucide-react";
+import { ClipboardCheck, MapPin, Sprout, Banknote, Check, X, Send, MessageCircle, Sparkles, FileSearch, UserCheck, Loader2, FolderOpen, FileText, CheckCircle2, XCircle, Eye, Video, RotateCcw, ChevronDown, ChevronUp, AlertTriangle, CheckCircle, Layers } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { AudioRecorder } from "@/components/chat/AudioRecorder";
 import { AudioPlayer } from "@/components/chat/AudioPlayer";
@@ -60,6 +60,10 @@ export default function MesaProdutos() {
   const [valorOverride, setValorOverride] = useState("");
   const [showPropDetails, setShowPropDetails] = useState(false);
 
+  // Group assistant fee state
+  const [tipoValorAssistencia, setTipoValorAssistencia] = useState<"fixo" | "percentual">("fixo");
+  const [valorAssistencia, setValorAssistencia] = useState("");
+
   const { data: solicitacoes, isLoading } = useQuery({
     queryKey: ["mesa_solicitacoes"],
     queryFn: async () => {
@@ -81,6 +85,19 @@ export default function MesaProdutos() {
         produtor_nome: s.produtores?.user_id ? profileMap[s.produtores.user_id] || "—" : "—",
         assistente_nome: s.assistido && s.engenheiros?.user_id ? profileMap[s.engenheiros.user_id] || "—" : null,
       })) ?? [];
+    },
+  });
+
+  // Fetch grupos_solicitacao for group info
+  const { data: grupos } = useQuery({
+    queryKey: ["mesa_grupos"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("grupos_solicitacao")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
     },
   });
 
@@ -131,6 +148,37 @@ export default function MesaProdutos() {
         .from("solicitacao_documentos")
         .select("*")
         .eq("solicitacao_id", selectedSolicitacao.id)
+        .order("created_at");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Shared group documents
+  const selectedGrupoId = selectedSolicitacao?.grupo_id;
+  const { data: grupoDocsCompartilhados } = useQuery({
+    queryKey: ["grupo_docs_compartilhados_mesa", selectedGrupoId],
+    enabled: !!selectedGrupoId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("grupo_documentos_compartilhados")
+        .select("*")
+        .eq("grupo_id", selectedGrupoId)
+        .order("created_at");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Sibling solicitations in the same group
+  const { data: grupoSiblings } = useQuery({
+    queryKey: ["grupo_siblings_mesa", selectedGrupoId],
+    enabled: !!selectedGrupoId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("solicitacoes_laudo")
+        .select("id, pronaf_produto_id, status_solicitacao, valor_solicitado, pronaf_produtos(nome)")
+        .eq("grupo_id", selectedGrupoId)
         .order("created_at");
       if (error) throw error;
       return data;
@@ -188,6 +236,35 @@ export default function MesaProdutos() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["mesa_solicitacoes"] });
       toast({ title: "Atualizado com sucesso!" });
+    },
+    onError: (err: Error) => toast({ title: "Erro", description: err.message, variant: "destructive" }),
+  });
+
+  // Update group assistant fee
+  const updateGrupoMutation = useMutation({
+    mutationFn: async ({ grupoId, tipo, valor }: { grupoId: string; tipo: string; valor: number }) => {
+      const { error } = await supabase
+        .from("grupos_solicitacao")
+        .update({ tipo_valor_assistencia: tipo, valor_assistencia: valor })
+        .eq("id", grupoId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["mesa_grupos"] });
+      toast({ title: "Taxa do assistente atualizada!" });
+    },
+    onError: (err: Error) => toast({ title: "Erro", description: err.message, variant: "destructive" }),
+  });
+
+  // Update shared doc status
+  const updateGrupoDocStatusMutation = useMutation({
+    mutationFn: async ({ docId, status }: { docId: string; status: string }) => {
+      const { error } = await supabase.from("grupo_documentos_compartilhados").update({ status_documento: status }).eq("id", docId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["grupo_docs_compartilhados_mesa", selectedGrupoId] });
+      toast({ title: "Status do documento atualizado!" });
     },
     onError: (err: Error) => toast({ title: "Erro", description: err.message, variant: "destructive" }),
   });
@@ -254,6 +331,20 @@ export default function MesaProdutos() {
       setTipoValorOverride("produto");
       setValorOverride("");
     }
+    // Load group assistant fee
+    if (s.grupo_id && grupos) {
+      const grupo = grupos.find((g: any) => g.id === s.grupo_id);
+      if (grupo) {
+        setTipoValorAssistencia((grupo.tipo_valor_assistencia === "percentual" ? "percentual" : "fixo") as "fixo" | "percentual");
+        setValorAssistencia(grupo.valor_assistencia ? String(grupo.valor_assistencia) : "");
+      } else {
+        setTipoValorAssistencia("fixo");
+        setValorAssistencia("");
+      }
+    } else {
+      setTipoValorAssistencia("fixo");
+      setValorAssistencia("");
+    }
   };
 
   const filterByStage = (stage: string) => {
@@ -290,12 +381,19 @@ export default function MesaProdutos() {
     });
   };
 
+  // Count siblings in same group for card badge
+  const getGroupSize = (grupoId: string | null) => {
+    if (!grupoId || !solicitacoes) return 0;
+    return solicitacoes.filter((s) => s.grupo_id === grupoId).length;
+  };
+
   const renderCard = (s: any) => {
     const prop = (s as any).propriedades;
     const produto = (s as any).pronaf_produtos;
     const st = statusSolicitacaoMap[s.status_solicitacao] || { label: s.status_solicitacao, variant: "outline" as const };
     const laudoSt = getLaudoStatus(s);
     const sla = getSlaStatus(s);
+    const groupSize = getGroupSize(s.grupo_id);
     return (
       <Card key={s.id} className={`cursor-pointer hover:ring-1 hover:ring-ring transition-shadow ${sla?.overdue ? "border-destructive/50" : ""}`} onClick={() => openDetail(s)}>
         <CardContent className="py-3 space-y-1">
@@ -303,6 +401,11 @@ export default function MesaProdutos() {
             <div className="flex items-center gap-2 flex-wrap min-w-0">
               <span className="font-display font-semibold text-sm">{prop?.nome_propriedade}</span>
               {produto && <Badge variant="outline" className="text-xs">{produto.nome}</Badge>}
+              {groupSize > 1 && (
+                <Badge variant="secondary" className="text-xs gap-1">
+                  <Layers className="h-3 w-3" /> {groupSize} produtos
+                </Badge>
+              )}
               {laudoSt && (
                 <Badge variant={laudoSt === "finalizado" ? "default" : "secondary"} className="text-xs">
                   Laudo: {laudoSt === "em_vistoria" ? "em vistoria" : laudoSt === "aguardando_assinatura" ? "aguard. assin." : laudoSt}
@@ -325,6 +428,8 @@ export default function MesaProdutos() {
       </Card>
     );
   };
+
+  const selectedGrupo = selectedGrupoId && grupos ? grupos.find((g: any) => g.id === selectedGrupoId) : null;
 
   return (
     <div className="space-y-6">
@@ -379,6 +484,33 @@ export default function MesaProdutos() {
             <div className="space-y-4">
               <StatusTimeline solicitacao={selectedSolicitacao} />
 
+              {/* Group info banner */}
+              {selectedGrupo && grupoSiblings && grupoSiblings.length > 1 && (
+                <div className="rounded-md border border-primary/20 bg-primary/5 p-3 space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Layers className="h-4 w-4 text-primary" />
+                    Grupo multi-produto ({grupoSiblings.length} produtos)
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {grupoSiblings.map((sib: any) => (
+                      <Badge
+                        key={sib.id}
+                        variant={sib.id === selectedSolicitacao.id ? "default" : "outline"}
+                        className="text-xs cursor-pointer"
+                        onClick={() => {
+                          const full = solicitacoes?.find((s) => s.id === sib.id);
+                          if (full) openDetail(full);
+                        }}
+                      >
+                        {(sib as any).pronaf_produtos?.nome || "Produto"}
+                        {" · "}
+                        {statusSolicitacaoMap[sib.status_solicitacao]?.label || sib.status_solicitacao}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="grid gap-2 text-sm sm:grid-cols-2">
                 <div><span className="font-medium">Propriedade:</span> {(selectedSolicitacao as any).propriedades?.nome_propriedade}</div>
                 <div><span className="font-medium">Endereço:</span> {(selectedSolicitacao as any).propriedades?.endereco}</div>
@@ -403,6 +535,67 @@ export default function MesaProdutos() {
                   </div>
                 </div>
               )}
+
+              {/* Assistant fee management (only for groups with assistido) */}
+              {selectedGrupo && selectedSolicitacao.assistido && (
+                <div className="border rounded-md p-3 space-y-3 bg-muted/30">
+                  <h4 className="font-medium text-sm flex items-center gap-2">
+                    <UserCheck className="h-4 w-4" /> Remuneração do Assistente (Grupo)
+                  </h4>
+                  <RadioGroup
+                    value={tipoValorAssistencia}
+                    onValueChange={(v: string) => setTipoValorAssistencia(v as "fixo" | "percentual")}
+                    className="flex flex-wrap gap-4"
+                  >
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="fixo" id="assist-fixo" />
+                      <Label htmlFor="assist-fixo" className="text-sm">Valor fixo (R$)</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="percentual" id="assist-pct" />
+                      <Label htmlFor="assist-pct" className="text-sm">Percentual (%)</Label>
+                    </div>
+                  </RadioGroup>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={valorAssistencia}
+                      onChange={(e) => setValorAssistencia(e.target.value)}
+                      placeholder={tipoValorAssistencia === "fixo" ? "Ex: 500.00" : "Ex: 1.5"}
+                      className="max-w-[200px]"
+                    />
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={!valorAssistencia || updateGrupoMutation.isPending}
+                      onClick={() => updateGrupoMutation.mutate({
+                        grupoId: selectedGrupoId,
+                        tipo: tipoValorAssistencia,
+                        valor: parseFloat(valorAssistencia) || 0,
+                      })}
+                    >
+                      {updateGrupoMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Salvar Taxa"}
+                    </Button>
+                  </div>
+                  {valorAssistencia && (
+                    <p className="text-xs font-medium text-foreground">
+                      Valor: {tipoValorAssistencia === "fixo"
+                        ? formatCurrency(parseFloat(valorAssistencia) || 0)
+                        : `${valorAssistencia}% do projeto (${formatCurrency((selectedSolicitacao.valor_solicitado * (parseFloat(valorAssistencia) || 0)) / 100)})`}
+                    </p>
+                  )}
+                  {selectedGrupo.valor_assistencia != null && (
+                    <p className="text-xs text-muted-foreground">
+                      Salvo: {selectedGrupo.tipo_valor_assistencia === "fixo"
+                        ? formatCurrency(selectedGrupo.valor_assistencia)
+                        : `${selectedGrupo.valor_assistencia}%`}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Property details collapsible */}
               {(() => {
                 const prop = (selectedSolicitacao as any).propriedades;
                 if (!prop) return null;
@@ -589,7 +782,45 @@ export default function MesaProdutos() {
                 )}
               </div>
 
-              {/* Documents section */}
+              {/* Shared group documents */}
+              {selectedGrupoId && grupoDocsCompartilhados && grupoDocsCompartilhados.length > 0 && (
+                <div className="border rounded-md p-4 space-y-3">
+                  <h4 className="font-medium text-sm flex items-center gap-2">
+                    <Layers className="h-4 w-4" /> Documentos Compartilhados do Grupo
+                  </h4>
+                  <div className="space-y-2">
+                    {grupoDocsCompartilhados.map((doc: any) => (
+                      <div key={doc.id} className="flex items-center justify-between gap-2 rounded-md border p-2 text-sm">
+                        <div className="flex-1 min-w-0">
+                          <span className="font-medium">{doc.nome_documento || doc.nome_arquivo}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Badge
+                            variant={doc.status_documento === "validado" ? "default" : doc.status_documento === "recusado" ? "destructive" : "secondary"}
+                            className="text-xs"
+                          >
+                            {doc.status_documento}
+                          </Badge>
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => updateGrupoDocStatusMutation.mutate({ docId: doc.id, status: "validado" })} disabled={updateGrupoDocStatusMutation.isPending}>
+                            <CheckCircle2 className="h-3 w-3 text-green-600" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => updateGrupoDocStatusMutation.mutate({ docId: doc.id, status: "recusado" })} disabled={updateGrupoDocStatusMutation.isPending}>
+                            <XCircle className="h-3 w-3 text-destructive" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={async () => {
+                            const { data } = await supabase.storage.from("solicitacao-docs").createSignedUrl(doc.caminho_arquivo, 300);
+                            if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+                          }}>
+                            <Eye className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Documents section (per-solicitation) */}
               <div className="border rounded-md p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="font-medium text-sm flex items-center gap-2">
