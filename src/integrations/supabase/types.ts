@@ -359,6 +359,124 @@ export type Database = {
         }
         Relationships: []
       }
+      grupo_documentos_compartilhados: {
+        Row: {
+          caminho_arquivo: string
+          created_at: string
+          grupo_id: string
+          id: string
+          nome_arquivo: string
+          nome_documento: string
+          observacoes: string | null
+          pronaf_documento_id: string | null
+          status_documento: string
+          updated_at: string
+        }
+        Insert: {
+          caminho_arquivo: string
+          created_at?: string
+          grupo_id: string
+          id?: string
+          nome_arquivo: string
+          nome_documento?: string
+          observacoes?: string | null
+          pronaf_documento_id?: string | null
+          status_documento?: string
+          updated_at?: string
+        }
+        Update: {
+          caminho_arquivo?: string
+          created_at?: string
+          grupo_id?: string
+          id?: string
+          nome_arquivo?: string
+          nome_documento?: string
+          observacoes?: string | null
+          pronaf_documento_id?: string | null
+          status_documento?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grupo_documentos_compartilhados_grupo_id_fkey"
+            columns: ["grupo_id"]
+            isOneToOne: false
+            referencedRelation: "grupos_solicitacao"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grupo_documentos_compartilhados_pronaf_documento_id_fkey"
+            columns: ["pronaf_documento_id"]
+            isOneToOne: false
+            referencedRelation: "pronaf_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      grupos_solicitacao: {
+        Row: {
+          assistido: boolean
+          created_at: string
+          engenheiro_assistente_id: string | null
+          id: string
+          observacoes_produtor: string | null
+          produtor_id: string
+          propriedade_id: string
+          status_grupo: string
+          tipo_valor_assistencia: string | null
+          updated_at: string
+          valor_assistencia: number | null
+        }
+        Insert: {
+          assistido?: boolean
+          created_at?: string
+          engenheiro_assistente_id?: string | null
+          id?: string
+          observacoes_produtor?: string | null
+          produtor_id: string
+          propriedade_id: string
+          status_grupo?: string
+          tipo_valor_assistencia?: string | null
+          updated_at?: string
+          valor_assistencia?: number | null
+        }
+        Update: {
+          assistido?: boolean
+          created_at?: string
+          engenheiro_assistente_id?: string | null
+          id?: string
+          observacoes_produtor?: string | null
+          produtor_id?: string
+          propriedade_id?: string
+          status_grupo?: string
+          tipo_valor_assistencia?: string | null
+          updated_at?: string
+          valor_assistencia?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grupos_solicitacao_engenheiro_assistente_id_fkey"
+            columns: ["engenheiro_assistente_id"]
+            isOneToOne: false
+            referencedRelation: "engenheiros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grupos_solicitacao_produtor_id_fkey"
+            columns: ["produtor_id"]
+            isOneToOne: false
+            referencedRelation: "produtores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grupos_solicitacao_propriedade_id_fkey"
+            columns: ["propriedade_id"]
+            isOneToOne: false
+            referencedRelation: "propriedades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       laudos: {
         Row: {
           caminho_pdf_laudo: string | null
@@ -1014,6 +1132,7 @@ export type Database = {
           docs_habilitados: boolean
           engenheiro_assistente_id: string | null
           engenheiro_atribuido_id: string | null
+          grupo_id: string | null
           id: string
           notas_mesa: string | null
           observacoes_banco: string | null
@@ -1044,6 +1163,7 @@ export type Database = {
           docs_habilitados?: boolean
           engenheiro_assistente_id?: string | null
           engenheiro_atribuido_id?: string | null
+          grupo_id?: string | null
           id?: string
           notas_mesa?: string | null
           observacoes_banco?: string | null
@@ -1074,6 +1194,7 @@ export type Database = {
           docs_habilitados?: boolean
           engenheiro_assistente_id?: string | null
           engenheiro_atribuido_id?: string | null
+          grupo_id?: string | null
           id?: string
           notas_mesa?: string | null
           observacoes_banco?: string | null
@@ -1110,6 +1231,13 @@ export type Database = {
             columns: ["engenheiro_atribuido_id"]
             isOneToOne: false
             referencedRelation: "engenheiros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_laudo_grupo_id_fkey"
+            columns: ["grupo_id"]
+            isOneToOne: false
+            referencedRelation: "grupos_solicitacao"
             referencedColumns: ["id"]
           },
           {
@@ -1222,8 +1350,10 @@ export type Database = {
         Returns: undefined
       }
       get_banco_parceiro_id: { Args: never; Returns: string }
+      get_engenheiro_assistente_grupo_ids: { Args: never; Returns: string[] }
       get_engenheiro_id: { Args: never; Returns: string }
       get_engenheiro_laudo_solicitacao_ids: { Args: never; Returns: string[] }
+      get_produtor_grupo_ids: { Args: never; Returns: string[] }
       get_produtor_id: { Args: never; Returns: string }
       get_produtor_solicitacao_ids: { Args: never; Returns: string[] }
       has_role: {
