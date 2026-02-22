@@ -396,26 +396,29 @@ export default function MesaProdutos() {
 
   // ─── Mutations (unchanged) ───
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status_solicitacao, extra }: { id: string; status_solicitacao: string; extra?: any }) => {
+    mutationFn: async ({ id, status_solicitacao, extra, skipPaymentCalc }: { id: string; status_solicitacao: string; extra?: any; skipPaymentCalc?: boolean }) => {
       const updateData: any = { status_solicitacao, notas_mesa: notas, ...extra };
       if (engenheiroAtribuidoId) updateData.engenheiro_atribuido_id = engenheiroAtribuidoId;
-      if (tipoValorOverride !== "produto" && valorOverride) {
-        updateData.tipo_valor_engenheiro_override = tipoValorOverride;
-        updateData.valor_engenheiro_override = parseFloat(valorOverride) || 0;
-        if (tipoValorOverride === "fixo") {
-          updateData.valor_pagamento_engenheiro = parseFloat(valorOverride) || 0;
-        } else if (tipoValorOverride === "percentual") {
-          updateData.valor_pagamento_engenheiro = (selectedSolicitacao.valor_solicitado * (parseFloat(valorOverride) || 0)) / 100;
+      // Only recalculate payment fields when explicitly changing status (not just toggling docs)
+      if (!skipPaymentCalc) {
+        if (tipoValorOverride !== "produto" && valorOverride) {
+          updateData.tipo_valor_engenheiro_override = tipoValorOverride;
+          updateData.valor_engenheiro_override = parseFloat(valorOverride) || 0;
+          if (tipoValorOverride === "fixo") {
+            updateData.valor_pagamento_engenheiro = parseFloat(valorOverride) || 0;
+          } else if (tipoValorOverride === "percentual") {
+            updateData.valor_pagamento_engenheiro = (selectedSolicitacao.valor_solicitado * (parseFloat(valorOverride) || 0)) / 100;
+          }
+        } else if (tipoValorOverride === "produto") {
+          const produto = (selectedSolicitacao as any).pronaf_produtos;
+          if (produto) {
+            updateData.valor_pagamento_engenheiro = produto.tipo_valor_engenheiro === "fixo"
+              ? produto.valor_engenheiro
+              : (selectedSolicitacao.valor_solicitado * produto.valor_engenheiro) / 100;
+          }
+          updateData.tipo_valor_engenheiro_override = null;
+          updateData.valor_engenheiro_override = null;
         }
-      } else if (tipoValorOverride === "produto") {
-        const produto = (selectedSolicitacao as any).pronaf_produtos;
-        if (produto) {
-          updateData.valor_pagamento_engenheiro = produto.tipo_valor_engenheiro === "fixo"
-            ? produto.valor_engenheiro
-            : (selectedSolicitacao.valor_solicitado * produto.valor_engenheiro) / 100;
-        }
-        updateData.tipo_valor_engenheiro_override = null;
-        updateData.valor_engenheiro_override = null;
       }
       const { error } = await supabase.from("solicitacoes_laudo").update(updateData).eq("id", id);
       if (error) throw error;
@@ -1243,7 +1246,8 @@ export default function MesaProdutos() {
                     <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ 
                       id: selectedSolicitacao.id, 
                       status_solicitacao: "docs_pendentes_produtor",
-                      extra: { docs_habilitados: true }
+                      extra: { docs_habilitados: true },
+                      skipPaymentCalc: true,
                     })} disabled={updateStatusMutation.isPending}>
                       <FolderOpen className="h-3.5 w-3.5 mr-1" /> Solicitar Docs ao Produtor
                     </Button>
@@ -1332,6 +1336,7 @@ export default function MesaProdutos() {
                     id: selectedSolicitacao.id,
                     status_solicitacao: selectedSolicitacao.status_solicitacao,
                     extra: { docs_habilitados: !selectedSolicitacao.docs_habilitados },
+                    skipPaymentCalc: true,
                   })}
                   disabled={updateStatusMutation.isPending}
                 >
