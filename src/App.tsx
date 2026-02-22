@@ -31,6 +31,7 @@ import AdminBlacklist from "@/pages/admin/AdminBlacklist";
 import AdminSLA from "@/pages/admin/AdminSLA";
 import AdminFeatureFlags from "@/pages/admin/AdminFeatureFlags";
 import AdminZarc from "@/pages/admin/AdminZarc";
+import AdminEsteira from "@/pages/admin/AdminEsteira";
 import RelatorioEngenheiro from "@/pages/RelatorioEngenheiro";
 import RelatorioProdutor from "@/pages/RelatorioProdutor";
 import NotFound from "./pages/NotFound";
@@ -78,6 +79,7 @@ const App = () => (
               <Route path="/admin/zarc" element={<AdminZarc />} />
               <Route path="/admin/relatorios" element={<AdminRelatorios />} />
               <Route path="/admin/produtos-pronaf" element={<AdminProdutosPronaf />} />
+              <Route path="/admin/esteira" element={<AdminEsteira />} />
               <Route path="/admin/produtos-pronaf" element={<AdminProdutosPronaf />} />
             </Route>
             <Route path="*" element={<NotFound />} />

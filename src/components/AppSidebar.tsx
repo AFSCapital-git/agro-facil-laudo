@@ -31,6 +31,7 @@ import {
   Map,
   ToggleLeft,
   ShieldCheck,
+  GitBranch,
 } from "lucide-react";
 
 interface NavItem {
@@ -66,6 +67,7 @@ const bancoNav: NavItem[] = [
 
 const adminNav: NavItem[] = [
   { title: "Dashboard", icon: Home, path: "/" },
+  { title: "Esteira & Desempenho", icon: GitBranch, path: "/admin/esteira" },
   { title: "Usuários", icon: Users, path: "/admin/usuarios" },
   { title: "Produtos PRONAF", icon: Package, path: "/admin/produtos-pronaf" },
   { title: "Engenheiros", icon: Users, path: "/admin/engenheiros" },
