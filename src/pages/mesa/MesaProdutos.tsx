@@ -65,18 +65,21 @@ export default function MesaProdutos() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("solicitacoes_laudo")
-        .select("*, propriedades(nome_propriedade, endereco, area_total_ha, regiao_id, municipio, uf, latitude, longitude, codigo_car, matricula_imovel, numero_ccir, numero_itr, tipo_posse, area_reserva_legal_ha, area_app_ha, fonte_agua, tipo_solo), pronaf_produtos(nome, finalidade, valor_engenheiro, tipo_valor_engenheiro), produtores(user_id), laudos(id, status_laudo, caminho_pdf_laudo)")
+        .select("*, propriedades(nome_propriedade, endereco, area_total_ha, regiao_id, municipio, uf, latitude, longitude, codigo_car, matricula_imovel, numero_ccir, numero_itr, tipo_posse, area_reserva_legal_ha, area_app_ha, fonte_agua, tipo_solo), pronaf_produtos(nome, finalidade, valor_engenheiro, tipo_valor_engenheiro), produtores(user_id), laudos(id, status_laudo, caminho_pdf_laudo), engenheiros!solicitacoes_laudo_engenheiro_assistente_id_fkey(id, user_id, crea)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       const produtorUserIds = [...new Set(data?.map((s: any) => s.produtores?.user_id).filter(Boolean))];
+      const assistenteUserIds = [...new Set(data?.filter((s: any) => s.assistido && s.engenheiros).map((s: any) => s.engenheiros?.user_id).filter(Boolean))];
+      const allUserIds = [...new Set([...produtorUserIds, ...assistenteUserIds])];
       let profileMap: Record<string, string> = {};
-      if (produtorUserIds.length) {
-        const { data: profiles } = await supabase.from("profiles").select("id, nome").in("id", produtorUserIds);
+      if (allUserIds.length) {
+        const { data: profiles } = await supabase.from("profiles").select("id, nome").in("id", allUserIds);
         profiles?.forEach((p) => { profileMap[p.id] = p.nome; });
       }
       return data?.map((s: any) => ({
         ...s,
         produtor_nome: s.produtores?.user_id ? profileMap[s.produtores.user_id] || "—" : "—",
+        assistente_nome: s.assistido && s.engenheiros?.user_id ? profileMap[s.engenheiros.user_id] || "—" : null,
       })) ?? [];
     },
   });
@@ -307,6 +310,7 @@ export default function MesaProdutos() {
               )}
               {sla?.overdue && <Badge variant="destructive" className="text-xs">SLA vencido</Badge>}
               {sla && !sla.overdue && sla.hoursLeft < 12 && <Badge variant="secondary" className="text-xs">⚠ {sla.hoursLeft}h restantes</Badge>}
+              {s.assistido && <Badge variant="secondary" className="text-xs gap-1"><UserCheck className="h-3 w-3" /> Assistido</Badge>}
             </div>
             <span className="text-xs text-muted-foreground whitespace-nowrap">{new Date(s.created_at).toLocaleDateString("pt-BR")}</span>
           </div>
@@ -386,7 +390,19 @@ export default function MesaProdutos() {
                 <div><span className="font-medium">Pgto Eng. atual:</span> {formatCurrency(selectedSolicitacao.valor_pagamento_engenheiro)}</div>
               </div>
 
-              {/* Dados Cadastrais da Propriedade */}
+              {/* Modo assistido info */}
+              {selectedSolicitacao.assistido && (
+                <div className="flex items-center gap-2 rounded-md border border-primary/20 bg-primary/5 p-3 text-sm">
+                  <UserCheck className="h-4 w-4 text-primary shrink-0" />
+                  <div>
+                    <span className="font-medium">Solicitação assistida</span>
+                    {selectedSolicitacao.assistente_nome && (
+                      <span className="text-muted-foreground"> — Projetista: <strong className="text-foreground">{selectedSolicitacao.assistente_nome}</strong></span>
+                    )}
+                    <p className="text-xs text-muted-foreground mt-0.5">O projetista é responsável por subir a documentação em nome do produtor.</p>
+                  </div>
+                </div>
+              )}
               {(() => {
                 const prop = (selectedSolicitacao as any).propriedades;
                 if (!prop) return null;

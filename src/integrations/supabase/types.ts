@@ -1004,6 +1004,7 @@ export type Database = {
           aprovado_mesa_em: string | null
           aprovado_mesa_por: string | null
           area_cultivo_ha: number
+          assistido: boolean
           banco_destino: string | null
           banco_parceiro_id: string | null
           created_at: string
@@ -1011,6 +1012,7 @@ export type Database = {
           data_envio_banco: string | null
           data_retorno_banco: string | null
           docs_habilitados: boolean
+          engenheiro_assistente_id: string | null
           engenheiro_atribuido_id: string | null
           id: string
           notas_mesa: string | null
@@ -1032,6 +1034,7 @@ export type Database = {
           aprovado_mesa_em?: string | null
           aprovado_mesa_por?: string | null
           area_cultivo_ha?: number
+          assistido?: boolean
           banco_destino?: string | null
           banco_parceiro_id?: string | null
           created_at?: string
@@ -1039,6 +1042,7 @@ export type Database = {
           data_envio_banco?: string | null
           data_retorno_banco?: string | null
           docs_habilitados?: boolean
+          engenheiro_assistente_id?: string | null
           engenheiro_atribuido_id?: string | null
           id?: string
           notas_mesa?: string | null
@@ -1060,6 +1064,7 @@ export type Database = {
           aprovado_mesa_em?: string | null
           aprovado_mesa_por?: string | null
           area_cultivo_ha?: number
+          assistido?: boolean
           banco_destino?: string | null
           banco_parceiro_id?: string | null
           created_at?: string
@@ -1067,6 +1072,7 @@ export type Database = {
           data_envio_banco?: string | null
           data_retorno_banco?: string | null
           docs_habilitados?: boolean
+          engenheiro_assistente_id?: string | null
           engenheiro_atribuido_id?: string | null
           id?: string
           notas_mesa?: string | null
@@ -1090,6 +1096,13 @@ export type Database = {
             columns: ["banco_parceiro_id"]
             isOneToOne: false
             referencedRelation: "bancos_parceiros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_laudo_engenheiro_assistente_id_fkey"
+            columns: ["engenheiro_assistente_id"]
+            isOneToOne: false
+            referencedRelation: "engenheiros"
             referencedColumns: ["id"]
           },
           {
