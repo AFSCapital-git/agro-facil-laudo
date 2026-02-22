@@ -17,7 +17,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import {
   FileText, Plus, Clock, CheckCircle2, AlertCircle, Download, Info,
-  Upload, Trash2, Eye, ShieldCheck, Banknote, FileWarning, MessageCircle, Send, Video, MapPin,
+  Upload, Trash2, Eye, ShieldCheck, Banknote, FileWarning, MessageCircle, Send, Video, MapPin, Pencil,
 } from "lucide-react";
 import { AudioRecorder } from "@/components/chat/AudioRecorder";
 import { AudioPlayer } from "@/components/chat/AudioPlayer";
@@ -57,6 +57,7 @@ const emptyForm: SolicitacaoForm = {
 
 export default function Solicitacoes() {
   const [open, setOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
   const [detailSolicitacao, setDetailSolicitacao] = useState<any | null>(null);
   const [form, setForm] = useState<SolicitacaoForm>(emptyForm);
   const [chatMessage, setChatMessage] = useState("");
@@ -211,27 +212,48 @@ export default function Solicitacoes() {
       : selectedProduto.valor_engenheiro
     : 0;
 
+  const culturaPrincipalValue = form.cultura_principal.startsWith("__outro:")
+    ? form.cultura_principal.replace("__outro:", "").toUpperCase().trim()
+    : form.cultura_principal;
+
   const createMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("solicitacoes_laudo").insert({
-        produtor_id: produtorId!,
-        propriedade_id: form.propriedade_id,
-        pronaf_produto_id: form.pronaf_produto_id || null,
-        tipo_credito: selectedProduto?.finalidade || "custeio",
-        cultura_principal: form.cultura_principal.startsWith("__outro:") ? form.cultura_principal.replace("__outro:", "").toUpperCase().trim() : form.cultura_principal,
-        area_cultivo_ha: parseFloat(form.area_cultivo_ha) || 0,
-        valor_solicitado: parseFloat(form.valor_solicitado) || 0,
-        valor_pagamento_engenheiro: valorPagamentoEngenheiro,
-        banco_parceiro_id: form.banco_parceiro_id || null,
-        banco_destino: bancosParceiros?.find((b) => b.id === form.banco_parceiro_id)?.nome || "",
-        observacoes_produtor: form.observacoes_produtor,
-      });
-      if (error) throw error;
+      if (editId) {
+        const { error } = await supabase.from("solicitacoes_laudo").update({
+          propriedade_id: form.propriedade_id,
+          pronaf_produto_id: form.pronaf_produto_id || null,
+          tipo_credito: selectedProduto?.finalidade || "custeio",
+          cultura_principal: culturaPrincipalValue,
+          area_cultivo_ha: parseFloat(form.area_cultivo_ha) || 0,
+          valor_solicitado: parseFloat(form.valor_solicitado) || 0,
+          valor_pagamento_engenheiro: valorPagamentoEngenheiro,
+          banco_parceiro_id: form.banco_parceiro_id || null,
+          banco_destino: bancosParceiros?.find((b) => b.id === form.banco_parceiro_id)?.nome || "",
+          observacoes_produtor: form.observacoes_produtor,
+        }).eq("id", editId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("solicitacoes_laudo").insert({
+          produtor_id: produtorId!,
+          propriedade_id: form.propriedade_id,
+          pronaf_produto_id: form.pronaf_produto_id || null,
+          tipo_credito: selectedProduto?.finalidade || "custeio",
+          cultura_principal: culturaPrincipalValue,
+          area_cultivo_ha: parseFloat(form.area_cultivo_ha) || 0,
+          valor_solicitado: parseFloat(form.valor_solicitado) || 0,
+          valor_pagamento_engenheiro: valorPagamentoEngenheiro,
+          banco_parceiro_id: form.banco_parceiro_id || null,
+          banco_destino: bancosParceiros?.find((b) => b.id === form.banco_parceiro_id)?.nome || "",
+          observacoes_produtor: form.observacoes_produtor,
+        });
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["solicitacoes"] });
-      toast({ title: "Solicitação criada com sucesso!" });
+      toast({ title: editId ? "Solicitação atualizada!" : "Solicitação criada com sucesso!" });
       setForm(emptyForm);
+      setEditId(null);
       setOpen(false);
     },
     onError: (err: Error) => {
@@ -357,7 +379,7 @@ export default function Solicitacoes() {
             <p className="text-sm text-destructive font-medium mt-1">⚠ Sua conta está suspensa. Você não pode criar novas solicitações.</p>
           )}
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(v) => { if (!v) { setEditId(null); setForm(emptyForm); } setOpen(v); }}>
           <DialogTrigger asChild>
             <Button className="gap-2" disabled={!propriedades?.length || blacklistStatus === true}>
               <Plus className="h-4 w-4" /> Nova Solicitação
@@ -365,7 +387,7 @@ export default function Solicitacoes() {
           </DialogTrigger>
           <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="font-display">Nova Solicitação de Laudo</DialogTitle>
+              <DialogTitle className="font-display">{editId ? "Editar Solicitação" : "Nova Solicitação de Laudo"}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
@@ -610,7 +632,7 @@ export default function Solicitacoes() {
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
                 <Button type="submit" disabled={createMutation.isPending || !form.pronaf_produto_id}>
-                  {createMutation.isPending ? "Criando..." : "Criar Solicitação"}
+                  {createMutation.isPending ? (editId ? "Salvando..." : "Criando...") : (editId ? "Salvar Alterações" : "Criar Solicitação")}
                 </Button>
               </div>
             </form>
@@ -664,6 +686,29 @@ export default function Solicitacoes() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
+                    {s.status_solicitacao === "pendente" && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        title="Editar solicitação"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditId(s.id);
+                          setForm({
+                            propriedade_id: s.propriedade_id,
+                            pronaf_produto_id: s.pronaf_produto_id || "",
+                            cultura_principal: s.cultura_principal || "",
+                            area_cultivo_ha: String(s.area_cultivo_ha),
+                            valor_solicitado: String(s.valor_solicitado),
+                            banco_parceiro_id: s.banco_parceiro_id || "",
+                            observacoes_produtor: s.observacoes_produtor || "",
+                          });
+                          setOpen(true);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    )}
                     {(() => {
                       const laudoArr = (s as any).laudos;
                       const laudo = Array.isArray(laudoArr) ? laudoArr[0] : laudoArr;
