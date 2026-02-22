@@ -774,42 +774,72 @@ export type Database = {
       }
       propriedades: {
         Row: {
+          area_app_ha: number | null
+          area_reserva_legal_ha: number | null
           area_total_ha: number
           codigo_car: string | null
           created_at: string
           endereco: string
+          fonte_agua: string | null
           id: string
           latitude: number | null
           longitude: number | null
+          matricula_imovel: string | null
+          municipio: string
           nome_propriedade: string
+          numero_ccir: string | null
+          numero_itr: string | null
           produtor_id: string
           regiao_id: string | null
+          tipo_posse: string
+          tipo_solo: string | null
+          uf: string
           updated_at: string
         }
         Insert: {
+          area_app_ha?: number | null
+          area_reserva_legal_ha?: number | null
           area_total_ha?: number
           codigo_car?: string | null
           created_at?: string
           endereco?: string
+          fonte_agua?: string | null
           id?: string
           latitude?: number | null
           longitude?: number | null
+          matricula_imovel?: string | null
+          municipio?: string
           nome_propriedade: string
+          numero_ccir?: string | null
+          numero_itr?: string | null
           produtor_id: string
           regiao_id?: string | null
+          tipo_posse?: string
+          tipo_solo?: string | null
+          uf?: string
           updated_at?: string
         }
         Update: {
+          area_app_ha?: number | null
+          area_reserva_legal_ha?: number | null
           area_total_ha?: number
           codigo_car?: string | null
           created_at?: string
           endereco?: string
+          fonte_agua?: string | null
           id?: string
           latitude?: number | null
           longitude?: number | null
+          matricula_imovel?: string | null
+          municipio?: string
           nome_propriedade?: string
+          numero_ccir?: string | null
+          numero_itr?: string | null
           produtor_id?: string
           regiao_id?: string | null
+          tipo_posse?: string
+          tipo_solo?: string | null
+          uf?: string
           updated_at?: string
         }
         Relationships: [
