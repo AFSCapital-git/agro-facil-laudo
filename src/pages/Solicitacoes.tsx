@@ -38,12 +38,22 @@ const statusMap: Record<string, { label: string; variant: "default" | "secondary
   pronta_para_banco: { label: "Pronta p/ Banco", variant: "default" },
 };
 
-interface SolicitacaoForm {
-  propriedade_id: string;
-  pronaf_produto_ids: string[];
+interface ProdutoDados {
   cultura_principal: string;
   area_cultivo_ha: string;
   valor_solicitado: string;
+}
+
+const emptyProdutoDados: ProdutoDados = {
+  cultura_principal: "",
+  area_cultivo_ha: "",
+  valor_solicitado: "",
+};
+
+interface SolicitacaoForm {
+  propriedade_id: string;
+  pronaf_produto_ids: string[];
+  produto_dados: Record<string, ProdutoDados>;
   banco_parceiro_id: string;
   observacoes_produtor: string;
 }
@@ -51,9 +61,7 @@ interface SolicitacaoForm {
 const emptyForm: SolicitacaoForm = {
   propriedade_id: "",
   pronaf_produto_ids: [],
-  cultura_principal: "",
-  area_cultivo_ha: "",
-  valor_solicitado: "",
+  produto_dados: {},
   banco_parceiro_id: "",
   observacoes_produtor: "",
 };
@@ -261,17 +269,38 @@ export default function Solicitacoes() {
 
   const selectedProdutos = pronafProdutos?.filter((p) => form.pronaf_produto_ids.includes(p.id)) ?? [];
 
+  // Helper to get per-product data
+  const getProdutoDados = (produtoId: string): ProdutoDados =>
+    form.produto_dados[produtoId] || emptyProdutoDados;
+
+  const setProdutoDados = (produtoId: string, field: keyof ProdutoDados, value: string) => {
+    setForm((f) => ({
+      ...f,
+      produto_dados: {
+        ...f.produto_dados,
+        [produtoId]: {
+          ...(f.produto_dados[produtoId] || emptyProdutoDados),
+          [field]: value,
+        },
+      },
+    }));
+  };
+
+  const getCulturaPrincipalValue = (produtoId: string) => {
+    const cultura = getProdutoDados(produtoId).cultura_principal;
+    return cultura.startsWith("__outro:")
+      ? cultura.replace("__outro:", "").toUpperCase().trim()
+      : cultura;
+  };
+
   // Calculate total engineer payment across selected products
   const totalValorEngenheiro = selectedProdutos.reduce((sum, prod) => {
+    const dados = getProdutoDados(prod.id);
     if (prod.tipo_valor_engenheiro === "percentual") {
-      return sum + parseCurrency(form.valor_solicitado) * (prod.valor_engenheiro / 100);
+      return sum + parseCurrency(dados.valor_solicitado) * (prod.valor_engenheiro / 100);
     }
     return sum + prod.valor_engenheiro;
   }, 0);
-
-  const culturaPrincipalValue = form.cultura_principal.startsWith("__outro:")
-    ? form.cultura_principal.replace("__outro:", "").toUpperCase().trim()
-    : form.cultura_principal;
 
   // Deduplicate docs across selected products
   const uniqueDocs = (() => {
@@ -290,18 +319,19 @@ export default function Solicitacoes() {
       if (editId) {
         // Edit mode: only for single product (legacy)
         const produto = selectedProdutos[0];
+        const dados = getProdutoDados(produto?.id || "");
         const valorPagEng = produto
           ? produto.tipo_valor_engenheiro === "percentual"
-            ? parseCurrency(form.valor_solicitado) * (produto.valor_engenheiro / 100)
+            ? parseCurrency(dados.valor_solicitado) * (produto.valor_engenheiro / 100)
             : produto.valor_engenheiro
           : 0;
         const { error } = await supabase.from("solicitacoes_laudo").update({
           propriedade_id: form.propriedade_id,
           pronaf_produto_id: form.pronaf_produto_ids[0] || null,
           tipo_credito: produto?.finalidade || "custeio",
-          cultura_principal: culturaPrincipalValue,
-          area_cultivo_ha: parseFloat(form.area_cultivo_ha) || 0,
-          valor_solicitado: parseCurrency(form.valor_solicitado),
+          cultura_principal: getCulturaPrincipalValue(produto?.id || ""),
+          area_cultivo_ha: parseFloat(dados.area_cultivo_ha) || 0,
+          valor_solicitado: parseCurrency(dados.valor_solicitado),
           valor_pagamento_engenheiro: valorPagEng,
           banco_parceiro_id: form.banco_parceiro_id || null,
           banco_destino: bancosParceiros?.find((b) => b.id === form.banco_parceiro_id)?.nome || "",
@@ -325,10 +355,11 @@ export default function Solicitacoes() {
           .single();
         if (grupoError) throw grupoError;
 
-        // Create one sub-solicitação per product
+        // Create one sub-solicitação per product with per-product data
         const subInserts = selectedProdutos.map((produto) => {
+          const dados = getProdutoDados(produto.id);
           const valorPagEng = produto.tipo_valor_engenheiro === "percentual"
-            ? parseCurrency(form.valor_solicitado) * (produto.valor_engenheiro / 100)
+            ? parseCurrency(dados.valor_solicitado) * (produto.valor_engenheiro / 100)
             : produto.valor_engenheiro;
 
           return {
@@ -337,9 +368,9 @@ export default function Solicitacoes() {
             propriedade_id: form.propriedade_id,
             pronaf_produto_id: produto.id,
             tipo_credito: produto.finalidade || "custeio",
-            cultura_principal: culturaPrincipalValue,
-            area_cultivo_ha: parseFloat(form.area_cultivo_ha) || 0,
-            valor_solicitado: parseCurrency(form.valor_solicitado),
+            cultura_principal: getCulturaPrincipalValue(produto.id),
+            area_cultivo_ha: parseFloat(dados.area_cultivo_ha) || 0,
+            valor_solicitado: parseCurrency(dados.valor_solicitado),
             valor_pagamento_engenheiro: valorPagEng,
             banco_parceiro_id: form.banco_parceiro_id || null,
             banco_destino: bancosParceiros?.find((b) => b.id === form.banco_parceiro_id)?.nome || "",
@@ -477,12 +508,19 @@ export default function Solicitacoes() {
   };
 
   const toggleProduto = (produtoId: string) => {
-    setForm((f) => ({
-      ...f,
-      pronaf_produto_ids: f.pronaf_produto_ids.includes(produtoId)
+    setForm((f) => {
+      const isRemoving = f.pronaf_produto_ids.includes(produtoId);
+      const newIds = isRemoving
         ? f.pronaf_produto_ids.filter((id) => id !== produtoId)
-        : [...f.pronaf_produto_ids, produtoId],
-    }));
+        : [...f.pronaf_produto_ids, produtoId];
+      const newDados = { ...f.produto_dados };
+      if (isRemoving) {
+        delete newDados[produtoId];
+      } else if (!newDados[produtoId]) {
+        newDados[produtoId] = { ...emptyProdutoDados };
+      }
+      return { ...f, pronaf_produto_ids: newIds, produto_dados: newDados };
+    });
   };
 
   return (
@@ -568,7 +606,7 @@ export default function Solicitacoes() {
                 <ProductRulesCard
                   key={produto.id}
                   produto={produto}
-                  valorSolicitado={parseCurrency(form.valor_solicitado)}
+                  valorSolicitado={parseCurrency(getProdutoDados(produto.id).valor_solicitado)}
                 />
               ))}
 
@@ -622,139 +660,155 @@ export default function Solicitacoes() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Atividade / Cultura principal *</Label>
-                  <Select
-                    value={form.cultura_principal.startsWith("__outro:") ? "__outro" : form.cultura_principal}
-                    onValueChange={(v) => {
-                      if (v === "__outro") {
-                        setForm((f) => ({ ...f, cultura_principal: "__outro:" }));
-                      } else {
-                        setForm((f) => ({ ...f, cultura_principal: v }));
-                      }
-                    }}
-                  >
-                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__label_graos" disabled className="font-semibold text-xs text-muted-foreground">— Grãos e Cereais —</SelectItem>
-                      <SelectItem value="Soja">Soja</SelectItem>
-                      <SelectItem value="Milho">Milho</SelectItem>
-                      <SelectItem value="Arroz">Arroz</SelectItem>
-                      <SelectItem value="Feijão">Feijão</SelectItem>
-                      <SelectItem value="Trigo">Trigo</SelectItem>
-                      <SelectItem value="Sorgo">Sorgo</SelectItem>
-                      <SelectItem value="Aveia">Aveia</SelectItem>
-                      <SelectItem value="Cevada">Cevada</SelectItem>
-
-                      <SelectItem value="__label_hortifruti" disabled className="font-semibold text-xs text-muted-foreground">— Hortifrutigranjeiros —</SelectItem>
-                      <SelectItem value="Mandioca">Mandioca</SelectItem>
-                      <SelectItem value="Batata">Batata</SelectItem>
-                      <SelectItem value="Tomate">Tomate</SelectItem>
-                      <SelectItem value="Cebola">Cebola</SelectItem>
-                      <SelectItem value="Alho">Alho</SelectItem>
-                      <SelectItem value="Hortaliças (diversas)">Hortaliças (diversas)</SelectItem>
-                      <SelectItem value="Frutas (diversas)">Frutas (diversas)</SelectItem>
-                      <SelectItem value="Banana">Banana</SelectItem>
-                      <SelectItem value="Laranja">Laranja</SelectItem>
-                      <SelectItem value="Uva">Uva</SelectItem>
-                      <SelectItem value="Maçã">Maçã</SelectItem>
-                      <SelectItem value="Manga">Manga</SelectItem>
-                      <SelectItem value="Açaí">Açaí</SelectItem>
-
-                      <SelectItem value="__label_industriais" disabled className="font-semibold text-xs text-muted-foreground">— Culturas Industriais —</SelectItem>
-                      <SelectItem value="Café">Café</SelectItem>
-                      <SelectItem value="Cana-de-açúcar">Cana-de-açúcar</SelectItem>
-                      <SelectItem value="Algodão">Algodão</SelectItem>
-                      <SelectItem value="Tabaco">Tabaco</SelectItem>
-                      <SelectItem value="Cacau">Cacau</SelectItem>
-                      <SelectItem value="Dendê / Palma">Dendê / Palma</SelectItem>
-                      <SelectItem value="Borracha / Seringueira">Borracha / Seringueira</SelectItem>
-
-                      <SelectItem value="__label_pecuaria" disabled className="font-semibold text-xs text-muted-foreground">— Pecuária —</SelectItem>
-                      <SelectItem value="Bovinocultura de corte">Bovinocultura de corte</SelectItem>
-                      <SelectItem value="Bovinocultura de leite">Bovinocultura de leite</SelectItem>
-                      <SelectItem value="Suinocultura">Suinocultura</SelectItem>
-                      <SelectItem value="Avicultura">Avicultura</SelectItem>
-                      <SelectItem value="Ovinocultura">Ovinocultura</SelectItem>
-                      <SelectItem value="Caprinocultura">Caprinocultura</SelectItem>
-                      <SelectItem value="Apicultura">Apicultura</SelectItem>
-                      <SelectItem value="Equinocultura">Equinocultura</SelectItem>
-                      <SelectItem value="Bubalinocultura">Bubalinocultura</SelectItem>
-
-                      <SelectItem value="__label_aqui" disabled className="font-semibold text-xs text-muted-foreground">— Aquicultura e Pesca —</SelectItem>
-                      <SelectItem value="Piscicultura">Piscicultura</SelectItem>
-                      <SelectItem value="Carcinicultura">Carcinicultura</SelectItem>
-                      <SelectItem value="Aquicultura (outros)">Aquicultura (outros)</SelectItem>
-
-                      <SelectItem value="__label_florestal" disabled className="font-semibold text-xs text-muted-foreground">— Florestal —</SelectItem>
-                      <SelectItem value="Eucalipto">Eucalipto</SelectItem>
-                      <SelectItem value="Pinus">Pinus</SelectItem>
-                      <SelectItem value="Teca">Teca</SelectItem>
-                      <SelectItem value="Reflorestamento (outros)">Reflorestamento (outros)</SelectItem>
-                      <SelectItem value="Extrativismo vegetal">Extrativismo vegetal</SelectItem>
-
-                      <SelectItem value="__label_outros" disabled className="font-semibold text-xs text-muted-foreground">— Outros —</SelectItem>
-                      <SelectItem value="Pastagem / Formação de pasto">Pastagem / Formação de pasto</SelectItem>
-                      <SelectItem value="Irrigação">Irrigação</SelectItem>
-                      <SelectItem value="Agroindústria">Agroindústria</SelectItem>
-                      <SelectItem value="Energia solar / Bioenergia">Energia solar / Bioenergia</SelectItem>
-                      <SelectItem value="Infraestrutura rural">Infraestrutura rural</SelectItem>
-                      <SelectItem value="__outro">Outro (digitar)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {form.cultura_principal.startsWith("__outro:") && (
-                    <Input
-                      className="uppercase mt-2"
-                      placeholder="Digite a atividade / cultura"
-                      value={form.cultura_principal.replace("__outro:", "")}
-                      onChange={(e) => setForm((f) => ({ ...f, cultura_principal: `__outro:${e.target.value}` }))}
-                      required
-                    />
-                  )}
+              {/* Per-product fields: cultura, área, valor */}
+              {selectedProdutos.length > 0 && (
+                <div className="space-y-4">
+                  {selectedProdutos.map((produto) => {
+                    const dados = getProdutoDados(produto.id);
+                    const precoLabel = produto.tipo_valor_engenheiro === "percentual"
+                      ? `${produto.valor_engenheiro}% do valor`
+                      : formatCurrency(produto.valor_engenheiro);
+                    return (
+                      <div key={produto.id} className="border rounded-md p-3 space-y-3 bg-muted/20">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="text-xs">{produto.nome}</Badge>
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Banknote className="h-3 w-3" /> Laudo: {precoLabel}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Atividade / Cultura *</Label>
+                            <Select
+                              value={dados.cultura_principal.startsWith("__outro:") ? "__outro" : dados.cultura_principal}
+                              onValueChange={(v) => {
+                                if (v === "__outro") {
+                                  setProdutoDados(produto.id, "cultura_principal", "__outro:");
+                                } else {
+                                  setProdutoDados(produto.id, "cultura_principal", v);
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="h-9"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__label_graos" disabled className="font-semibold text-xs text-muted-foreground">— Grãos e Cereais —</SelectItem>
+                                <SelectItem value="Soja">Soja</SelectItem>
+                                <SelectItem value="Milho">Milho</SelectItem>
+                                <SelectItem value="Arroz">Arroz</SelectItem>
+                                <SelectItem value="Feijão">Feijão</SelectItem>
+                                <SelectItem value="Trigo">Trigo</SelectItem>
+                                <SelectItem value="Sorgo">Sorgo</SelectItem>
+                                <SelectItem value="Aveia">Aveia</SelectItem>
+                                <SelectItem value="Cevada">Cevada</SelectItem>
+                                <SelectItem value="__label_hortifruti" disabled className="font-semibold text-xs text-muted-foreground">— Hortifrutigranjeiros —</SelectItem>
+                                <SelectItem value="Mandioca">Mandioca</SelectItem>
+                                <SelectItem value="Batata">Batata</SelectItem>
+                                <SelectItem value="Tomate">Tomate</SelectItem>
+                                <SelectItem value="Cebola">Cebola</SelectItem>
+                                <SelectItem value="Alho">Alho</SelectItem>
+                                <SelectItem value="Hortaliças (diversas)">Hortaliças (diversas)</SelectItem>
+                                <SelectItem value="Frutas (diversas)">Frutas (diversas)</SelectItem>
+                                <SelectItem value="Banana">Banana</SelectItem>
+                                <SelectItem value="Laranja">Laranja</SelectItem>
+                                <SelectItem value="Uva">Uva</SelectItem>
+                                <SelectItem value="Maçã">Maçã</SelectItem>
+                                <SelectItem value="Manga">Manga</SelectItem>
+                                <SelectItem value="Açaí">Açaí</SelectItem>
+                                <SelectItem value="__label_industriais" disabled className="font-semibold text-xs text-muted-foreground">— Culturas Industriais —</SelectItem>
+                                <SelectItem value="Café">Café</SelectItem>
+                                <SelectItem value="Cana-de-açúcar">Cana-de-açúcar</SelectItem>
+                                <SelectItem value="Algodão">Algodão</SelectItem>
+                                <SelectItem value="Tabaco">Tabaco</SelectItem>
+                                <SelectItem value="Cacau">Cacau</SelectItem>
+                                <SelectItem value="Dendê / Palma">Dendê / Palma</SelectItem>
+                                <SelectItem value="Borracha / Seringueira">Borracha / Seringueira</SelectItem>
+                                <SelectItem value="__label_pecuaria" disabled className="font-semibold text-xs text-muted-foreground">— Pecuária —</SelectItem>
+                                <SelectItem value="Bovinocultura de corte">Bovinocultura de corte</SelectItem>
+                                <SelectItem value="Bovinocultura de leite">Bovinocultura de leite</SelectItem>
+                                <SelectItem value="Suinocultura">Suinocultura</SelectItem>
+                                <SelectItem value="Avicultura">Avicultura</SelectItem>
+                                <SelectItem value="Ovinocultura">Ovinocultura</SelectItem>
+                                <SelectItem value="Caprinocultura">Caprinocultura</SelectItem>
+                                <SelectItem value="Apicultura">Apicultura</SelectItem>
+                                <SelectItem value="Equinocultura">Equinocultura</SelectItem>
+                                <SelectItem value="Bubalinocultura">Bubalinocultura</SelectItem>
+                                <SelectItem value="__label_aqui" disabled className="font-semibold text-xs text-muted-foreground">— Aquicultura e Pesca —</SelectItem>
+                                <SelectItem value="Piscicultura">Piscicultura</SelectItem>
+                                <SelectItem value="Carcinicultura">Carcinicultura</SelectItem>
+                                <SelectItem value="Aquicultura (outros)">Aquicultura (outros)</SelectItem>
+                                <SelectItem value="__label_florestal" disabled className="font-semibold text-xs text-muted-foreground">— Florestal —</SelectItem>
+                                <SelectItem value="Eucalipto">Eucalipto</SelectItem>
+                                <SelectItem value="Pinus">Pinus</SelectItem>
+                                <SelectItem value="Teca">Teca</SelectItem>
+                                <SelectItem value="Reflorestamento (outros)">Reflorestamento (outros)</SelectItem>
+                                <SelectItem value="Extrativismo vegetal">Extrativismo vegetal</SelectItem>
+                                <SelectItem value="__label_outros" disabled className="font-semibold text-xs text-muted-foreground">— Outros —</SelectItem>
+                                <SelectItem value="Pastagem / Formação de pasto">Pastagem / Formação de pasto</SelectItem>
+                                <SelectItem value="Irrigação">Irrigação</SelectItem>
+                                <SelectItem value="Agroindústria">Agroindústria</SelectItem>
+                                <SelectItem value="Energia solar / Bioenergia">Energia solar / Bioenergia</SelectItem>
+                                <SelectItem value="Infraestrutura rural">Infraestrutura rural</SelectItem>
+                                <SelectItem value="__outro">Outro (digitar)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {dados.cultura_principal.startsWith("__outro:") && (
+                              <Input
+                                className="uppercase h-9"
+                                placeholder="Digite a atividade / cultura"
+                                value={dados.cultura_principal.replace("__outro:", "")}
+                                onChange={(e) => setProdutoDados(produto.id, "cultura_principal", `__outro:${e.target.value}`)}
+                                required
+                              />
+                            )}
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Área de cultivo (ha) *</Label>
+                            <Input
+                              className="h-9"
+                              type="number"
+                              step="0.01"
+                              value={dados.area_cultivo_ha}
+                              onChange={(e) => setProdutoDados(produto.id, "area_cultivo_ha", e.target.value)}
+                              required
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Valor solicitado (R$) *</Label>
+                          <Input
+                            className="h-9"
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="R$ 0,00"
+                            value={dados.valor_solicitado}
+                            onChange={(e) => {
+                              const raw = e.target.value.replace(/\D/g, "");
+                              const cents = parseInt(raw || "0", 10);
+                              const formatted = new Intl.NumberFormat("pt-BR", {
+                                style: "currency",
+                                currency: "BRL",
+                              }).format(cents / 100);
+                              setProdutoDados(produto.id, "valor_solicitado", formatted);
+                            }}
+                            required
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="space-y-2">
-                  <Label>Área de cultivo (ha) *</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={form.area_cultivo_ha}
-                    onChange={(e) => setForm((f) => ({ ...f, area_cultivo_ha: e.target.value }))}
-                    required
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Valor solicitado (R$) *</Label>
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="R$ 0,00"
-                    value={form.valor_solicitado}
-                    onChange={(e) => {
-                      const raw = e.target.value.replace(/\D/g, "");
-                      const cents = parseInt(raw || "0", 10);
-                      const formatted = new Intl.NumberFormat("pt-BR", {
-                        style: "currency",
-                        currency: "BRL",
-                      }).format(cents / 100);
-                      setForm((f) => ({ ...f, valor_solicitado: formatted }));
-                    }}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Banco destino</Label>
-                  <Select value={form.banco_parceiro_id} onValueChange={(v) => setForm((f) => ({ ...f, banco_parceiro_id: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Selecione o banco..." /></SelectTrigger>
-                    <SelectContent>
-                      {bancosParceiros?.map((b) => (
-                        <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label>Banco destino</Label>
+                <Select value={form.banco_parceiro_id} onValueChange={(v) => setForm((f) => ({ ...f, banco_parceiro_id: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Selecione o banco..." /></SelectTrigger>
+                  <SelectContent>
+                    {bancosParceiros?.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {selectedProdutos.length > 0 && totalValorEngenheiro > 0 && (
@@ -763,8 +817,9 @@ export default function Solicitacoes() {
                   {selectedProdutos.length > 1 && (
                     <div className="text-xs space-y-0.5">
                       {selectedProdutos.map((prod) => {
+                        const dados = getProdutoDados(prod.id);
                         const val = prod.tipo_valor_engenheiro === "percentual"
-                          ? parseCurrency(form.valor_solicitado) * (prod.valor_engenheiro / 100)
+                          ? parseCurrency(dados.valor_solicitado) * (prod.valor_engenheiro / 100)
                           : prod.valor_engenheiro;
                         return (
                           <p key={prod.id}>
@@ -1026,9 +1081,13 @@ export default function Solicitacoes() {
                           setForm({
                             propriedade_id: s.propriedade_id,
                             pronaf_produto_ids: s.pronaf_produto_id ? [s.pronaf_produto_id] : [],
-                            cultura_principal: s.cultura_principal || "",
-                            area_cultivo_ha: String(s.area_cultivo_ha),
-                            valor_solicitado: formatToCurrency(s.valor_solicitado),
+                            produto_dados: s.pronaf_produto_id ? {
+                              [s.pronaf_produto_id]: {
+                                cultura_principal: s.cultura_principal || "",
+                                area_cultivo_ha: String(s.area_cultivo_ha),
+                                valor_solicitado: formatToCurrency(s.valor_solicitado),
+                              },
+                            } : {},
                             banco_parceiro_id: s.banco_parceiro_id || "",
                             observacoes_produtor: s.observacoes_produtor || "",
                           });
