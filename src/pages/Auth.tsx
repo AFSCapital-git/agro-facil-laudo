@@ -28,6 +28,9 @@ export default function Auth() {
   const [crea, setCrea] = useState("");
   const [areaAtuacao, setAreaAtuacao] = useState("");
   const [raioAtendimento, setRaioAtendimento] = useState("100");
+  const [jaEngenheiro, setJaEngenheiro] = useState(false);
+  const [tipoLicenca, setTipoLicenca] = useState("");
+  const [numeroLicenca, setNumeroLicenca] = useState("");
 
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -82,9 +85,12 @@ export default function Auth() {
     } else {
       await supabase.from("engenheiros").insert({
         user_id: userId,
-        crea,
+        crea: jaEngenheiro ? numeroLicenca : "",
         area_atuacao: areaAtuacao,
         raio_atendimento_km: parseInt(raioAtendimento) || 100,
+        ja_engenheiro: jaEngenheiro,
+        tipo_licenca: tipoLicenca,
+        numero_licenca: numeroLicenca,
       });
     }
 
@@ -137,7 +143,7 @@ export default function Auth() {
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="produtor">Produtor Rural</SelectItem>
-                        <SelectItem value="engenheiro">Engenheiro Agrônomo</SelectItem>
+                        <SelectItem value="engenheiro">Engenheiro/Projetista</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -149,10 +155,38 @@ export default function Auth() {
                   )}
                   {role === "engenheiro" && (
                     <>
-                      <div className="space-y-2">
-                        <Label htmlFor="crea">CREA</Label>
-                        <Input id="crea" value={crea} onChange={(e) => setCrea(e.target.value)} required />
+                      <div className="flex items-center gap-2 rounded-md border p-3">
+                        <input
+                          type="checkbox"
+                          id="jaEngenheiro"
+                          checked={jaEngenheiro}
+                          onChange={(e) => setJaEngenheiro(e.target.checked)}
+                          className="h-4 w-4 rounded border-input accent-primary"
+                        />
+                        <Label htmlFor="jaEngenheiro" className="cursor-pointer text-sm font-normal">
+                          Já possuo registro profissional (CREA, CAU, CFT, etc.)
+                        </Label>
                       </div>
+                      {jaEngenheiro && (
+                        <>
+                          <div className="space-y-2">
+                            <Label htmlFor="tipoLicenca">Tipo de licença / registro</Label>
+                            <Select value={tipoLicenca} onValueChange={setTipoLicenca}>
+                              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="CREA">CREA</SelectItem>
+                                <SelectItem value="CAU">CAU</SelectItem>
+                                <SelectItem value="CFT">CFT</SelectItem>
+                                <SelectItem value="outro">Outro</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="numeroLicenca">Nº da matrícula / registro</Label>
+                            <Input id="numeroLicenca" value={numeroLicenca} onChange={(e) => setNumeroLicenca(e.target.value)} placeholder="Ex: 123456-D/SP" required />
+                          </div>
+                        </>
+                      )}
                       <div className="space-y-2">
                         <Label htmlFor="area">Área de atuação</Label>
                         <Input id="area" value={areaAtuacao} onChange={(e) => setAreaAtuacao(e.target.value)} placeholder="Ex: Grãos, Pecuária" />

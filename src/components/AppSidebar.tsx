@@ -87,7 +87,7 @@ export function AppSidebar() {
   const location = useLocation();
 
   const navItems = role === "admin" ? adminNav : role === "mesa_produtos" ? mesaNav : role === "banco" ? bancoNav : role === "engenheiro" ? engenheiroNav : produtorNav;
-  const roleLabel = role === "admin" ? "Administrador" : role === "mesa_produtos" ? "Mesa de Produtos" : role === "banco" ? "Banco Parceiro" : role === "engenheiro" ? "Engenheiro" : "Produtor";
+  const roleLabel = role === "admin" ? "Administrador" : role === "mesa_produtos" ? "Mesa de Produtos" : role === "banco" ? "Banco Parceiro" : role === "engenheiro" ? "Engenheiro/Projetista" : "Produtor";
 
   return (
     <Sidebar>

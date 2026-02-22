@@ -16,7 +16,7 @@ const Index = () => {
           AgroLaudo
         </h1>
         <p className="mt-4 text-lg text-muted-foreground max-w-lg opacity-0 animate-slide-up" style={{ animationDelay: "200ms", animationFillMode: "forwards" }}>
-          Plataforma inteligente para emissão de laudos agronômicos. Conectando produtores rurais a engenheiros agrônomos.
+          Plataforma inteligente para emissão de laudos agronômicos. Conectando produtores rurais a engenheiros e projetistas.
         </p>
         <div className="flex gap-3 mt-8 opacity-0 animate-slide-up" style={{ animationDelay: "300ms", animationFillMode: "forwards" }}>
           <Button size="lg" onClick={() => navigate("/auth")}>
