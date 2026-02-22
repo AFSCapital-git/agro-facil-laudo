@@ -62,15 +62,18 @@ export default function BancoDashboard() {
   });
 
   const { data: solicitacoes, isLoading } = useQuery({
-    queryKey: ["banco_solicitacoes"],
+    queryKey: ["banco_solicitacoes", bancoInfo?.banco_parceiro_id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("solicitacoes_laudo")
         .select("*, propriedades(nome_propriedade), laudos(id, status_laudo), pronaf_produtos(nome)")
+        .eq("banco_parceiro_id", bancoInfo!.banco_parceiro_id)
+        .neq("status_banco", "nao_enviado")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
+    enabled: !!bancoInfo?.banco_parceiro_id,
   });
 
   const { data: chatMessages } = useQuery({
