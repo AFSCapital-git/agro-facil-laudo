@@ -30,6 +30,7 @@ import ReactMarkdown from "react-markdown";
 import { AudioRecorder } from "@/components/chat/AudioRecorder";
 import { AudioPlayer } from "@/components/chat/AudioPlayer";
 import StatusTimeline from "@/components/solicitacoes/StatusTimeline";
+import OrcamentoCusteio from "@/components/solicitacoes/OrcamentoCusteio";
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
@@ -1220,6 +1221,15 @@ export default function MesaProdutos() {
                   <p className="text-xs text-muted-foreground text-center py-2">Nenhum documento exigido ou enviado.</p>
                 )}
               </div>
+
+              {/* Orçamento de custeio (read-only para mesa) */}
+              {selectedSolicitacao.tipo_credito === "custeio" && (
+                <OrcamentoCusteio
+                  solicitacaoId={selectedSolicitacao.id}
+                  culturaPrincipal={selectedSolicitacao.cultura_principal}
+                  readOnly
+                />
+              )}
 
               {/* Notas da mesa */}
               <div className="space-y-2">
