@@ -1,10 +1,14 @@
 import { useAuth } from "@/hooks/useAuth";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, MapPin, ClipboardCheck, CreditCard } from "lucide-react";
+import { FileText, MapPin, ClipboardCheck, CreditCard, Sprout } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import StatusTimeline from "@/components/solicitacoes/StatusTimeline";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Dashboard() {
   const { role, user } = useAuth();
@@ -12,7 +16,7 @@ export default function Dashboard() {
 
   if (role === "admin") return <AdminDashboard />;
 
-  const { data: prodStats } = useQuery({
+  const { data: prodStats, isLoading: loadingProd } = useQuery({
     queryKey: ["produtor_stats"],
     enabled: role === "produtor",
     queryFn: async () => {
@@ -25,7 +29,7 @@ export default function Dashboard() {
     },
   });
 
-  const { data: engStats } = useQuery({
+  const { data: engStats, isLoading: loadingEng } = useQuery({
     queryKey: ["engenheiro_stats"],
     enabled: role === "engenheiro",
     queryFn: async () => {
@@ -39,7 +43,7 @@ export default function Dashboard() {
     },
   });
 
-  const { data: recentSolicitacoes } = useQuery({
+  const { data: recentSolicitacoes, isLoading: loadingTimeline } = useQuery({
     queryKey: ["dashboard_timeline", role],
     enabled: role === "produtor" || role === "engenheiro",
     queryFn: async () => {
@@ -63,73 +67,88 @@ export default function Dashboard() {
   const formatCurrency = (v: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
+  const isLoading = role === "produtor" ? loadingProd : loadingEng;
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-bold">Olá, {nome}!</h1>
-        <p className="text-muted-foreground">
-          {role === "produtor" && "Gerencie suas propriedades e solicitações de laudo."}
-          {role === "engenheiro" && "Veja demandas disponíveis e gerencie seus laudos."}
-          {!role && "Carregando informações..."}
-        </p>
-      </div>
+      <PageHeader
+        icon={<Sprout className="h-5 w-5" />}
+        title={`Olá, ${nome}!`}
+        description={
+          role === "produtor"
+            ? "Gerencie suas propriedades e solicitações de laudo."
+            : role === "engenheiro"
+            ? "Veja demandas disponíveis e gerencie seus laudos."
+            : "Carregando informações..."
+        }
+      />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {role === "produtor" && (
           <>
-            <DashCard icon={MapPin} title="Propriedades" value={String(prodStats?.props ?? "—")} desc="cadastradas" />
-            <DashCard icon={FileText} title="Solicitações" value={String(prodStats?.sols ?? "—")} desc="ativas" />
-            <DashCard icon={ClipboardCheck} title="Aprovados" value={String(prodStats?.laudos ?? "—")} desc="pelo banco" />
+            <StatCard loading={isLoading} icon={<MapPin className="h-4 w-4" />} title="Propriedades" value={String(prodStats?.props ?? "0")} description="cadastradas" delay={0} />
+            <StatCard loading={isLoading} icon={<FileText className="h-4 w-4" />} title="Solicitações" value={String(prodStats?.sols ?? "0")} description="ativas" delay={75} />
+            <StatCard loading={isLoading} icon={<ClipboardCheck className="h-4 w-4" />} title="Aprovados" value={String(prodStats?.laudos ?? "0")} description="pelo banco" delay={150} />
           </>
         )}
         {role === "engenheiro" && (
           <>
-            <DashCard icon={ClipboardCheck} title="Demandas" value={String(engStats?.demandas ?? "—")} desc="disponíveis" />
-            <DashCard icon={FileText} title="Meus Laudos" value={String(engStats?.laudos ?? "—")} desc="em andamento" />
-            <DashCard icon={CreditCard} title="Pendente" value={formatCurrency(engStats?.totalPend ?? 0)} desc="a receber" />
+            <StatCard loading={isLoading} icon={<ClipboardCheck className="h-4 w-4" />} title="Demandas" value={String(engStats?.demandas ?? "0")} description="disponíveis" delay={0} />
+            <StatCard loading={isLoading} icon={<FileText className="h-4 w-4" />} title="Meus Laudos" value={String(engStats?.laudos ?? "0")} description="em andamento" delay={75} />
+            <StatCard loading={isLoading} icon={<CreditCard className="h-4 w-4" />} title="Pendente" value={formatCurrency(engStats?.totalPend ?? 0)} description="a receber" delay={150} />
           </>
         )}
       </div>
 
-      {(role === "produtor" || role === "engenheiro") && recentSolicitacoes && recentSolicitacoes.length > 0 && (
+      {(role === "produtor" || role === "engenheiro") && (
         <div className="space-y-3">
-          <h2 className="font-display text-lg font-semibold">Andamento das Solicitações</h2>
-          {recentSolicitacoes.map((item: any) => {
-            const sol = role === "produtor" ? item : item.solicitacoes_laudo;
-            const laudo = role === "produtor" ? (Array.isArray(item.laudos) ? item.laudos[0] : item.laudos) : item;
-            const prop = role === "produtor" ? item.propriedades : sol?.propriedades;
-            if (!sol) return null;
-            return (
-              <Card key={sol.id} className="overflow-hidden">
-                <CardHeader className="pb-1 pt-3 px-4">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                    {prop?.nome_propriedade || "Propriedade"} — {sol.cultura_principal || "—"}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="px-4 pb-3">
-                  <StatusTimeline solicitacao={sol} laudo={laudo} />
-                </CardContent>
-              </Card>
-            );
-          })}
+          <h2 className="font-display text-lg font-semibold animate-fade-in" style={{ animationDelay: "200ms" }}>
+            Andamento das Solicitações
+          </h2>
+          {loadingTimeline ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Card key={i}>
+                  <CardContent className="p-4">
+                    <Skeleton className="h-4 w-48 mb-3" />
+                    <Skeleton className="h-12 w-full" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : recentSolicitacoes && recentSolicitacoes.length > 0 ? (
+            recentSolicitacoes.map((item: any, i: number) => {
+              const sol = role === "produtor" ? item : item.solicitacoes_laudo;
+              const laudo = role === "produtor" ? (Array.isArray(item.laudos) ? item.laudos[0] : item.laudos) : item;
+              const prop = role === "produtor" ? item.propriedades : sol?.propriedades;
+              if (!sol) return null;
+              return (
+                <Card
+                  key={sol.id}
+                  className="overflow-hidden opacity-0 animate-slide-up transition-shadow hover:shadow-md"
+                  style={{ animationDelay: `${250 + i * 75}ms`, animationFillMode: "forwards" }}
+                >
+                  <CardHeader className="pb-1 pt-3 px-4">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                      {prop?.nome_propriedade || "Propriedade"} — {sol.cultura_principal || "—"}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-3">
+                    <StatusTimeline solicitacao={sol} laudo={laudo} />
+                  </CardContent>
+                </Card>
+              );
+            })
+          ) : (
+            <EmptyState
+              icon={<FileText className="h-6 w-6" />}
+              title="Nenhuma solicitação ainda"
+              description="Quando você tiver solicitações, o andamento aparecerá aqui."
+            />
+          )}
         </div>
       )}
     </div>
-  );
-}
-
-function DashCard({ icon: Icon, title, value, desc }: { icon: React.ComponentType<{ className?: string }>; title: string; value: string; desc: string }) {
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        <Icon className="h-4 w-4 text-muted-foreground" />
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold font-display">{value}</div>
-        <p className="text-xs text-muted-foreground">{desc}</p>
-      </CardContent>
-    </Card>
   );
 }
