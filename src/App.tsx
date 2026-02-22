@@ -16,6 +16,7 @@ import Pagamentos from "@/pages/Pagamentos";
 import MesaDashboard from "@/pages/mesa/MesaDashboard";
 import MesaProdutos from "@/pages/mesa/MesaProdutos";
 import MesaEnviosBanco from "@/pages/mesa/MesaEnviosBanco";
+import BancoDashboard from "@/pages/banco/BancoDashboard";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminEngenheiros from "@/pages/admin/AdminEngenheiros";
 import AdminPagamentos from "@/pages/admin/AdminPagamentos";
@@ -29,6 +30,7 @@ import AdminRegioes from "@/pages/admin/AdminRegioes";
 import AdminBlacklist from "@/pages/admin/AdminBlacklist";
 import AdminSLA from "@/pages/admin/AdminSLA";
 import AdminFeatureFlags from "@/pages/admin/AdminFeatureFlags";
+import AdminZarc from "@/pages/admin/AdminZarc";
 import RelatorioEngenheiro from "@/pages/RelatorioEngenheiro";
 import RelatorioProdutor from "@/pages/RelatorioProdutor";
 import NotFound from "./pages/NotFound";
@@ -62,6 +64,7 @@ const App = () => (
               <Route path="/mesa" element={<MesaDashboard />} />
               <Route path="/mesa/esteira" element={<MesaProdutos />} />
               <Route path="/mesa/envios-banco" element={<MesaEnviosBanco />} />
+              <Route path="/banco" element={<BancoDashboard />} />
               <Route path="/admin/usuarios" element={<AdminUsuarios />} />
               <Route path="/admin/engenheiros" element={<AdminEngenheiros />} />
               <Route path="/admin/pagamentos" element={<AdminPagamentos />} />
@@ -72,7 +75,9 @@ const App = () => (
               <Route path="/admin/blacklist" element={<AdminBlacklist />} />
               <Route path="/admin/sla" element={<AdminSLA />} />
               <Route path="/admin/feature-flags" element={<AdminFeatureFlags />} />
+              <Route path="/admin/zarc" element={<AdminZarc />} />
               <Route path="/admin/relatorios" element={<AdminRelatorios />} />
+              <Route path="/admin/produtos-pronaf" element={<AdminProdutosPronaf />} />
               <Route path="/admin/produtos-pronaf" element={<AdminProdutosPronaf />} />
             </Route>
             <Route path="*" element={<NotFound />} />
