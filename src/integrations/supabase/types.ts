@@ -693,6 +693,53 @@ export type Database = {
         }
         Relationships: []
       }
+      orcamento_custeio_itens: {
+        Row: {
+          categoria: string
+          created_at: string
+          descricao: string
+          id: string
+          quantidade: number
+          solicitacao_id: string
+          unidade: string
+          updated_at: string
+          valor_total: number | null
+          valor_unitario: number
+        }
+        Insert: {
+          categoria?: string
+          created_at?: string
+          descricao?: string
+          id?: string
+          quantidade?: number
+          solicitacao_id: string
+          unidade?: string
+          updated_at?: string
+          valor_total?: number | null
+          valor_unitario?: number
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          descricao?: string
+          id?: string
+          quantidade?: number
+          solicitacao_id?: string
+          unidade?: string
+          updated_at?: string
+          valor_total?: number | null
+          valor_unitario?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orcamento_custeio_itens_solicitacao_id_fkey"
+            columns: ["solicitacao_id"]
+            isOneToOne: false
+            referencedRelation: "solicitacoes_laudo"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pagamentos_engenheiro: {
         Row: {
           created_at: string

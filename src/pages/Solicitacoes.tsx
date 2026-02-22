@@ -26,6 +26,7 @@ import { AudioRecorder } from "@/components/chat/AudioRecorder";
 import { AudioPlayer } from "@/components/chat/AudioPlayer";
 import ProductRulesCard from "@/components/solicitacoes/ProductRulesCard";
 import StatusTimeline from "@/components/solicitacoes/StatusTimeline";
+import OrcamentoCusteio from "@/components/solicitacoes/OrcamentoCusteio";
 
 const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   pendente: { label: "Pendente", variant: "outline" },
@@ -1153,6 +1154,15 @@ export default function Solicitacoes() {
                   <ProductRulesCard
                     produto={produto}
                     valorSolicitado={detailSolicitacao.valor_solicitado}
+                  />
+                )}
+
+                {/* Budget section for custeio */}
+                {detailSolicitacao.tipo_credito === "custeio" && (
+                  <OrcamentoCusteio
+                    solicitacaoId={detailSolicitacao.id}
+                    culturaPrincipal={detailSolicitacao.cultura_principal}
+                    readOnly={!["pendente", "docs_pendentes_produtor", "em_analise_mesa"].includes(detailSolicitacao.status_solicitacao)}
                   />
                 )}
 
