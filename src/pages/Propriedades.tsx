@@ -2,8 +2,6 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -12,13 +10,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -83,6 +74,31 @@ export const emptyForm: PropriedadeFormData = {
   tipo_solo: "",
 };
 
+// Extended type to include new columns not yet in generated types
+interface PropriedadeRow {
+  id: string;
+  produtor_id: string;
+  nome_propriedade: string;
+  endereco: string;
+  area_total_ha: number;
+  latitude: number | null;
+  longitude: number | null;
+  codigo_car: string | null;
+  regiao_id: string | null;
+  created_at: string;
+  updated_at: string;
+  municipio: string;
+  uf: string;
+  matricula_imovel: string;
+  numero_ccir: string;
+  numero_itr: string;
+  tipo_posse: string;
+  area_reserva_legal_ha: number;
+  area_app_ha: number;
+  fonte_agua: string;
+  tipo_solo: string;
+}
+
 export { UF_LIST, TIPO_POSSE_LABELS };
 
 export default function Propriedades() {
@@ -98,7 +114,8 @@ export default function Propriedades() {
       const { data, error } = await supabase
         .from("propriedades")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .returns<PropriedadeRow[]>();
       if (error) throw error;
       return data;
     },
@@ -138,13 +155,13 @@ export default function Propriedades() {
       if (editId) {
         const { error } = await supabase
           .from("propriedades")
-          .update(payload)
+          .update(payload as any)
           .eq("id", editId);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from("propriedades")
-          .insert({ ...payload, produtor_id: produtorId! });
+          .insert({ ...payload, produtor_id: produtorId! } as any);
         if (error) throw error;
       }
     },
@@ -178,25 +195,25 @@ export default function Propriedades() {
     setOpen(false);
   };
 
-  const openEdit = (p: NonNullable<typeof propriedades>[number]) => {
+  const openEdit = (p: PropriedadeRow) => {
     setEditId(p.id);
     setForm({
       nome_propriedade: p.nome_propriedade,
       endereco: p.endereco,
-      municipio: (p as any).municipio || "",
-      uf: (p as any).uf || "",
+      municipio: p.municipio || "",
+      uf: p.uf || "",
       area_total_ha: String(p.area_total_ha),
       latitude: p.latitude ? String(p.latitude) : "",
       longitude: p.longitude ? String(p.longitude) : "",
       codigo_car: p.codigo_car || "",
-      matricula_imovel: (p as any).matricula_imovel || "",
-      numero_ccir: (p as any).numero_ccir || "",
-      numero_itr: (p as any).numero_itr || "",
-      tipo_posse: (p as any).tipo_posse || "propria",
-      area_reserva_legal_ha: String((p as any).area_reserva_legal_ha || ""),
-      area_app_ha: String((p as any).area_app_ha || ""),
-      fonte_agua: (p as any).fonte_agua || "",
-      tipo_solo: (p as any).tipo_solo || "",
+      matricula_imovel: p.matricula_imovel || "",
+      numero_ccir: p.numero_ccir || "",
+      numero_itr: p.numero_itr || "",
+      tipo_posse: p.tipo_posse || "propria",
+      area_reserva_legal_ha: String(p.area_reserva_legal_ha || ""),
+      area_app_ha: String(p.area_app_ha || ""),
+      fonte_agua: p.fonte_agua || "",
+      tipo_solo: p.tipo_solo || "",
     });
     setOpen(true);
   };
@@ -272,10 +289,10 @@ export default function Propriedades() {
                   <TableRow key={p.id}>
                     <TableCell className="font-medium">{p.nome_propriedade}</TableCell>
                     <TableCell>
-                      {(p as any).municipio ? `${(p as any).municipio}/${(p as any).uf}` : p.endereco}
+                      {p.municipio ? `${p.municipio}/${p.uf}` : p.endereco}
                     </TableCell>
                     <TableCell className="text-right">{p.area_total_ha}</TableCell>
-                    <TableCell>{TIPO_POSSE_LABELS[(p as any).tipo_posse] || (p as any).tipo_posse}</TableCell>
+                    <TableCell>{TIPO_POSSE_LABELS[p.tipo_posse] || p.tipo_posse}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
                         <Button size="icon" variant="ghost" onClick={() => openEdit(p)}>
