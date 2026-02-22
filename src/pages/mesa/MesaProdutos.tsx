@@ -423,7 +423,18 @@ export default function MesaProdutos() {
       const { error } = await supabase.from("solicitacoes_laudo").update(updateData).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["mesa_solicitacoes"] }); toast({ title: "Atualizado com sucesso!" }); },
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ["mesa_solicitacoes"] });
+      // Update selectedSolicitacao so the dialog reflects the new status immediately
+      if (selectedSolicitacao && selectedSolicitacao.id === variables.id) {
+        setSelectedSolicitacao((prev: any) => prev ? ({
+          ...prev,
+          status_solicitacao: variables.status_solicitacao,
+          ...(variables.extra || {}),
+        }) : null);
+      }
+      toast({ title: "Atualizado com sucesso!" });
+    },
     onError: (err: Error) => toast({ title: "Erro", description: err.message, variant: "destructive" }),
   });
 
