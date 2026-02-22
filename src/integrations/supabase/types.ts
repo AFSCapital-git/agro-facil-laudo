@@ -285,6 +285,42 @@ export type Database = {
           },
         ]
       }
+      feature_flags: {
+        Row: {
+          ativo: boolean
+          chave: string
+          created_at: string
+          descricao: string
+          escopo_id: string | null
+          escopo_tipo: string
+          id: string
+          updated_at: string
+          valor: Json
+        }
+        Insert: {
+          ativo?: boolean
+          chave: string
+          created_at?: string
+          descricao?: string
+          escopo_id?: string | null
+          escopo_tipo?: string
+          id?: string
+          updated_at?: string
+          valor?: Json
+        }
+        Update: {
+          ativo?: boolean
+          chave?: string
+          created_at?: string
+          descricao?: string
+          escopo_id?: string | null
+          escopo_tipo?: string
+          id?: string
+          updated_at?: string
+          valor?: Json
+        }
+        Relationships: []
+      }
       laudos: {
         Row: {
           caminho_pdf_laudo: string | null

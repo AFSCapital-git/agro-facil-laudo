@@ -17,7 +17,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import {
   FileText, Plus, Clock, CheckCircle2, AlertCircle, Download, Info,
-  Upload, Trash2, Eye, ShieldCheck, Banknote, FileWarning, MessageCircle, Send, Video,
+  Upload, Trash2, Eye, ShieldCheck, Banknote, FileWarning, MessageCircle, Send, Video, MapPin,
 } from "lucide-react";
 import { AudioRecorder } from "@/components/chat/AudioRecorder";
 import { AudioPlayer } from "@/components/chat/AudioPlayer";
@@ -76,7 +76,7 @@ export default function Solicitacoes() {
   const { data: propriedades } = useQuery({
     queryKey: ["propriedades"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("propriedades").select("id, nome_propriedade").order("nome_propriedade");
+      const { data, error } = await supabase.from("propriedades").select("id, nome_propriedade, regiao_id, regioes(uf)").order("nome_propriedade");
       if (error) throw error;
       return data;
     },
@@ -135,6 +135,30 @@ export default function Solicitacoes() {
         .order("ordem");
       if (error) throw error;
       return data;
+    },
+  });
+
+  // Get UF from selected property
+  const selectedPropUf = (() => {
+    if (!form.propriedade_id || !propriedades) return null;
+    const prop = propriedades.find((p) => p.id === form.propriedade_id);
+    return (prop as any)?.regioes?.uf ?? null;
+  })();
+
+  // Regional rules for selected product + UF
+  const { data: regrasRegionais } = useQuery({
+    queryKey: ["regras_regionais", form.pronaf_produto_id, selectedPropUf],
+    enabled: !!form.pronaf_produto_id && !!selectedPropUf,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("produto_regras_regionais")
+        .select("*")
+        .eq("produto_id", form.pronaf_produto_id)
+        .eq("uf", selectedPropUf)
+        .eq("ativo", true)
+        .limit(1);
+      if (error) throw error;
+      return data?.[0] ?? null;
     },
   });
 
@@ -394,6 +418,50 @@ export default function Solicitacoes() {
                       </li>
                     ))}
                   </ul>
+                </div>
+              )}
+
+              {/* Regional rules - dynamic fields/docs by UF */}
+              {regrasRegionais && (
+                <div className="rounded-md border border-accent/30 bg-accent/5 p-3 space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <MapPin className="h-4 w-4 text-accent-foreground" />
+                    Exigências adicionais para UF {selectedPropUf}:
+                  </div>
+                  {(regrasRegionais.campos_obrigatorios as string[])?.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Campos obrigatórios:</p>
+                      <ul className="text-sm text-muted-foreground space-y-1 pl-6 list-disc">
+                        {(regrasRegionais.campos_obrigatorios as string[]).map((campo: string) => {
+                          const labels: Record<string, string> = {
+                            codigo_car: "CAR (Cadastro Ambiental Rural)",
+                            titulo_posse: "Título de Posse / Escritura",
+                            licenca_ambiental: "Licença Ambiental",
+                            outorga_agua: "Outorga de Uso de Água",
+                            dap_caf: "DAP/CAF",
+                            geo_referenciamento: "Georreferenciamento",
+                            plano_manejo: "Plano de Manejo",
+                            ater: "Declaração ATER",
+                          };
+                          return <li key={campo}>{labels[campo] ?? campo} <span className="text-destructive">*</span></li>;
+                        })}
+                      </ul>
+                    </div>
+                  )}
+                  {(regrasRegionais.documentos_adicionais as any[])?.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Documentos adicionais:</p>
+                      <ul className="text-sm text-muted-foreground space-y-1 pl-6 list-disc">
+                        {(regrasRegionais.documentos_adicionais as any[]).map((doc: any, idx: number) => (
+                          <li key={idx}>
+                            {doc.nome}
+                            {doc.obrigatorio && <span className="text-destructive ml-1">*</span>}
+                            {doc.descricao && <span className="text-xs block text-muted-foreground/70">{doc.descricao}</span>}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               )}
 

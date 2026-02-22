@@ -29,6 +29,7 @@ import {
   Ban,
   Clock,
   Map,
+  ToggleLeft,
 } from "lucide-react";
 
 interface NavItem {
@@ -70,6 +71,7 @@ const adminNav: NavItem[] = [
   { title: "Pagamentos", icon: CreditCard, path: "/admin/pagamentos" },
   { title: "Auditoria", icon: Shield, path: "/admin/auditoria" },
   { title: "Relatórios", icon: BarChart3, path: "/admin/relatorios" },
+  { title: "Feature Flags", icon: ToggleLeft, path: "/admin/feature-flags" },
   { title: "Configurações", icon: Settings, path: "/admin/configuracoes" },
 ];
 

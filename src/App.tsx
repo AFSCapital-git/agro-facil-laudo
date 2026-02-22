@@ -28,6 +28,7 @@ import AdminBancos from "@/pages/admin/AdminBancos";
 import AdminRegioes from "@/pages/admin/AdminRegioes";
 import AdminBlacklist from "@/pages/admin/AdminBlacklist";
 import AdminSLA from "@/pages/admin/AdminSLA";
+import AdminFeatureFlags from "@/pages/admin/AdminFeatureFlags";
 import RelatorioEngenheiro from "@/pages/RelatorioEngenheiro";
 import RelatorioProdutor from "@/pages/RelatorioProdutor";
 import NotFound from "./pages/NotFound";
@@ -70,6 +71,7 @@ const App = () => (
               <Route path="/admin/regioes" element={<AdminRegioes />} />
               <Route path="/admin/blacklist" element={<AdminBlacklist />} />
               <Route path="/admin/sla" element={<AdminSLA />} />
+              <Route path="/admin/feature-flags" element={<AdminFeatureFlags />} />
               <Route path="/admin/relatorios" element={<AdminRelatorios />} />
               <Route path="/admin/produtos-pronaf" element={<AdminProdutosPronaf />} />
             </Route>

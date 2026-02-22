@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import ProdutoRegrasRegionais from "@/components/admin/ProdutoRegrasRegionais";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -418,6 +419,10 @@ export default function AdminProdutosPronaf() {
                         <span className="font-medium">O que financia:</span> {p.o_que_financia}
                       </div>
                     )}
+
+                    <div className="border-t pt-3">
+                      <ProdutoRegrasRegionais produtoId={p.id} produtoNome={p.nome} />
+                    </div>
 
                     <div className="border-t pt-3">
                       <div className="flex items-center justify-between mb-2">
