@@ -59,7 +59,7 @@ export default function AdminZarc() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ZarcRegra | null>(null);
   const [form, setForm] = useState(emptyForm);
-  const [filterUf, setFilterUf] = useState("");
+  const [filterUf, setFilterUf] = useState("all");
   const [filterCultura, setFilterCultura] = useState("");
 
   const { data: regras, isLoading } = useQuery({
@@ -76,7 +76,7 @@ export default function AdminZarc() {
   });
 
   const filtered = regras?.filter((r) => {
-    if (filterUf && r.uf !== filterUf) return false;
+    if (filterUf !== "all" && r.uf !== filterUf) return false;
     if (filterCultura && !r.cultura.toLowerCase().includes(filterCultura.toLowerCase())) return false;
     return true;
   });
@@ -251,7 +251,7 @@ export default function AdminZarc() {
           <Select value={filterUf} onValueChange={setFilterUf}>
             <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todas</SelectItem>
+              <SelectItem value="all">Todas</SelectItem>
               {UFS.map((uf) => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
             </SelectContent>
           </Select>
