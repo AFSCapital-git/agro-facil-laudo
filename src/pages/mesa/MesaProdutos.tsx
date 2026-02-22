@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -18,11 +18,24 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { useAiAssistant } from "@/hooks/useAiAssistant";
-import { ClipboardCheck, MapPin, Sprout, Banknote, Check, X, Send, MessageCircle, Sparkles, FileSearch, UserCheck, Loader2, FolderOpen, FileText, CheckCircle2, XCircle, Eye, Video, RotateCcw, ChevronDown, ChevronUp, AlertTriangle, CheckCircle, Layers } from "lucide-react";
+import { StatCard } from "@/components/ui/stat-card";
+import {
+  ClipboardCheck, MapPin, Sprout, Banknote, Check, X, Send, MessageCircle,
+  Sparkles, FileSearch, UserCheck, Loader2, FolderOpen, FileText, CheckCircle2,
+  XCircle, Eye, Video, RotateCcw, ChevronDown, ChevronUp, AlertTriangle,
+  CheckCircle, Layers, Search, Download, ArrowUpDown, Clock, Users, TrendingUp,
+  Filter,
+} from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { AudioRecorder } from "@/components/chat/AudioRecorder";
 import { AudioPlayer } from "@/components/chat/AudioPlayer";
 import StatusTimeline from "@/components/solicitacoes/StatusTimeline";
+import {
+  Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 const statusSolicitacaoMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   pendente: { label: "Pendente", variant: "outline" },
@@ -45,6 +58,19 @@ const pipelineStages = [
   { key: "pronta_para_banco", label: "Pronto p/ Banco" },
 ];
 
+type SortOption = "recente" | "antigo" | "valor_desc" | "valor_asc" | "sla_urgente";
+
+function exportCSV(headers: string[], rows: string[][], filename: string) {
+  const csv = [headers.join(";"), ...rows.map((r) => r.join(";"))].join("\n");
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function MesaProdutos() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -64,6 +90,18 @@ export default function MesaProdutos() {
   const [tipoValorAssistencia, setTipoValorAssistencia] = useState<"fixo" | "percentual">("fixo");
   const [valorAssistencia, setValorAssistencia] = useState("");
 
+  // ─── Filters & Search State ───
+  const [searchText, setSearchText] = useState("");
+  const [filterUF, setFilterUF] = useState<string>("todas");
+  const [filterCliente, setFilterCliente] = useState<string>("todos");
+  const [filterProduto, setFilterProduto] = useState<string>("todos");
+  const [filterDateFrom, setFilterDateFrom] = useState<Date | undefined>();
+  const [filterDateTo, setFilterDateTo] = useState<Date | undefined>();
+  const [sortBy, setSortBy] = useState<SortOption>("recente");
+  const [showFilters, setShowFilters] = useState(false);
+  const [groupByCliente, setGroupByCliente] = useState(false);
+
+  // ─── Data Queries ───
   const { data: solicitacoes, isLoading } = useQuery({
     queryKey: ["mesa_solicitacoes"],
     queryFn: async () => {
@@ -88,7 +126,6 @@ export default function MesaProdutos() {
     },
   });
 
-  // Fetch grupos_solicitacao for group info
   const { data: grupos } = useQuery({
     queryKey: ["mesa_grupos"],
     queryFn: async () => {
@@ -154,7 +191,6 @@ export default function MesaProdutos() {
     },
   });
 
-  // Shared group documents
   const selectedGrupoId = selectedSolicitacao?.grupo_id;
   const { data: grupoDocsCompartilhados } = useQuery({
     queryKey: ["grupo_docs_compartilhados_mesa", selectedGrupoId],
@@ -170,7 +206,6 @@ export default function MesaProdutos() {
     },
   });
 
-  // Sibling solicitations in the same group
   const { data: grupoSiblings } = useQuery({
     queryKey: ["grupo_siblings_mesa", selectedGrupoId],
     enabled: !!selectedGrupoId,
@@ -199,73 +234,211 @@ export default function MesaProdutos() {
     },
   });
 
+  // ─── Derived data for filters ───
+  const availableUFs = useMemo(() => {
+    if (!solicitacoes) return [];
+    const ufs = [...new Set(solicitacoes.map((s: any) => s.propriedades?.uf).filter(Boolean))].sort();
+    return ufs as string[];
+  }, [solicitacoes]);
+
+  const availableClientes = useMemo(() => {
+    if (!solicitacoes) return [];
+    const map = new Map<string, string>();
+    solicitacoes.forEach((s: any) => {
+      if (s.produtor_id && s.produtor_nome !== "—") {
+        map.set(s.produtor_id, s.produtor_nome);
+      }
+    });
+    return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [solicitacoes]);
+
+  const availableProdutos = useMemo(() => {
+    if (!solicitacoes) return [];
+    const map = new Map<string, string>();
+    solicitacoes.forEach((s: any) => {
+      if (s.pronaf_produto_id && s.pronaf_produtos?.nome) {
+        map.set(s.pronaf_produto_id, s.pronaf_produtos.nome);
+      }
+    });
+    return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [solicitacoes]);
+
+  // ─── SLA helper ───
+  const getSlaStatus = (s: any): { overdue: boolean; hoursLeft: number } | null => {
+    if (!slaConfig?.length) return null;
+    const cfg = slaConfig.find((c) => c.status_solicitacao === s.status_solicitacao);
+    if (!cfg) return null;
+    const created = new Date(s.updated_at || s.created_at).getTime();
+    const deadline = created + cfg.prazo_horas * 3600000;
+    const now = Date.now();
+    return { overdue: now > deadline, hoursLeft: Math.round((deadline - now) / 3600000) };
+  };
+
+  // ─── Filtered + sorted data ───
+  const filteredSolicitacoes = useMemo(() => {
+    if (!solicitacoes) return [];
+    let items = [...solicitacoes];
+
+    // Text search
+    if (searchText.trim()) {
+      const q = searchText.toLowerCase();
+      items = items.filter((s: any) =>
+        s.produtor_nome?.toLowerCase().includes(q) ||
+        s.propriedades?.nome_propriedade?.toLowerCase().includes(q) ||
+        s.pronaf_produtos?.nome?.toLowerCase().includes(q) ||
+        s.cultura_principal?.toLowerCase().includes(q) ||
+        s.propriedades?.municipio?.toLowerCase().includes(q)
+      );
+    }
+
+    // UF
+    if (filterUF !== "todas") {
+      items = items.filter((s: any) => s.propriedades?.uf === filterUF);
+    }
+
+    // Cliente
+    if (filterCliente !== "todos") {
+      items = items.filter((s: any) => s.produtor_id === filterCliente);
+    }
+
+    // Produto
+    if (filterProduto !== "todos") {
+      items = items.filter((s: any) => s.pronaf_produto_id === filterProduto);
+    }
+
+    // Date range
+    if (filterDateFrom) {
+      items = items.filter((s) => new Date(s.created_at) >= filterDateFrom!);
+    }
+    if (filterDateTo) {
+      const end = new Date(filterDateTo);
+      end.setHours(23, 59, 59, 999);
+      items = items.filter((s) => new Date(s.created_at) <= end);
+    }
+
+    // Sort
+    switch (sortBy) {
+      case "antigo":
+        items.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        break;
+      case "valor_desc":
+        items.sort((a, b) => b.valor_solicitado - a.valor_solicitado);
+        break;
+      case "valor_asc":
+        items.sort((a, b) => a.valor_solicitado - b.valor_solicitado);
+        break;
+      case "sla_urgente":
+        items.sort((a, b) => {
+          const slaA = getSlaStatus(a);
+          const slaB = getSlaStatus(b);
+          const urgA = slaA ? (slaA.overdue ? -99999 : slaA.hoursLeft) : 99999;
+          const urgB = slaB ? (slaB.overdue ? -99999 : slaB.hoursLeft) : 99999;
+          return urgA - urgB;
+        });
+        break;
+      default: // recente
+        items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        break;
+    }
+
+    return items;
+  }, [solicitacoes, searchText, filterUF, filterCliente, filterProduto, filterDateFrom, filterDateTo, sortBy, slaConfig]);
+
+  // ─── KPIs ───
+  const kpis = useMemo(() => {
+    if (!filteredSolicitacoes.length) return { total: 0, valorTotal: 0, slaVencidos: 0, assistidos: 0 };
+    let slaVencidos = 0;
+    let assistidos = 0;
+    let valorTotal = 0;
+    filteredSolicitacoes.forEach((s: any) => {
+      valorTotal += s.valor_solicitado || 0;
+      if (s.assistido) assistidos++;
+      const sla = getSlaStatus(s);
+      if (sla?.overdue) slaVencidos++;
+    });
+    return { total: filteredSolicitacoes.length, valorTotal, slaVencidos, assistidos };
+  }, [filteredSolicitacoes, slaConfig]);
+
+  const hasActiveFilters = searchText || filterUF !== "todas" || filterCliente !== "todos" || filterProduto !== "todos" || filterDateFrom || filterDateTo;
+
+  const clearFilters = () => {
+    setSearchText("");
+    setFilterUF("todas");
+    setFilterCliente("todos");
+    setFilterProduto("todos");
+    setFilterDateFrom(undefined);
+    setFilterDateTo(undefined);
+  };
+
+  // ─── CSV Export ───
+  const handleExportCSV = () => {
+    const headers = ["Data", "Status", "Produtor", "Propriedade", "UF", "Município", "Produto", "Cultura", "Área (ha)", "Valor Solicitado", "Pgto Eng.", "Assistido", "SLA"];
+    const rows = filteredSolicitacoes.map((s: any) => {
+      const sla = getSlaStatus(s);
+      return [
+        new Date(s.created_at).toLocaleDateString("pt-BR"),
+        statusSolicitacaoMap[s.status_solicitacao]?.label || s.status_solicitacao,
+        s.produtor_nome || "—",
+        s.propriedades?.nome_propriedade || "—",
+        s.propriedades?.uf || "—",
+        s.propriedades?.municipio || "—",
+        s.pronaf_produtos?.nome || "—",
+        s.cultura_principal || "—",
+        String(s.area_cultivo_ha || 0),
+        String(s.valor_solicitado || 0),
+        String(s.valor_pagamento_engenheiro || 0),
+        s.assistido ? "Sim" : "Não",
+        sla ? (sla.overdue ? "Vencido" : `${sla.hoursLeft}h`) : "—",
+      ];
+    });
+    exportCSV(headers, rows, `mesa-solicitacoes-${format(new Date(), "yyyy-MM-dd")}.csv`);
+  };
+
+  // ─── Mutations (unchanged) ───
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status_solicitacao, extra }: { id: string; status_solicitacao: string; extra?: any }) => {
       const updateData: any = { status_solicitacao, notas_mesa: notas, ...extra };
-
-      if (engenheiroAtribuidoId) {
-        updateData.engenheiro_atribuido_id = engenheiroAtribuidoId;
-      }
-
-      // Apply payment override
+      if (engenheiroAtribuidoId) updateData.engenheiro_atribuido_id = engenheiroAtribuidoId;
       if (tipoValorOverride !== "produto" && valorOverride) {
         updateData.tipo_valor_engenheiro_override = tipoValorOverride;
         updateData.valor_engenheiro_override = parseFloat(valorOverride) || 0;
-        const sol = selectedSolicitacao;
         if (tipoValorOverride === "fixo") {
           updateData.valor_pagamento_engenheiro = parseFloat(valorOverride) || 0;
         } else if (tipoValorOverride === "percentual") {
-          updateData.valor_pagamento_engenheiro = (sol.valor_solicitado * (parseFloat(valorOverride) || 0)) / 100;
+          updateData.valor_pagamento_engenheiro = (selectedSolicitacao.valor_solicitado * (parseFloat(valorOverride) || 0)) / 100;
         }
       } else if (tipoValorOverride === "produto") {
         const produto = (selectedSolicitacao as any).pronaf_produtos;
         if (produto) {
-          if (produto.tipo_valor_engenheiro === "fixo") {
-            updateData.valor_pagamento_engenheiro = produto.valor_engenheiro;
-          } else {
-            updateData.valor_pagamento_engenheiro = (selectedSolicitacao.valor_solicitado * produto.valor_engenheiro) / 100;
-          }
+          updateData.valor_pagamento_engenheiro = produto.tipo_valor_engenheiro === "fixo"
+            ? produto.valor_engenheiro
+            : (selectedSolicitacao.valor_solicitado * produto.valor_engenheiro) / 100;
         }
         updateData.tipo_valor_engenheiro_override = null;
         updateData.valor_engenheiro_override = null;
       }
-
       const { error } = await supabase.from("solicitacoes_laudo").update(updateData).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["mesa_solicitacoes"] });
-      toast({ title: "Atualizado com sucesso!" });
-    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["mesa_solicitacoes"] }); toast({ title: "Atualizado com sucesso!" }); },
     onError: (err: Error) => toast({ title: "Erro", description: err.message, variant: "destructive" }),
   });
 
-  // Update group assistant fee
   const updateGrupoMutation = useMutation({
     mutationFn: async ({ grupoId, tipo, valor }: { grupoId: string; tipo: string; valor: number }) => {
-      const { error } = await supabase
-        .from("grupos_solicitacao")
-        .update({ tipo_valor_assistencia: tipo, valor_assistencia: valor })
-        .eq("id", grupoId);
+      const { error } = await supabase.from("grupos_solicitacao").update({ tipo_valor_assistencia: tipo, valor_assistencia: valor }).eq("id", grupoId);
       if (error) throw error;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["mesa_grupos"] });
-      toast({ title: "Taxa do assistente atualizada!" });
-    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["mesa_grupos"] }); toast({ title: "Taxa do assistente atualizada!" }); },
     onError: (err: Error) => toast({ title: "Erro", description: err.message, variant: "destructive" }),
   });
 
-  // Update shared doc status
   const updateGrupoDocStatusMutation = useMutation({
     mutationFn: async ({ docId, status }: { docId: string; status: string }) => {
       const { error } = await supabase.from("grupo_documentos_compartilhados").update({ status_documento: status }).eq("id", docId);
       if (error) throw error;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["grupo_docs_compartilhados_mesa", selectedGrupoId] });
-      toast({ title: "Status do documento atualizado!" });
-    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["grupo_docs_compartilhados_mesa", selectedGrupoId] }); toast({ title: "Status do documento atualizado!" }); },
     onError: (err: Error) => toast({ title: "Erro", description: err.message, variant: "destructive" }),
   });
 
@@ -280,10 +453,7 @@ export default function MesaProdutos() {
       });
       if (error) throw error;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["chat_mesa", selectedSolicitacao?.id] });
-      setChatMessage("");
-    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["chat_mesa", selectedSolicitacao?.id] }); setChatMessage(""); },
     onError: (err: Error) => toast({ title: "Erro ao enviar", description: err.message, variant: "destructive" }),
   });
 
@@ -294,14 +464,10 @@ export default function MesaProdutos() {
       const { error: uploadError } = await supabase.storage.from("chat-audio").upload(fileName, blob);
       if (uploadError) throw uploadError;
       const { data } = await supabase.storage.from("chat-audio").createSignedUrl(fileName, 86400 * 365);
-      if (data?.signedUrl) {
-        sendChatMutation.mutate({ audioUrl: data.signedUrl });
-      }
+      if (data?.signedUrl) sendChatMutation.mutate({ audioUrl: data.signedUrl });
     } catch (err: any) {
       toast({ title: "Erro ao enviar áudio", description: err.message, variant: "destructive" });
-    } finally {
-      setIsUploadingAudio(false);
-    }
+    } finally { setIsUploadingAudio(false); }
   };
 
   const updateDocStatusMutation = useMutation({
@@ -309,13 +475,11 @@ export default function MesaProdutos() {
       const { error } = await supabase.from("solicitacao_documentos").update({ status_documento: status }).eq("id", docId);
       if (error) throw error;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["solicitacao_documentos_mesa", selectedSolicitacao?.id] });
-      toast({ title: "Status do documento atualizado!" });
-    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["solicitacao_documentos_mesa", selectedSolicitacao?.id] }); toast({ title: "Status do documento atualizado!" }); },
     onError: (err: Error) => toast({ title: "Erro", description: err.message, variant: "destructive" }),
   });
 
+  // ─── Helpers ───
   const formatCurrency = (v: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
@@ -331,44 +495,23 @@ export default function MesaProdutos() {
       setTipoValorOverride("produto");
       setValorOverride("");
     }
-    // Load group assistant fee
     if (s.grupo_id && grupos) {
       const grupo = grupos.find((g: any) => g.id === s.grupo_id);
       if (grupo) {
         setTipoValorAssistencia((grupo.tipo_valor_assistencia === "percentual" ? "percentual" : "fixo") as "fixo" | "percentual");
         setValorAssistencia(grupo.valor_assistencia ? String(grupo.valor_assistencia) : "");
-      } else {
-        setTipoValorAssistencia("fixo");
-        setValorAssistencia("");
-      }
-    } else {
-      setTipoValorAssistencia("fixo");
-      setValorAssistencia("");
-    }
+      } else { setTipoValorAssistencia("fixo"); setValorAssistencia(""); }
+    } else { setTipoValorAssistencia("fixo"); setValorAssistencia(""); }
   };
 
-  const filterByStage = (stage: string) => {
-    return solicitacoes?.filter((s) => s.status_solicitacao === stage) ?? [];
-  };
+  const filterByStage = (stage: string) =>
+    filteredSolicitacoes.filter((s) => s.status_solicitacao === stage);
 
   const getLaudoStatus = (s: any): string | null => {
     const laudos = (s as any).laudos;
     if (!laudos) return null;
-    if (Array.isArray(laudos)) {
-      if (laudos.length === 0) return null;
-      return laudos[0].status_laudo;
-    }
+    if (Array.isArray(laudos)) return laudos.length === 0 ? null : laudos[0].status_laudo;
     return laudos.status_laudo;
-  };
-
-  const getSlaStatus = (s: any): { overdue: boolean; hoursLeft: number } | null => {
-    if (!slaConfig?.length) return null;
-    const cfg = slaConfig.find((c) => c.status_solicitacao === s.status_solicitacao);
-    if (!cfg) return null;
-    const created = new Date(s.updated_at || s.created_at).getTime();
-    const deadline = created + cfg.prazo_horas * 3600000;
-    const now = Date.now();
-    return { overdue: now > deadline, hoursLeft: Math.round((deadline - now) / 3600000) };
   };
 
   const sortedEngenheiros = (propRegiaoId: string | null) => {
@@ -381,11 +524,22 @@ export default function MesaProdutos() {
     });
   };
 
-  // Count siblings in same group for card badge
   const getGroupSize = (grupoId: string | null) => {
     if (!grupoId || !solicitacoes) return 0;
     return solicitacoes.filter((s) => s.grupo_id === grupoId).length;
   };
+
+  // ─── Grouped by client ───
+  const groupedByCliente = useMemo(() => {
+    if (!groupByCliente) return null;
+    const map = new Map<string, { nome: string; items: any[] }>();
+    filteredSolicitacoes.forEach((s: any) => {
+      const key = s.produtor_id || "desconhecido";
+      if (!map.has(key)) map.set(key, { nome: s.produtor_nome || "—", items: [] });
+      map.get(key)!.items.push(s);
+    });
+    return Array.from(map.values()).sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [filteredSolicitacoes, groupByCliente]);
 
   const renderCard = (s: any) => {
     const prop = (s as any).propriedades;
@@ -400,6 +554,7 @@ export default function MesaProdutos() {
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 flex-wrap min-w-0">
               <span className="font-display font-semibold text-sm">{prop?.nome_propriedade}</span>
+              {!groupByCliente && <span className="text-xs text-muted-foreground">· {s.produtor_nome}</span>}
               {produto && <Badge variant="outline" className="text-xs">{produto.nome}</Badge>}
               {groupSize > 1 && (
                 <Badge variant="secondary" className="text-xs gap-1">
@@ -415,29 +570,192 @@ export default function MesaProdutos() {
               {sla && !sla.overdue && sla.hoursLeft < 12 && <Badge variant="secondary" className="text-xs">⚠ {sla.hoursLeft}h restantes</Badge>}
               {s.assistido && <Badge variant="secondary" className="text-xs gap-1"><UserCheck className="h-3 w-3" /> Assistido</Badge>}
             </div>
-            <span className="text-xs text-muted-foreground whitespace-nowrap">{new Date(s.created_at).toLocaleDateString("pt-BR")}</span>
+            <div className="flex items-center gap-2">
+              <Badge variant={st.variant} className="text-xs whitespace-nowrap">{st.label}</Badge>
+              <span className="text-xs text-muted-foreground whitespace-nowrap">{new Date(s.created_at).toLocaleDateString("pt-BR")}</span>
+            </div>
           </div>
           <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
-            <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {prop?.endereco}</span>
+            <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {prop?.municipio}/{prop?.uf}</span>
             <span className="flex items-center gap-1"><Banknote className="h-3 w-3" /> {formatCurrency(s.valor_solicitado)}</span>
+            <span className="flex items-center gap-1"><Sprout className="h-3 w-3" /> {s.cultura_principal} · {s.area_cultivo_ha}ha</span>
           </div>
-          {s.valor_pagamento_engenheiro > 0 && (
-            <p className="text-xs font-medium text-foreground">Eng.: {formatCurrency(s.valor_pagamento_engenheiro)}</p>
-          )}
         </CardContent>
       </Card>
     );
+  };
+
+  const renderStageContent = (stage: string) => {
+    const items = filterByStage(stage);
+    if (!items.length) {
+      return (
+        <Card><CardContent className="flex flex-col items-center gap-3 py-12">
+          <ClipboardCheck className="h-10 w-10 text-muted-foreground" />
+          <p className="text-muted-foreground">Nenhuma solicitação nesta etapa.</p>
+        </CardContent></Card>
+      );
+    }
+
+    if (groupByCliente) {
+      const grouped = new Map<string, { nome: string; items: any[] }>();
+      items.forEach((s: any) => {
+        const key = s.produtor_id || "x";
+        if (!grouped.has(key)) grouped.set(key, { nome: s.produtor_nome, items: [] });
+        grouped.get(key)!.items.push(s);
+      });
+      return (
+        <div className="space-y-4">
+          {Array.from(grouped.values()).sort((a, b) => a.nome.localeCompare(b.nome)).map((g) => (
+            <div key={g.nome} className="space-y-2">
+              <div className="flex items-center gap-2 px-1">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium text-sm">{g.nome}</span>
+                <Badge variant="outline" className="text-xs">{g.items.length} solicitaç{g.items.length > 1 ? "ões" : "ão"}</Badge>
+              </div>
+              <div className="grid gap-2 pl-6 border-l-2 border-muted">
+                {g.items.map(renderCard)}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    return <div className="grid gap-3">{items.map(renderCard)}</div>;
   };
 
   const selectedGrupo = selectedGrupoId && grupos ? grupos.find((g: any) => g.id === selectedGrupoId) : null;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-bold">Esteira de Solicitações</h1>
-        <p className="text-muted-foreground">Pipeline completo: documentação → elegibilidade → laudo → banco.</p>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="font-display text-2xl font-bold">Esteira de Solicitações</h1>
+          <p className="text-muted-foreground">Pipeline completo: documentação → elegibilidade → laudo → banco.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setGroupByCliente(!groupByCliente)} className="gap-1.5">
+            <Users className="h-3.5 w-3.5" />
+            {groupByCliente ? "Desagrupar" : "Agrupar por Cliente"}
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={!filteredSolicitacoes.length} className="gap-1.5">
+            <Download className="h-3.5 w-3.5" /> CSV
+          </Button>
+        </div>
       </div>
 
+      {/* KPIs */}
+      {!isLoading && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <StatCard icon={<ClipboardCheck className="h-4 w-4" />} title="Total Solicitações" value={String(kpis.total)} delay={0} />
+          <StatCard icon={<Banknote className="h-4 w-4" />} title="Valor Total" value={formatCurrency(kpis.valorTotal)} delay={50} />
+          <StatCard icon={<Clock className="h-4 w-4" />} title="SLA Vencido" value={String(kpis.slaVencidos)} className={kpis.slaVencidos > 0 ? "border-destructive/40" : ""} delay={100} />
+          <StatCard icon={<UserCheck className="h-4 w-4" />} title="Assistidos" value={String(kpis.assistidos)} delay={150} />
+        </div>
+      )}
+
+      {/* Search + Filters */}
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              placeholder="Buscar por produtor, propriedade, produto, município..."
+              className="pl-9"
+            />
+          </div>
+          <Button variant={showFilters ? "secondary" : "outline"} size="sm" onClick={() => setShowFilters(!showFilters)} className="gap-1.5 shrink-0">
+            <Filter className="h-3.5 w-3.5" />
+            Filtros
+            {hasActiveFilters && <Badge variant="default" className="text-[10px] px-1.5 py-0 ml-1">!</Badge>}
+          </Button>
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+            <SelectTrigger className="w-auto min-w-[180px] shrink-0">
+              <ArrowUpDown className="h-3.5 w-3.5 mr-1.5" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="recente">Mais recente</SelectItem>
+              <SelectItem value="antigo">Mais antigo</SelectItem>
+              <SelectItem value="valor_desc">Maior valor</SelectItem>
+              <SelectItem value="valor_asc">Menor valor</SelectItem>
+              <SelectItem value="sla_urgente">SLA mais urgente</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {showFilters && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 rounded-md border bg-muted/30">
+            <div className="space-y-1.5">
+              <Label className="text-xs">UF / Estado</Label>
+              <Select value={filterUF} onValueChange={setFilterUF}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">Todas</SelectItem>
+                  {availableUFs.map((uf) => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Cliente (Produtor)</Label>
+              <Select value={filterCliente} onValueChange={setFilterCliente}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos</SelectItem>
+                  {availableClientes.map(([id, nome]) => <SelectItem key={id} value={id}>{nome}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Produto</Label>
+              <Select value={filterProduto} onValueChange={setFilterProduto}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos</SelectItem>
+                  {availableProdutos.map(([id, nome]) => <SelectItem key={id} value={id}>{nome}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Período</Label>
+              <div className="flex gap-1">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="flex-1 justify-start text-xs font-normal h-9">
+                      {filterDateFrom ? format(filterDateFrom, "dd/MM/yy") : "De"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={filterDateFrom} onSelect={setFilterDateFrom} locale={ptBR} className="p-3 pointer-events-auto" />
+                  </PopoverContent>
+                </Popover>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="flex-1 justify-start text-xs font-normal h-9">
+                      {filterDateTo ? format(filterDateTo, "dd/MM/yy") : "Até"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={filterDateTo} onSelect={setFilterDateTo} locale={ptBR} className="p-3 pointer-events-auto" />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+            {hasActiveFilters && (
+              <div className="col-span-full flex justify-end">
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs gap-1">
+                  <X className="h-3 w-3" /> Limpar filtros
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Pipeline Tabs */}
       {isLoading ? (
         <p className="text-muted-foreground">Carregando...</p>
       ) : (
@@ -452,29 +770,16 @@ export default function MesaProdutos() {
           </TabsList>
           {pipelineStages.map((stage) => (
             <TabsContent key={stage.key} value={stage.key}>
-              {!filterByStage(stage.key).length ? (
-                <Card><CardContent className="flex flex-col items-center gap-3 py-12">
-                  <ClipboardCheck className="h-10 w-10 text-muted-foreground" />
-                  <p className="text-muted-foreground">Nenhuma solicitação nesta etapa.</p>
-                </CardContent></Card>
-              ) : (
-                <div className="grid gap-3">{filterByStage(stage.key).map(renderCard)}</div>
-              )}
+              {renderStageContent(stage.key)}
             </TabsContent>
           ))}
           <TabsContent value="reprovada">
-            {!filterByStage("reprovada").length ? (
-              <Card><CardContent className="flex flex-col items-center gap-3 py-12">
-                <p className="text-muted-foreground">Nenhuma solicitação reprovada.</p>
-              </CardContent></Card>
-            ) : (
-              <div className="grid gap-3">{filterByStage("reprovada").map(renderCard)}</div>
-            )}
+            {renderStageContent("reprovada")}
           </TabsContent>
         </Tabs>
       )}
 
-      {/* Detail dialog */}
+      {/* Detail dialog — unchanged */}
       <Dialog open={!!selectedSolicitacao} onOpenChange={(v) => { if (!v) setSelectedSolicitacao(null); }}>
         <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -629,7 +934,6 @@ export default function MesaProdutos() {
                 ];
 
                 const missing = checks.filter(c => !c.ok).length;
-                const total = checks.length;
                 const allOk = missing === 0;
 
                 return (
