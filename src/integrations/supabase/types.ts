@@ -262,10 +262,13 @@ export type Database = {
           crea: string
           created_at: string
           id: string
+          ja_engenheiro: boolean
+          numero_licenca: string
           raio_atendimento_km: number | null
           rating: number | null
           regiao_id: string | null
           status_verificacao: string
+          tipo_licenca: string
           total_laudos_concluidos: number
           updated_at: string
           user_id: string
@@ -279,10 +282,13 @@ export type Database = {
           crea?: string
           created_at?: string
           id?: string
+          ja_engenheiro?: boolean
+          numero_licenca?: string
           raio_atendimento_km?: number | null
           rating?: number | null
           regiao_id?: string | null
           status_verificacao?: string
+          tipo_licenca?: string
           total_laudos_concluidos?: number
           updated_at?: string
           user_id: string
@@ -296,10 +302,13 @@ export type Database = {
           crea?: string
           created_at?: string
           id?: string
+          ja_engenheiro?: boolean
+          numero_licenca?: string
           raio_atendimento_km?: number | null
           rating?: number | null
           regiao_id?: string | null
           status_verificacao?: string
+          tipo_licenca?: string
           total_laudos_concluidos?: number
           updated_at?: string
           user_id?: string

@@ -82,7 +82,7 @@ export default function AdminUsuarios() {
   const roleLabel = (role: AppRole | null) => {
     const labels: Record<string, string> = {
       produtor: "Produtor",
-      engenheiro: "Engenheiro",
+      engenheiro: "Engenheiro/Projetista",
       admin: "Administrador",
       mesa_produtos: "Mesa de Produtos",
       banco: "Banco Parceiro",
@@ -168,7 +168,7 @@ function UserRow({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="produtor">Produtor</SelectItem>
-              <SelectItem value="engenheiro">Engenheiro</SelectItem>
+              <SelectItem value="engenheiro">Engenheiro/Projetista</SelectItem>
               <SelectItem value="mesa_produtos">Mesa de Produtos</SelectItem>
               <SelectItem value="banco">Banco Parceiro</SelectItem>
               <SelectItem value="admin">Administrador</SelectItem>
