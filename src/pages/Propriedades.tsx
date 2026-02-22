@@ -112,20 +112,22 @@ export default function Propriedades() {
     },
   });
 
+  const up = (v: string) => v.toUpperCase().trim();
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       const payload = {
-        nome_propriedade: form.nome_propriedade,
-        endereco: form.endereco,
-        municipio: form.municipio,
-        uf: form.uf,
+        nome_propriedade: up(form.nome_propriedade),
+        endereco: up(form.endereco),
+        municipio: up(form.municipio),
+        uf: up(form.uf),
         area_total_ha: parseFloat(form.area_total_ha) || 0,
         latitude: form.latitude ? parseFloat(form.latitude) : null,
         longitude: form.longitude ? parseFloat(form.longitude) : null,
-        codigo_car: form.codigo_car || null,
-        matricula_imovel: form.matricula_imovel || "",
-        numero_ccir: form.numero_ccir || "",
-        numero_itr: form.numero_itr || "",
+        codigo_car: up(form.codigo_car) || null,
+        matricula_imovel: up(form.matricula_imovel) || "",
+        numero_ccir: up(form.numero_ccir) || "",
+        numero_itr: up(form.numero_itr) || "",
         tipo_posse: form.tipo_posse,
         area_reserva_legal_ha: parseFloat(form.area_reserva_legal_ha) || 0,
         area_app_ha: parseFloat(form.area_app_ha) || 0,
