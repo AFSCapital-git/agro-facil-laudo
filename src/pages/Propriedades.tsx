@@ -13,6 +13,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -22,29 +29,66 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { MapPin, Plus, Pencil, Trash2 } from "lucide-react";
+import PropriedadeForm from "@/components/propriedades/PropriedadeForm";
 
-interface PropriedadeForm {
+const UF_LIST = [
+  "AC","AL","AM","AP","BA","CE","DF","ES","GO","MA","MG","MS","MT",
+  "PA","PB","PE","PI","PR","RJ","RN","RO","RR","RS","SC","SE","SP","TO",
+];
+
+const TIPO_POSSE_LABELS: Record<string, string> = {
+  propria: "Própria",
+  arrendada: "Arrendada",
+  parceria: "Parceria",
+  comodato: "Comodato",
+  posse: "Posse",
+  assentamento: "Assentamento",
+};
+
+export interface PropriedadeFormData {
   nome_propriedade: string;
   endereco: string;
+  municipio: string;
+  uf: string;
   area_total_ha: string;
   latitude: string;
   longitude: string;
   codigo_car: string;
+  matricula_imovel: string;
+  numero_ccir: string;
+  numero_itr: string;
+  tipo_posse: string;
+  area_reserva_legal_ha: string;
+  area_app_ha: string;
+  fonte_agua: string;
+  tipo_solo: string;
 }
 
-const emptyForm: PropriedadeForm = {
+export const emptyForm: PropriedadeFormData = {
   nome_propriedade: "",
   endereco: "",
+  municipio: "",
+  uf: "",
   area_total_ha: "",
   latitude: "",
   longitude: "",
   codigo_car: "",
+  matricula_imovel: "",
+  numero_ccir: "",
+  numero_itr: "",
+  tipo_posse: "propria",
+  area_reserva_legal_ha: "",
+  area_app_ha: "",
+  fonte_agua: "",
+  tipo_solo: "",
 };
+
+export { UF_LIST, TIPO_POSSE_LABELS };
 
 export default function Propriedades() {
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState<PropriedadeForm>(emptyForm);
+  const [form, setForm] = useState<PropriedadeFormData>(emptyForm);
   const { toast } = useToast();
   const qc = useQueryClient();
 
@@ -73,10 +117,20 @@ export default function Propriedades() {
       const payload = {
         nome_propriedade: form.nome_propriedade,
         endereco: form.endereco,
+        municipio: form.municipio,
+        uf: form.uf,
         area_total_ha: parseFloat(form.area_total_ha) || 0,
         latitude: form.latitude ? parseFloat(form.latitude) : null,
         longitude: form.longitude ? parseFloat(form.longitude) : null,
         codigo_car: form.codigo_car || null,
+        matricula_imovel: form.matricula_imovel || "",
+        numero_ccir: form.numero_ccir || "",
+        numero_itr: form.numero_itr || "",
+        tipo_posse: form.tipo_posse,
+        area_reserva_legal_ha: parseFloat(form.area_reserva_legal_ha) || 0,
+        area_app_ha: parseFloat(form.area_app_ha) || 0,
+        fonte_agua: form.fonte_agua || "",
+        tipo_solo: form.tipo_solo || "",
       };
 
       if (editId) {
@@ -127,10 +181,20 @@ export default function Propriedades() {
     setForm({
       nome_propriedade: p.nome_propriedade,
       endereco: p.endereco,
+      municipio: (p as any).municipio || "",
+      uf: (p as any).uf || "",
       area_total_ha: String(p.area_total_ha),
       latitude: p.latitude ? String(p.latitude) : "",
       longitude: p.longitude ? String(p.longitude) : "",
       codigo_car: p.codigo_car || "",
+      matricula_imovel: (p as any).matricula_imovel || "",
+      numero_ccir: (p as any).numero_ccir || "",
+      numero_itr: (p as any).numero_itr || "",
+      tipo_posse: (p as any).tipo_posse || "propria",
+      area_reserva_legal_ha: String((p as any).area_reserva_legal_ha || ""),
+      area_app_ha: String((p as any).area_app_ha || ""),
+      fonte_agua: (p as any).fonte_agua || "",
+      tipo_solo: (p as any).tipo_solo || "",
     });
     setOpen(true);
   };
@@ -139,9 +203,6 @@ export default function Propriedades() {
     e.preventDefault();
     saveMutation.mutate();
   };
-
-  const set = (field: keyof PropriedadeForm) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm((f) => ({ ...f, [field]: e.target.value }));
 
   return (
     <div className="space-y-6">
@@ -156,48 +217,20 @@ export default function Propriedades() {
               <Plus className="h-4 w-4" /> Nova Propriedade
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="font-display">
                 {editId ? "Editar Propriedade" : "Nova Propriedade"}
               </DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label>Nome da propriedade *</Label>
-                <Input value={form.nome_propriedade} onChange={set("nome_propriedade")} required />
-              </div>
-              <div className="space-y-2">
-                <Label>Endereço *</Label>
-                <Input value={form.endereco} onChange={set("endereco")} required placeholder="Cidade, Estado" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Área total (ha) *</Label>
-                  <Input type="number" step="0.01" value={form.area_total_ha} onChange={set("area_total_ha")} required />
-                </div>
-                <div className="space-y-2">
-                  <Label>Código CAR</Label>
-                  <Input value={form.codigo_car} onChange={set("codigo_car")} placeholder="Opcional" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Latitude</Label>
-                  <Input type="number" step="any" value={form.latitude} onChange={set("latitude")} placeholder="Opcional" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Longitude</Label>
-                  <Input type="number" step="any" value={form.longitude} onChange={set("longitude")} placeholder="Opcional" />
-                </div>
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={resetForm}>Cancelar</Button>
-                <Button type="submit" disabled={saveMutation.isPending}>
-                  {saveMutation.isPending ? "Salvando..." : "Salvar"}
-                </Button>
-              </div>
-            </form>
+            <PropriedadeForm
+              form={form}
+              setForm={setForm}
+              onSubmit={handleSubmit}
+              onCancel={resetForm}
+              isPending={saveMutation.isPending}
+              isEdit={!!editId}
+            />
           </DialogContent>
         </Dialog>
       </div>
@@ -226,8 +259,9 @@ export default function Propriedades() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
-                  <TableHead>Endereço</TableHead>
+                  <TableHead>Município/UF</TableHead>
                   <TableHead className="text-right">Área (ha)</TableHead>
+                  <TableHead>Posse</TableHead>
                   <TableHead className="w-24" />
                 </TableRow>
               </TableHeader>
@@ -235,8 +269,11 @@ export default function Propriedades() {
                 {propriedades.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell className="font-medium">{p.nome_propriedade}</TableCell>
-                    <TableCell>{p.endereco}</TableCell>
+                    <TableCell>
+                      {(p as any).municipio ? `${(p as any).municipio}/${(p as any).uf}` : p.endereco}
+                    </TableCell>
                     <TableCell className="text-right">{p.area_total_ha}</TableCell>
+                    <TableCell>{TIPO_POSSE_LABELS[(p as any).tipo_posse] || (p as any).tipo_posse}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
                         <Button size="icon" variant="ghost" onClick={() => openEdit(p)}>
