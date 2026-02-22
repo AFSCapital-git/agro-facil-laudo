@@ -205,10 +205,18 @@ export default function Solicitacoes() {
     },
   });
 
+  const parseCurrency = (v: string) => {
+    const raw = v.replace(/[^\d,]/g, "").replace(",", ".");
+    return parseFloat(raw) || 0;
+  };
+
+  const formatToCurrency = (v: number) =>
+    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+
   const selectedProduto = pronafProdutos?.find((p) => p.id === form.pronaf_produto_id);
   const valorPagamentoEngenheiro = selectedProduto
     ? selectedProduto.tipo_valor_engenheiro === "percentual"
-      ? (parseFloat(form.valor_solicitado) || 0) * (selectedProduto.valor_engenheiro / 100)
+      ? parseCurrency(form.valor_solicitado) * (selectedProduto.valor_engenheiro / 100)
       : selectedProduto.valor_engenheiro
     : 0;
 
@@ -225,7 +233,7 @@ export default function Solicitacoes() {
           tipo_credito: selectedProduto?.finalidade || "custeio",
           cultura_principal: culturaPrincipalValue,
           area_cultivo_ha: parseFloat(form.area_cultivo_ha) || 0,
-          valor_solicitado: parseFloat(form.valor_solicitado) || 0,
+          valor_solicitado: parseCurrency(form.valor_solicitado),
           valor_pagamento_engenheiro: valorPagamentoEngenheiro,
           banco_parceiro_id: form.banco_parceiro_id || null,
           banco_destino: bancosParceiros?.find((b) => b.id === form.banco_parceiro_id)?.nome || "",
@@ -240,7 +248,7 @@ export default function Solicitacoes() {
           tipo_credito: selectedProduto?.finalidade || "custeio",
           cultura_principal: culturaPrincipalValue,
           area_cultivo_ha: parseFloat(form.area_cultivo_ha) || 0,
-          valor_solicitado: parseFloat(form.valor_solicitado) || 0,
+          valor_solicitado: parseCurrency(form.valor_solicitado),
           valor_pagamento_engenheiro: valorPagamentoEngenheiro,
           banco_parceiro_id: form.banco_parceiro_id || null,
           banco_destino: bancosParceiros?.find((b) => b.id === form.banco_parceiro_id)?.nome || "",
@@ -420,7 +428,7 @@ export default function Solicitacoes() {
               {selectedProduto && (
                 <ProductRulesCard
                   produto={selectedProduto}
-                  valorSolicitado={parseFloat(form.valor_solicitado) || 0}
+                  valorSolicitado={parseCurrency(form.valor_solicitado)}
                 />
               )}
 
@@ -593,10 +601,19 @@ export default function Solicitacoes() {
                 <div className="space-y-2">
                   <Label>Valor solicitado (R$) *</Label>
                   <Input
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="R$ 0,00"
                     value={form.valor_solicitado}
-                    onChange={(e) => setForm((f) => ({ ...f, valor_solicitado: e.target.value }))}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/\D/g, "");
+                      const cents = parseInt(raw || "0", 10);
+                      const formatted = new Intl.NumberFormat("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      }).format(cents / 100);
+                      setForm((f) => ({ ...f, valor_solicitado: formatted }));
+                    }}
                     required
                   />
                 </div>
@@ -699,7 +716,7 @@ export default function Solicitacoes() {
                             pronaf_produto_id: s.pronaf_produto_id || "",
                             cultura_principal: s.cultura_principal || "",
                             area_cultivo_ha: String(s.area_cultivo_ha),
-                            valor_solicitado: String(s.valor_solicitado),
+                            valor_solicitado: formatToCurrency(s.valor_solicitado),
                             banco_parceiro_id: s.banco_parceiro_id || "",
                             observacoes_produtor: s.observacoes_produtor || "",
                           });
