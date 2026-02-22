@@ -104,6 +104,35 @@ export type Database = {
         }
         Relationships: []
       }
+      banco_usuarios: {
+        Row: {
+          banco_parceiro_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          banco_parceiro_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          banco_parceiro_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "banco_usuarios_banco_parceiro_id_fkey"
+            columns: ["banco_parceiro_id"]
+            isOneToOne: false
+            referencedRelation: "bancos_parceiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bancos_parceiros: {
         Row: {
           ativo: boolean
@@ -1033,11 +1062,63 @@ export type Database = {
         }
         Relationships: []
       }
+      zarc_regras: {
+        Row: {
+          ativo: boolean
+          ciclo: string
+          created_at: string
+          cultura: string
+          id: string
+          municipio: string
+          observacoes: string | null
+          periodo_plantio_fim: number | null
+          periodo_plantio_inicio: number | null
+          risco: string
+          safra: string
+          tipo_solo: string
+          uf: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          ciclo?: string
+          created_at?: string
+          cultura: string
+          id?: string
+          municipio?: string
+          observacoes?: string | null
+          periodo_plantio_fim?: number | null
+          periodo_plantio_inicio?: number | null
+          risco?: string
+          safra?: string
+          tipo_solo?: string
+          uf: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          ciclo?: string
+          created_at?: string
+          cultura?: string
+          id?: string
+          municipio?: string
+          observacoes?: string | null
+          periodo_plantio_fim?: number | null
+          periodo_plantio_inicio?: number | null
+          risco?: string
+          safra?: string
+          tipo_solo?: string
+          uf?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      get_banco_parceiro_id: { Args: never; Returns: string }
       get_engenheiro_id: { Args: never; Returns: string }
       get_engenheiro_laudo_solicitacao_ids: { Args: never; Returns: string[] }
       get_produtor_id: { Args: never; Returns: string }
@@ -1055,7 +1136,7 @@ export type Database = {
       is_produtor: { Args: never; Returns: boolean }
     }
     Enums: {
-      app_role: "produtor" | "engenheiro" | "admin" | "mesa_produtos"
+      app_role: "produtor" | "engenheiro" | "admin" | "mesa_produtos" | "banco"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1183,7 +1264,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["produtor", "engenheiro", "admin", "mesa_produtos"],
+      app_role: ["produtor", "engenheiro", "admin", "mesa_produtos", "banco"],
     },
   },
 } as const
