@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -18,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   FileText, Plus, Clock, CheckCircle2, AlertCircle, Download, Info,
   Upload, Trash2, Eye, ShieldCheck, Banknote, FileWarning, MessageCircle, Send, Video, MapPin, Pencil,
-  UserCheck, Search, HelpCircle,
+  UserCheck, Search, HelpCircle, Layers,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { AudioRecorder } from "@/components/chat/AudioRecorder";
@@ -39,7 +40,7 @@ const statusMap: Record<string, { label: string; variant: "default" | "secondary
 
 interface SolicitacaoForm {
   propriedade_id: string;
-  pronaf_produto_id: string;
+  pronaf_produto_ids: string[];
   cultura_principal: string;
   area_cultivo_ha: string;
   valor_solicitado: string;
@@ -49,7 +50,7 @@ interface SolicitacaoForm {
 
 const emptyForm: SolicitacaoForm = {
   propriedade_id: "",
-  pronaf_produto_id: "",
+  pronaf_produto_ids: [],
   cultura_principal: "",
   area_cultivo_ha: "",
   valor_solicitado: "",
@@ -153,14 +154,15 @@ export default function Solicitacoes() {
     },
   });
 
+  // Get all required docs for selected products
   const { data: pronafDocumentos } = useQuery({
-    queryKey: ["pronaf_documentos_produto", form.pronaf_produto_id],
-    enabled: !!form.pronaf_produto_id,
+    queryKey: ["pronaf_documentos_multi", form.pronaf_produto_ids],
+    enabled: form.pronaf_produto_ids.length > 0,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pronaf_documentos")
         .select("*")
-        .eq("produto_id", form.pronaf_produto_id)
+        .in("produto_id", form.pronaf_produto_ids)
         .order("ordem");
       if (error) throw error;
       return data;
@@ -174,20 +176,19 @@ export default function Solicitacoes() {
     return (prop as any)?.regioes?.uf ?? null;
   })();
 
-  // Regional rules for selected product + UF
+  // Regional rules for selected products + UF
   const { data: regrasRegionais } = useQuery({
-    queryKey: ["regras_regionais", form.pronaf_produto_id, selectedPropUf],
-    enabled: !!form.pronaf_produto_id && !!selectedPropUf,
+    queryKey: ["regras_regionais_multi", form.pronaf_produto_ids, selectedPropUf],
+    enabled: form.pronaf_produto_ids.length > 0 && !!selectedPropUf,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("produto_regras_regionais")
         .select("*")
-        .eq("produto_id", form.pronaf_produto_id)
+        .in("produto_id", form.pronaf_produto_ids)
         .eq("uf", selectedPropUf)
-        .eq("ativo", true)
-        .limit(1);
+        .eq("ativo", true);
       if (error) throw error;
-      return data?.[0] ?? null;
+      return data ?? [];
     },
   });
 
@@ -202,6 +203,23 @@ export default function Solicitacoes() {
       return data;
     },
   });
+
+  // Group solicitações by grupo_id for display
+  const groupedSolicitacoes = (() => {
+    if (!solicitacoes) return { groups: [], standalone: [] };
+    const grupoMap = new Map<string, any[]>();
+    const standalone: any[] = [];
+    for (const s of solicitacoes) {
+      const gid = (s as any).grupo_id;
+      if (gid) {
+        if (!grupoMap.has(gid)) grupoMap.set(gid, []);
+        grupoMap.get(gid)!.push(s);
+      } else {
+        standalone.push(s);
+      }
+    }
+    return { groups: Array.from(grupoMap.entries()), standalone };
+  })();
 
   // Detail: docs for selected solicitation's product
   const { data: detailPronafDocs } = useQuery({
@@ -241,53 +259,98 @@ export default function Solicitacoes() {
   const formatToCurrency = (v: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
-  const selectedProduto = pronafProdutos?.find((p) => p.id === form.pronaf_produto_id);
-  const valorPagamentoEngenheiro = selectedProduto
-    ? selectedProduto.tipo_valor_engenheiro === "percentual"
-      ? parseCurrency(form.valor_solicitado) * (selectedProduto.valor_engenheiro / 100)
-      : selectedProduto.valor_engenheiro
-    : 0;
+  const selectedProdutos = pronafProdutos?.filter((p) => form.pronaf_produto_ids.includes(p.id)) ?? [];
+
+  // Calculate total engineer payment across selected products
+  const totalValorEngenheiro = selectedProdutos.reduce((sum, prod) => {
+    if (prod.tipo_valor_engenheiro === "percentual") {
+      return sum + parseCurrency(form.valor_solicitado) * (prod.valor_engenheiro / 100);
+    }
+    return sum + prod.valor_engenheiro;
+  }, 0);
 
   const culturaPrincipalValue = form.cultura_principal.startsWith("__outro:")
     ? form.cultura_principal.replace("__outro:", "").toUpperCase().trim()
     : form.cultura_principal;
 
+  // Deduplicate docs across selected products
+  const uniqueDocs = (() => {
+    if (!pronafDocumentos) return [];
+    const seen = new Set<string>();
+    return pronafDocumentos.filter((doc) => {
+      const key = doc.nome_documento.toLowerCase().trim();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  })();
+
   const createMutation = useMutation({
     mutationFn: async () => {
       if (editId) {
+        // Edit mode: only for single product (legacy)
+        const produto = selectedProdutos[0];
+        const valorPagEng = produto
+          ? produto.tipo_valor_engenheiro === "percentual"
+            ? parseCurrency(form.valor_solicitado) * (produto.valor_engenheiro / 100)
+            : produto.valor_engenheiro
+          : 0;
         const { error } = await supabase.from("solicitacoes_laudo").update({
           propriedade_id: form.propriedade_id,
-          pronaf_produto_id: form.pronaf_produto_id || null,
-          tipo_credito: selectedProduto?.finalidade || "custeio",
+          pronaf_produto_id: form.pronaf_produto_ids[0] || null,
+          tipo_credito: produto?.finalidade || "custeio",
           cultura_principal: culturaPrincipalValue,
           area_cultivo_ha: parseFloat(form.area_cultivo_ha) || 0,
           valor_solicitado: parseCurrency(form.valor_solicitado),
-          valor_pagamento_engenheiro: valorPagamentoEngenheiro,
+          valor_pagamento_engenheiro: valorPagEng,
           banco_parceiro_id: form.banco_parceiro_id || null,
           banco_destino: bancosParceiros?.find((b) => b.id === form.banco_parceiro_id)?.nome || "",
           observacoes_produtor: form.observacoes_produtor,
         }).eq("id", editId);
         if (error) throw error;
       } else {
-        const insertData: any = {
+        // New: create grupo + sub-solicitações
+        const grupoData: any = {
           produtor_id: produtorId!,
           propriedade_id: form.propriedade_id,
-          pronaf_produto_id: form.pronaf_produto_id || null,
-          tipo_credito: selectedProduto?.finalidade || "custeio",
-          cultura_principal: culturaPrincipalValue,
-          area_cultivo_ha: parseFloat(form.area_cultivo_ha) || 0,
-          valor_solicitado: parseCurrency(form.valor_solicitado),
-          valor_pagamento_engenheiro: valorPagamentoEngenheiro,
-          banco_parceiro_id: form.banco_parceiro_id || null,
-          banco_destino: bancosParceiros?.find((b) => b.id === form.banco_parceiro_id)?.nome || "",
           observacoes_produtor: form.observacoes_produtor,
+          assistido: modoAssistido && !!engenheiroAssistenteId,
+          engenheiro_assistente_id: modoAssistido && engenheiroAssistenteId ? engenheiroAssistenteId : null,
         };
-        if (modoAssistido && engenheiroAssistenteId) {
-          insertData.assistido = true;
-          insertData.engenheiro_assistente_id = engenheiroAssistenteId;
-        }
-        const { error } = await supabase.from("solicitacoes_laudo").insert(insertData);
-        if (error) throw error;
+
+        const { data: grupo, error: grupoError } = await supabase
+          .from("grupos_solicitacao")
+          .insert(grupoData)
+          .select("id")
+          .single();
+        if (grupoError) throw grupoError;
+
+        // Create one sub-solicitação per product
+        const subInserts = selectedProdutos.map((produto) => {
+          const valorPagEng = produto.tipo_valor_engenheiro === "percentual"
+            ? parseCurrency(form.valor_solicitado) * (produto.valor_engenheiro / 100)
+            : produto.valor_engenheiro;
+
+          return {
+            grupo_id: grupo.id,
+            produtor_id: produtorId!,
+            propriedade_id: form.propriedade_id,
+            pronaf_produto_id: produto.id,
+            tipo_credito: produto.finalidade || "custeio",
+            cultura_principal: culturaPrincipalValue,
+            area_cultivo_ha: parseFloat(form.area_cultivo_ha) || 0,
+            valor_solicitado: parseCurrency(form.valor_solicitado),
+            valor_pagamento_engenheiro: valorPagEng,
+            banco_parceiro_id: form.banco_parceiro_id || null,
+            banco_destino: bancosParceiros?.find((b) => b.id === form.banco_parceiro_id)?.nome || "",
+            observacoes_produtor: form.observacoes_produtor,
+            assistido: modoAssistido && !!engenheiroAssistenteId,
+            engenheiro_assistente_id: modoAssistido && engenheiroAssistenteId ? engenheiroAssistenteId : null,
+          };
+        });
+
+        const { error: subError } = await supabase.from("solicitacoes_laudo").insert(subInserts);
+        if (subError) throw subError;
       }
     },
     onSuccess: () => {
@@ -413,6 +476,15 @@ export default function Solicitacoes() {
     input.click();
   };
 
+  const toggleProduto = (produtoId: string) => {
+    setForm((f) => ({
+      ...f,
+      pronaf_produto_ids: f.pronaf_produto_ids.includes(produtoId)
+        ? f.pronaf_produto_ids.filter((id) => id !== produtoId)
+        : [...f.pronaf_produto_ids, produtoId],
+    }));
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -446,37 +518,69 @@ export default function Solicitacoes() {
                 </Select>
               </div>
 
+              {/* Multi-product selection */}
               <div className="space-y-2">
-                <Label>Produto PRONAF *</Label>
-                <Select value={form.pronaf_produto_id} onValueChange={(v) => setForm((f) => ({ ...f, pronaf_produto_id: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Selecione o produto..." /></SelectTrigger>
-                  <SelectContent>
-                    {pronafProdutos?.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.nome} ({p.finalidade})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Produtos PRONAF * <span className="text-xs text-muted-foreground font-normal">(selecione um ou mais)</span></Label>
+                <div className="border rounded-md p-2 max-h-52 overflow-y-auto space-y-1">
+                  {pronafProdutos?.map((p) => {
+                    const isSelected = form.pronaf_produto_ids.includes(p.id);
+                    const precoLabel = p.tipo_valor_engenheiro === "percentual"
+                      ? `${p.valor_engenheiro}% do valor`
+                      : formatCurrency(p.valor_engenheiro);
+                    return (
+                      <label
+                        key={p.id}
+                        className={`flex items-start gap-3 p-2 rounded-md cursor-pointer transition-colors ${
+                          isSelected ? "bg-primary/10 border border-primary/30" : "hover:bg-muted"
+                        }`}
+                      >
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleProduto(p.id)}
+                          className="mt-0.5"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium text-sm">{p.nome}</span>
+                            <Badge variant="outline" className="text-xs">{p.finalidade}</Badge>
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                            {p.grupo_alvo && <span>{p.grupo_alvo}</span>}
+                            <span className="flex items-center gap-1">
+                              <Banknote className="h-3 w-3" /> Laudo: {precoLabel}
+                            </span>
+                          </div>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+                {form.pronaf_produto_ids.length > 1 && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Layers className="h-3 w-3" />
+                    {form.pronaf_produto_ids.length} produtos selecionados — serão criadas sub-solicitações agrupadas.
+                  </p>
+                )}
               </div>
 
-              {/* Product rules card on creation */}
-              {selectedProduto && (
+              {/* Product rules cards */}
+              {selectedProdutos.map((produto) => (
                 <ProductRulesCard
-                  produto={selectedProduto}
+                  key={produto.id}
+                  produto={produto}
                   valorSolicitado={parseCurrency(form.valor_solicitado)}
                 />
-              )}
+              ))}
 
-              {/* Required documents */}
-              {pronafDocumentos && pronafDocumentos.length > 0 && (
+              {/* Deduplicated required documents */}
+              {uniqueDocs.length > 0 && (
                 <div className="rounded-md border border-primary/20 bg-primary/5 p-3 space-y-2">
                   <div className="flex items-center gap-2 text-sm font-medium">
                     <Info className="h-4 w-4 text-primary" />
-                    Documentação exigida para este produto:
+                    Documentação exigida (consolidada):
                   </div>
                   <ul className="text-sm text-muted-foreground space-y-1 pl-6 list-disc">
-                    {pronafDocumentos.map((doc) => (
+                    {uniqueDocs.map((doc) => (
                       <li key={doc.id}>
                         {doc.nome_documento}
                         {doc.obrigatorio && <span className="text-destructive ml-1">*</span>}
@@ -487,47 +591,34 @@ export default function Solicitacoes() {
                 </div>
               )}
 
-              {/* Regional rules - dynamic fields/docs by UF */}
-              {regrasRegionais && (
+              {/* Regional rules */}
+              {regrasRegionais && (regrasRegionais as any[]).length > 0 && (
                 <div className="rounded-md border border-accent/30 bg-accent/5 p-3 space-y-2">
                   <div className="flex items-center gap-2 text-sm font-medium">
                     <MapPin className="h-4 w-4 text-accent-foreground" />
                     Exigências adicionais para UF {selectedPropUf}:
                   </div>
-                  {(regrasRegionais.campos_obrigatorios as string[])?.length > 0 && (
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground">Campos obrigatórios:</p>
-                      <ul className="text-sm text-muted-foreground space-y-1 pl-6 list-disc">
-                        {(regrasRegionais.campos_obrigatorios as string[]).map((campo: string) => {
-                          const labels: Record<string, string> = {
-                            codigo_car: "CAR (Cadastro Ambiental Rural)",
-                            titulo_posse: "Título de Posse / Escritura",
-                            licenca_ambiental: "Licença Ambiental",
-                            outorga_agua: "Outorga de Uso de Água",
-                            dap_caf: "DAP/CAF",
-                            geo_referenciamento: "Georreferenciamento",
-                            plano_manejo: "Plano de Manejo",
-                            ater: "Declaração ATER",
-                          };
-                          return <li key={campo}>{labels[campo] ?? campo} <span className="text-destructive">*</span></li>;
-                        })}
-                      </ul>
+                  {(regrasRegionais as any[]).map((regra: any, idx: number) => (
+                    <div key={idx} className="space-y-1">
+                      {(regra.campos_obrigatorios as string[])?.length > 0 && (
+                        <ul className="text-sm text-muted-foreground space-y-1 pl-6 list-disc">
+                          {(regra.campos_obrigatorios as string[]).map((campo: string) => {
+                            const labels: Record<string, string> = {
+                              codigo_car: "CAR (Cadastro Ambiental Rural)",
+                              titulo_posse: "Título de Posse / Escritura",
+                              licenca_ambiental: "Licença Ambiental",
+                              outorga_agua: "Outorga de Uso de Água",
+                              dap_caf: "DAP/CAF",
+                              geo_referenciamento: "Georreferenciamento",
+                              plano_manejo: "Plano de Manejo",
+                              ater: "Declaração ATER",
+                            };
+                            return <li key={campo}>{labels[campo] ?? campo} <span className="text-destructive">*</span></li>;
+                          })}
+                        </ul>
+                      )}
                     </div>
-                  )}
-                  {(regrasRegionais.documentos_adicionais as any[])?.length > 0 && (
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground">Documentos adicionais:</p>
-                      <ul className="text-sm text-muted-foreground space-y-1 pl-6 list-disc">
-                        {(regrasRegionais.documentos_adicionais as any[]).map((doc: any, idx: number) => (
-                          <li key={idx}>
-                            {doc.nome}
-                            {doc.obrigatorio && <span className="text-destructive ml-1">*</span>}
-                            {doc.descricao && <span className="text-xs block text-muted-foreground/70">{doc.descricao}</span>}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                  ))}
                 </div>
               )}
 
@@ -666,10 +757,24 @@ export default function Solicitacoes() {
                 </div>
               </div>
 
-              {selectedProduto && valorPagamentoEngenheiro > 0 && (
-                <div className="text-sm text-muted-foreground bg-muted rounded-md p-2">
-                  Valor estimado do laudo: <strong className="text-foreground">{formatCurrency(valorPagamentoEngenheiro)}</strong>
-                  {selectedProduto.tipo_valor_engenheiro === "percentual" && ` (${selectedProduto.valor_engenheiro}% do valor solicitado)`}
+              {selectedProdutos.length > 0 && totalValorEngenheiro > 0 && (
+                <div className="text-sm text-muted-foreground bg-muted rounded-md p-2 space-y-1">
+                  <p>Valor estimado total dos laudos: <strong className="text-foreground">{formatCurrency(totalValorEngenheiro)}</strong></p>
+                  {selectedProdutos.length > 1 && (
+                    <div className="text-xs space-y-0.5">
+                      {selectedProdutos.map((prod) => {
+                        const val = prod.tipo_valor_engenheiro === "percentual"
+                          ? parseCurrency(form.valor_solicitado) * (prod.valor_engenheiro / 100)
+                          : prod.valor_engenheiro;
+                        return (
+                          <p key={prod.id}>
+                            {prod.nome}: {formatCurrency(val)}
+                            {prod.tipo_valor_engenheiro === "percentual" && ` (${prod.valor_engenheiro}%)`}
+                          </p>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -683,7 +788,7 @@ export default function Solicitacoes() {
                 />
               </div>
 
-              {/* Modo assistido - só para criação */}
+              {/* Modo assistido */}
               {!editId && (
                 <div className="border rounded-md p-3 space-y-3 bg-muted/30">
                   <div className="flex items-center justify-between">
@@ -709,7 +814,6 @@ export default function Solicitacoes() {
                         />
                       </div>
 
-                      {/* Filtered property UF hint */}
                       {form.propriedade_id && propriedades && (() => {
                         const prop = propriedades.find((p) => p.id === form.propriedade_id);
                         const uf = (prop as any)?.regioes?.uf;
@@ -768,11 +872,15 @@ export default function Solicitacoes() {
                                   <CheckCircle2 className="h-4 w-4 text-primary" />
                                 )}
                               </div>
-                              <div className="text-xs text-muted-foreground mt-0.5 flex gap-3">
+                              <div className="text-xs text-muted-foreground mt-0.5 flex gap-3 flex-wrap">
                                 {eng.tipo_licenca && <span>{eng.tipo_licenca}: {eng.numero_licenca || eng.crea}</span>}
                                 {eng.total_laudos_concluidos > 0 && <span>{eng.total_laudos_concluidos} laudos</span>}
+                                {eng.rating && <span>★ {eng.rating}</span>}
                                 {eng.area_atuacao && <span>{eng.area_atuacao}</span>}
                               </div>
+                              <p className="text-xs text-muted-foreground mt-1 italic">
+                                Valor da assistência: a definir pela Mesa
+                              </p>
                             </button>
                           ));
                         })()}
@@ -788,7 +896,7 @@ export default function Solicitacoes() {
 
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-                <Button type="submit" disabled={createMutation.isPending || !form.pronaf_produto_id || (modoAssistido && !engenheiroAssistenteId)}>
+                <Button type="submit" disabled={createMutation.isPending || form.pronaf_produto_ids.length === 0 || (modoAssistido && !engenheiroAssistenteId)}>
                   {createMutation.isPending ? (editId ? "Salvando..." : "Criando...") : (editId ? "Salvar Alterações" : "Criar Solicitação")}
                 </Button>
               </div>
@@ -819,7 +927,66 @@ export default function Solicitacoes() {
         </Card>
       ) : (
         <div className="grid gap-4">
-          {solicitacoes.map((s) => {
+          {/* Grouped solicitations */}
+          {groupedSolicitacoes.groups.map(([grupoId, subs]) => {
+            const first = subs[0];
+            const produtos = subs.map((s: any) => (s as any).pronaf_produtos?.nome).filter(Boolean);
+            const worstStatus = subs.some((s: any) => s.status_solicitacao === "reprovada") ? "reprovada"
+              : subs.every((s: any) => s.status_solicitacao === "pronta_para_banco") ? "pronta_para_banco"
+              : subs[0].status_solicitacao;
+            const st = statusMap[worstStatus] || { label: worstStatus, variant: "outline" as const };
+            return (
+              <Card key={grupoId} className="border-l-4 border-l-primary/50">
+                <CardContent className="py-4 space-y-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Layers className="h-4 w-4 text-primary" />
+                    <span className="font-medium">{(first as any).propriedades?.nome_propriedade}</span>
+                    <Badge variant={st.variant}>{st.label}</Badge>
+                    <Badge variant="outline" className="text-xs">{subs.length} produtos</Badge>
+                    {(first as any).assistido && (
+                      <Badge variant="secondary" className="text-xs gap-1">
+                        <UserCheck className="h-3 w-3" /> Assistido
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {produtos.map((nome: string, idx: number) => (
+                      <Badge key={idx} variant="secondary" className="text-xs">{nome}</Badge>
+                    ))}
+                  </div>
+                  <div className="grid gap-2">
+                    {subs.map((s: any) => {
+                      const subSt = statusMap[s.status_solicitacao] || { label: s.status_solicitacao, variant: "outline" as const };
+                      return (
+                        <div
+                          key={s.id}
+                          className="flex items-center gap-3 p-2 rounded-md border cursor-pointer hover:bg-muted/50 transition-colors"
+                          onClick={() => setDetailSolicitacao(s)}
+                        >
+                          <StatusIcon status={s.status_solicitacao} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-medium">{(s as any).pronaf_produtos?.nome || "—"}</span>
+                              <Badge variant={subSt.variant} className="text-xs">{subSt.label}</Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {s.cultura_principal} · {s.area_cultivo_ha} ha · {formatCurrency(s.valor_solicitado)}
+                            </p>
+                          </div>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            {new Date(s.created_at).toLocaleDateString("pt-BR")}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+
+          {/* Standalone (legacy) solicitations */}
+          {groupedSolicitacoes.standalone.map((s) => {
             const st = statusMap[s.status_solicitacao] || { label: s.status_solicitacao, variant: "outline" as const };
             const produtoNome = (s as any).pronaf_produtos?.nome;
             return (
@@ -858,7 +1025,7 @@ export default function Solicitacoes() {
                           setEditId(s.id);
                           setForm({
                             propriedade_id: s.propriedade_id,
-                            pronaf_produto_id: s.pronaf_produto_id || "",
+                            pronaf_produto_ids: s.pronaf_produto_id ? [s.pronaf_produto_id] : [],
                             cultura_principal: s.cultura_principal || "",
                             area_cultivo_ha: String(s.area_cultivo_ha),
                             valor_solicitado: formatToCurrency(s.valor_solicitado),
@@ -912,10 +1079,8 @@ export default function Solicitacoes() {
             const produto = (detailSolicitacao as any).pronaf_produtos;
             return (
               <div className="space-y-4">
-                {/* Status Timeline */}
                 <StatusTimeline solicitacao={detailSolicitacao} />
 
-                {/* Basic info */}
                 <div className="grid gap-2 text-sm sm:grid-cols-2">
                   <div><span className="font-medium">Propriedade:</span> {(detailSolicitacao as any).propriedades?.nome_propriedade}</div>
                   <div><span className="font-medium">Cultura:</span> {detailSolicitacao.cultura_principal}</div>
@@ -925,7 +1090,6 @@ export default function Solicitacoes() {
                   <div><span className="font-medium">Status:</span> <Badge variant={statusMap[detailSolicitacao.status_solicitacao]?.variant}>{statusMap[detailSolicitacao.status_solicitacao]?.label}</Badge></div>
                 </div>
 
-                {/* Product rules */}
                 {produto && (
                   <ProductRulesCard
                     produto={produto}
@@ -951,7 +1115,6 @@ export default function Solicitacoes() {
                         Envio de documentos habilitado!
                       </div>
 
-                      {/* Required docs checklist with upload */}
                       {detailPronafDocs && detailPronafDocs.length > 0 && (
                         <div className="space-y-2">
                           {detailPronafDocs.map((doc) => {
@@ -983,12 +1146,10 @@ export default function Solicitacoes() {
                         </div>
                       )}
 
-                      {/* Additional document upload */}
                       <Button size="sm" variant="outline" onClick={() => handleFileUpload()} disabled={uploadDocMutation.isPending}>
                         <Plus className="h-3 w-3 mr-1" /> Enviar outro documento
                       </Button>
 
-                      {/* List additional uploaded docs */}
                       {uploadedDocs?.filter((d) => !d.pronaf_documento_id).map((doc) => (
                         <div key={doc.id} className="flex items-center justify-between gap-2 rounded-md border p-2 text-sm">
                           <span className="text-muted-foreground">{doc.nome_arquivo}</span>
