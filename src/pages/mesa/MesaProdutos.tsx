@@ -108,22 +108,40 @@ export default function MesaProdutos() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("solicitacoes_laudo")
-        .select("*, propriedades(nome_propriedade, endereco, area_total_ha, regiao_id, municipio, uf, latitude, longitude, codigo_car, matricula_imovel, numero_ccir, numero_itr, tipo_posse, area_reserva_legal_ha, area_app_ha, fonte_agua, tipo_solo), pronaf_produtos(nome, finalidade, valor_engenheiro, tipo_valor_engenheiro), produtores(user_id), laudos(id, status_laudo, caminho_pdf_laudo), engenheiros!solicitacoes_laudo_engenheiro_assistente_id_fkey(id, user_id, crea)")
+        .select("*, propriedades(nome_propriedade, endereco, area_total_ha, regiao_id, municipio, uf, latitude, longitude, codigo_car, matricula_imovel, numero_ccir, numero_itr, tipo_posse, area_reserva_legal_ha, area_app_ha, fonte_agua, tipo_solo), pronaf_produtos(nome, finalidade, valor_engenheiro, tipo_valor_engenheiro), produtores(user_id), laudos(id, status_laudo, caminho_pdf_laudo, parecer_final, situacao_cultura, tipo_solo, historico_produtividade, disponibilidade_hidrica, riscos_identificados, garantias_observadas, observacoes_adicionais, resumo_viabilidade, recomendacoes_tecnicas, data_visita_efetiva, score_risco, engenheiro_id), engenheiros!solicitacoes_laudo_engenheiro_assistente_id_fkey(id, user_id, crea)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       const produtorUserIds = [...new Set(data?.map((s: any) => s.produtores?.user_id).filter(Boolean))];
       const assistenteUserIds = [...new Set(data?.filter((s: any) => s.assistido && s.engenheiros).map((s: any) => s.engenheiros?.user_id).filter(Boolean))];
-      const allUserIds = [...new Set([...produtorUserIds, ...assistenteUserIds])];
+      // Also get engineer user_ids from laudos
+      const laudoEngIds = [...new Set(data?.flatMap((s: any) => {
+        const laudos = Array.isArray(s.laudos) ? s.laudos : s.laudos ? [s.laudos] : [];
+        return laudos.map((l: any) => l.engenheiro_id).filter(Boolean);
+      }))];
+      // Get engenheiro records for laudo engineers
+      let engUserMap: Record<string, string> = {};
+      if (laudoEngIds.length) {
+        const { data: engs } = await supabase.from("engenheiros").select("id, user_id").in("id", laudoEngIds);
+        engs?.forEach((e) => { engUserMap[e.id] = e.user_id; });
+      }
+      const allEngUserIds = Object.values(engUserMap);
+      const allUserIds = [...new Set([...produtorUserIds, ...assistenteUserIds, ...allEngUserIds])];
       let profileMap: Record<string, string> = {};
       if (allUserIds.length) {
         const { data: profiles } = await supabase.from("profiles").select("id, nome").in("id", allUserIds);
         profiles?.forEach((p) => { profileMap[p.id] = p.nome; });
       }
-      return data?.map((s: any) => ({
-        ...s,
-        produtor_nome: s.produtores?.user_id ? profileMap[s.produtores.user_id] || "—" : "—",
-        assistente_nome: s.assistido && s.engenheiros?.user_id ? profileMap[s.engenheiros.user_id] || "—" : null,
-      })) ?? [];
+      return data?.map((s: any) => {
+        const laudos = Array.isArray(s.laudos) ? s.laudos : s.laudos ? [s.laudos] : [];
+        const laudo = laudos[0];
+        const engUserId = laudo ? engUserMap[laudo.engenheiro_id] : null;
+        return {
+          ...s,
+          produtor_nome: s.produtores?.user_id ? profileMap[s.produtores.user_id] || "—" : "—",
+          assistente_nome: s.assistido && s.engenheiros?.user_id ? profileMap[s.engenheiros.user_id] || "—" : null,
+          engenheiro_laudo_nome: engUserId ? profileMap[engUserId] || "—" : null,
+        };
+      }) ?? [];
     },
   });
 
@@ -216,6 +234,26 @@ export default function MesaProdutos() {
         .select("id, pronaf_produto_id, status_solicitacao, valor_solicitado, pronaf_produtos(nome)")
         .eq("grupo_id", selectedGrupoId)
         .order("created_at");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Laudo media for the selected solicitation
+  const selectedLaudo = selectedSolicitacao ? (() => {
+    const laudos = Array.isArray((selectedSolicitacao as any).laudos) ? (selectedSolicitacao as any).laudos : (selectedSolicitacao as any).laudos ? [(selectedSolicitacao as any).laudos] : [];
+    return laudos[0] || null;
+  })() : null;
+
+  const { data: laudoMedia } = useQuery({
+    queryKey: ["laudo_media_mesa", selectedLaudo?.id],
+    enabled: !!selectedLaudo?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("midia_laudo")
+        .select("*")
+        .eq("laudo_id", selectedLaudo.id)
+        .order("created_at", { ascending: true });
       if (error) throw error;
       return data;
     },
@@ -1229,6 +1267,120 @@ export default function MesaProdutos() {
                   culturaPrincipal={selectedSolicitacao.cultura_principal}
                   readOnly
                 />
+              )}
+
+              {/* Laudo do Projetista/Engenheiro */}
+              {selectedLaudo && (
+                <div className="border rounded-md p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium text-sm flex items-center gap-2">
+                      <FileSearch className="h-4 w-4" /> Laudo Técnico
+                      {selectedSolicitacao.engenheiro_laudo_nome && (
+                        <span className="text-xs text-muted-foreground font-normal">— Projetista: {selectedSolicitacao.engenheiro_laudo_nome}</span>
+                      )}
+                    </h4>
+                    <Badge variant={selectedLaudo.status_laudo === "finalizado" ? "default" : selectedLaudo.status_laudo === "rejeitado" ? "destructive" : "secondary"} className="text-xs">
+                      {selectedLaudo.status_laudo}
+                    </Badge>
+                  </div>
+
+                  <div className="grid gap-2 text-xs sm:grid-cols-2">
+                    {selectedLaudo.data_visita_efetiva && <div><span className="font-medium">Visita:</span> {new Date(selectedLaudo.data_visita_efetiva).toLocaleDateString("pt-BR")}</div>}
+                    {selectedLaudo.situacao_cultura && <div><span className="font-medium">Situação da cultura:</span> {selectedLaudo.situacao_cultura}</div>}
+                    {selectedLaudo.tipo_solo && <div><span className="font-medium">Tipo de solo:</span> {selectedLaudo.tipo_solo}</div>}
+                    {selectedLaudo.disponibilidade_hidrica && <div><span className="font-medium">Disp. hídrica:</span> {selectedLaudo.disponibilidade_hidrica}</div>}
+                    {selectedLaudo.historico_produtividade && <div><span className="font-medium">Histórico produtividade:</span> {selectedLaudo.historico_produtividade}</div>}
+                    {selectedLaudo.score_risco != null && <div><span className="font-medium">Score de risco:</span> {selectedLaudo.score_risco}</div>}
+                  </div>
+
+                  {selectedLaudo.riscos_identificados && (
+                    <div className="text-xs"><span className="font-medium">Riscos:</span> {selectedLaudo.riscos_identificados}</div>
+                  )}
+                  {selectedLaudo.garantias_observadas && (
+                    <div className="text-xs"><span className="font-medium">Garantias:</span> {selectedLaudo.garantias_observadas}</div>
+                  )}
+                  {selectedLaudo.resumo_viabilidade && (
+                    <div className="text-xs"><span className="font-medium">Viabilidade:</span> {selectedLaudo.resumo_viabilidade}</div>
+                  )}
+                  {selectedLaudo.recomendacoes_tecnicas && (
+                    <div className="text-xs"><span className="font-medium">Recomendações:</span> {selectedLaudo.recomendacoes_tecnicas}</div>
+                  )}
+                  {selectedLaudo.parecer_final && (
+                    <div className="rounded-md bg-muted p-2 text-xs"><span className="font-medium">Parecer final:</span> {selectedLaudo.parecer_final}</div>
+                  )}
+                  {selectedLaudo.observacoes_adicionais && (
+                    <div className="text-xs"><span className="font-medium">Observações:</span> {selectedLaudo.observacoes_adicionais}</div>
+                  )}
+
+                  {/* Laudo media */}
+                  {laudoMedia && laudoMedia.length > 0 && (
+                    <div className="space-y-2">
+                      <span className="text-xs font-medium">Mídias da vistoria ({laudoMedia.length})</span>
+                      <div className="grid grid-cols-3 gap-2">
+                        {laudoMedia.map((m: any) => (
+                          <div key={m.id} className="relative group">
+                            {m.tipo === "foto" ? (
+                              <img
+                                src={m.url_arquivo}
+                                alt={m.descricao || "Foto da vistoria"}
+                                className="rounded-md w-full h-24 object-cover cursor-pointer"
+                                onClick={() => window.open(m.url_arquivo, "_blank")}
+                              />
+                            ) : (
+                              <div
+                                className="rounded-md w-full h-24 bg-muted flex items-center justify-center cursor-pointer text-xs text-muted-foreground"
+                                onClick={() => window.open(m.url_arquivo, "_blank")}
+                              >
+                                {m.tipo === "video" ? "🎥 Vídeo" : "📄 Arquivo"}
+                              </div>
+                            )}
+                            {m.descricao && <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{m.descricao}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Download PDF */}
+                  {selectedLaudo.caminho_pdf_laudo && (
+                    <Button size="sm" variant="outline" className="gap-1.5" onClick={async () => {
+                      const { data } = await supabase.storage.from("laudo-pdfs").createSignedUrl(selectedLaudo.caminho_pdf_laudo, 300);
+                      if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+                    }}>
+                      <Download className="h-3.5 w-3.5" /> Baixar PDF do Laudo
+                    </Button>
+                  )}
+
+                  {/* Laudo actions: reject / return to engineer */}
+                  {selectedLaudo.status_laudo === "finalizado" && (
+                    <div className="flex gap-2 border-t pt-2">
+                      <Button size="sm" variant="outline" onClick={() => {
+                        updateStatusMutation.mutate({
+                          id: selectedSolicitacao.id,
+                          status_solicitacao: "aguardando_laudo",
+                          skipPaymentCalc: true,
+                        });
+                        toast({ title: "Laudo devolvido ao projetista para adequação. Use o chat para detalhar os ajustes necessários." });
+                      }} disabled={updateStatusMutation.isPending}>
+                        <RotateCcw className="h-3.5 w-3.5 mr-1" /> Devolver ao Projetista
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Bank devolution alert */}
+              {selectedSolicitacao.status_banco === "devolvido" && selectedSolicitacao.observacoes_banco && (
+                <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-medium text-destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    Devolvido pelo Banco
+                  </div>
+                  <p className="text-xs">{selectedSolicitacao.observacoes_banco}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Use o chat para solicitar ajustes ao projetista ou produtor. Após adequação, reenvie ao banco.
+                  </p>
+                </div>
               )}
 
               {/* Notas da mesa */}
