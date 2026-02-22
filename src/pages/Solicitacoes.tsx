@@ -18,7 +18,9 @@ import { useToast } from "@/hooks/use-toast";
 import {
   FileText, Plus, Clock, CheckCircle2, AlertCircle, Download, Info,
   Upload, Trash2, Eye, ShieldCheck, Banknote, FileWarning, MessageCircle, Send, Video, MapPin, Pencil,
+  UserCheck, Search, HelpCircle,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { AudioRecorder } from "@/components/chat/AudioRecorder";
 import { AudioPlayer } from "@/components/chat/AudioPlayer";
 import ProductRulesCard from "@/components/solicitacoes/ProductRulesCard";
@@ -62,6 +64,9 @@ export default function Solicitacoes() {
   const [form, setForm] = useState<SolicitacaoForm>(emptyForm);
   const [chatMessage, setChatMessage] = useState("");
   const [isUploadingAudio, setIsUploadingAudio] = useState(false);
+  const [modoAssistido, setModoAssistido] = useState(false);
+  const [engenheiroAssistenteId, setEngenheiroAssistenteId] = useState("");
+  const [buscaEngenheiro, setBuscaEngenheiro] = useState("");
   const { toast } = useToast();
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -122,6 +127,29 @@ export default function Solicitacoes() {
         .limit(1);
       if (error) throw error;
       return data && data.length > 0;
+    },
+  });
+
+  // Engineers for assisted mode
+  const { data: engenheirosDisponiveis } = useQuery({
+    queryKey: ["engenheiros_disponiveis"],
+    enabled: modoAssistido,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("engenheiros")
+        .select("id, crea, user_id, area_atuacao, regiao_id, tipo_licenca, numero_licenca, raio_atendimento_km, rating, total_laudos_concluidos")
+        .eq("status_verificacao", "aprovado");
+      if (error) throw error;
+      if (!data?.length) return [];
+      const userIds = data.map((e) => e.user_id);
+      const { data: profiles } = await supabase.from("profiles").select("id, nome").in("id", userIds);
+      const { data: regioes } = await supabase.from("regioes").select("id, nome, uf");
+      return data.map((e) => ({
+        ...e,
+        nome: profiles?.find((p) => p.id === e.user_id)?.nome || "—",
+        regiao_nome: regioes?.find((r) => r.id === e.regiao_id)?.nome || "",
+        regiao_uf: regioes?.find((r) => r.id === e.regiao_id)?.uf || "",
+      }));
     },
   });
 
@@ -241,7 +269,7 @@ export default function Solicitacoes() {
         }).eq("id", editId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("solicitacoes_laudo").insert({
+        const insertData: any = {
           produtor_id: produtorId!,
           propriedade_id: form.propriedade_id,
           pronaf_produto_id: form.pronaf_produto_id || null,
@@ -253,7 +281,12 @@ export default function Solicitacoes() {
           banco_parceiro_id: form.banco_parceiro_id || null,
           banco_destino: bancosParceiros?.find((b) => b.id === form.banco_parceiro_id)?.nome || "",
           observacoes_produtor: form.observacoes_produtor,
-        });
+        };
+        if (modoAssistido && engenheiroAssistenteId) {
+          insertData.assistido = true;
+          insertData.engenheiro_assistente_id = engenheiroAssistenteId;
+        }
+        const { error } = await supabase.from("solicitacoes_laudo").insert(insertData);
         if (error) throw error;
       }
     },
@@ -262,6 +295,9 @@ export default function Solicitacoes() {
       toast({ title: editId ? "Solicitação atualizada!" : "Solicitação criada com sucesso!" });
       setForm(emptyForm);
       setEditId(null);
+      setModoAssistido(false);
+      setEngenheiroAssistenteId("");
+      setBuscaEngenheiro("");
       setOpen(false);
     },
     onError: (err: Error) => {
@@ -646,9 +682,113 @@ export default function Solicitacoes() {
                   rows={3}
                 />
               </div>
+
+              {/* Modo assistido - só para criação */}
+              {!editId && (
+                <div className="border rounded-md p-3 space-y-3 bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium">Preciso de ajuda de um projetista</p>
+                        <p className="text-xs text-muted-foreground">Um engenheiro/projetista cuidará da documentação para você.</p>
+                      </div>
+                    </div>
+                    <Switch checked={modoAssistido} onCheckedChange={(v) => { setModoAssistido(v); if (!v) { setEngenheiroAssistenteId(""); setBuscaEngenheiro(""); } }} />
+                  </div>
+
+                  {modoAssistido && (
+                    <div className="space-y-2">
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          className="pl-8"
+                          placeholder="Buscar por nome do engenheiro/projetista..."
+                          value={buscaEngenheiro}
+                          onChange={(e) => setBuscaEngenheiro(e.target.value)}
+                        />
+                      </div>
+
+                      {/* Filtered property UF hint */}
+                      {form.propriedade_id && propriedades && (() => {
+                        const prop = propriedades.find((p) => p.id === form.propriedade_id);
+                        const uf = (prop as any)?.regioes?.uf;
+                        return uf ? (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <MapPin className="h-3 w-3" /> Priorizando projetistas da região {uf}
+                          </p>
+                        ) : null;
+                      })()}
+
+                      <div className="max-h-48 overflow-y-auto space-y-1 border rounded-md p-1">
+                        {(() => {
+                          const search = buscaEngenheiro.toLowerCase();
+                          const propUf = (() => {
+                            if (!form.propriedade_id || !propriedades) return null;
+                            const prop = propriedades.find((p) => p.id === form.propriedade_id);
+                            return (prop as any)?.regioes?.uf ?? null;
+                          })();
+
+                          const filtered = (engenheirosDisponiveis ?? [])
+                            .filter((e: any) => !search || e.nome.toLowerCase().includes(search) || e.crea?.toLowerCase().includes(search))
+                            .sort((a: any, b: any) => {
+                              if (propUf) {
+                                const aMatch = a.regiao_uf === propUf ? 0 : 1;
+                                const bMatch = b.regiao_uf === propUf ? 0 : 1;
+                                if (aMatch !== bMatch) return aMatch - bMatch;
+                              }
+                              return (b.total_laudos_concluidos || 0) - (a.total_laudos_concluidos || 0);
+                            });
+
+                          if (!filtered.length) return (
+                            <p className="text-xs text-muted-foreground text-center py-4">
+                              {engenheirosDisponiveis === undefined ? "Carregando..." : "Nenhum projetista encontrado."}
+                            </p>
+                          );
+
+                          return filtered.map((eng: any) => (
+                            <button
+                              key={eng.id}
+                              type="button"
+                              className={`w-full text-left p-2 rounded-md text-sm transition-colors ${
+                                engenheiroAssistenteId === eng.id
+                                  ? "bg-primary/10 border border-primary/30"
+                                  : "hover:bg-muted"
+                              }`}
+                              onClick={() => setEngenheiroAssistenteId(eng.id)}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <span className="font-medium">{eng.nome}</span>
+                                  {eng.regiao_uf && (
+                                    <Badge variant="outline" className="ml-2 text-xs">{eng.regiao_nome || eng.regiao_uf}</Badge>
+                                  )}
+                                </div>
+                                {engenheiroAssistenteId === eng.id && (
+                                  <CheckCircle2 className="h-4 w-4 text-primary" />
+                                )}
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-0.5 flex gap-3">
+                                {eng.tipo_licenca && <span>{eng.tipo_licenca}: {eng.numero_licenca || eng.crea}</span>}
+                                {eng.total_laudos_concluidos > 0 && <span>{eng.total_laudos_concluidos} laudos</span>}
+                                {eng.area_atuacao && <span>{eng.area_atuacao}</span>}
+                              </div>
+                            </button>
+                          ));
+                        })()}
+                      </div>
+
+                      {modoAssistido && !engenheiroAssistenteId && (
+                        <p className="text-xs text-destructive">Selecione um projetista para continuar.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-                <Button type="submit" disabled={createMutation.isPending || !form.pronaf_produto_id}>
+                <Button type="submit" disabled={createMutation.isPending || !form.pronaf_produto_id || (modoAssistido && !engenheiroAssistenteId)}>
                   {createMutation.isPending ? (editId ? "Salvando..." : "Criando...") : (editId ? "Salvar Alterações" : "Criar Solicitação")}
                 </Button>
               </div>
@@ -694,6 +834,11 @@ export default function Solicitacoes() {
                       {s.docs_habilitados && (
                         <Badge variant="secondary" className="text-xs gap-1">
                           <Upload className="h-3 w-3" /> Docs liberados
+                        </Badge>
+                      )}
+                      {(s as any).assistido && (
+                        <Badge variant="secondary" className="text-xs gap-1">
+                          <UserCheck className="h-3 w-3" /> Assistido
                         </Badge>
                       )}
                     </div>
