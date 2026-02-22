@@ -14,8 +14,12 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Users, ShieldCheck, Info, UserPlus, Eye, EyeOff } from "lucide-react";
+import { Users, ShieldCheck, Info, UserPlus, Eye, EyeOff, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 type AppRole = "produtor" | "engenheiro" | "admin" | "mesa_produtos" | "banco";
@@ -24,6 +28,7 @@ interface UserWithRole {
   id: string;
   nome: string;
   email: string;
+  telefone: string | null;
   role: AppRole | null;
   role_id: string | null;
   banco_parceiro_id: string | null;
@@ -50,6 +55,8 @@ export default function AdminUsuarios() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
+  const [editUser, setEditUser] = useState<UserWithRole | null>(null);
+  const [deleteUser, setDeleteUser] = useState<UserWithRole | null>(null);
 
   const { data: bancosParceiros } = useQuery({
     queryKey: ["bancos_parceiros_ativos"],
@@ -69,7 +76,7 @@ export default function AdminUsuarios() {
     queryFn: async () => {
       const { data: profiles, error } = await supabase
         .from("profiles")
-        .select("id, nome, email")
+        .select("id, nome, email, telefone")
         .order("created_at", { ascending: false });
       if (error) throw error;
 
@@ -93,6 +100,7 @@ export default function AdminUsuarios() {
         id: p.id,
         nome: p.nome,
         email: p.email,
+        telefone: p.telefone,
         role: roleMap.get(p.id)?.role ?? null,
         role_id: roleMap.get(p.id)?.role_id ?? null,
         banco_parceiro_id: bancoMap.get(p.id) ?? null,
@@ -126,7 +134,42 @@ export default function AdminUsuarios() {
     },
   });
 
-  // Group users by role for team view
+  const updateProfile = useMutation({
+    mutationFn: async ({ userId, nome, telefone }: { userId: string; nome: string; telefone: string }) => {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ nome, telefone })
+        .eq("id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin_usuarios"] });
+      toast({ title: "Perfil atualizado com sucesso!" });
+      setEditUser(null);
+    },
+    onError: (err: Error) => {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      // Remove role and banco link, then delete profile
+      await supabase.from("banco_usuarios").delete().eq("user_id", userId);
+      await supabase.from("user_roles").delete().eq("user_id", userId);
+      const { error } = await supabase.from("profiles").delete().eq("id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin_usuarios"] });
+      toast({ title: "Usuário removido com sucesso!" });
+      setDeleteUser(null);
+    },
+    onError: (err: Error) => {
+      toast({ title: "Erro ao remover", description: err.message, variant: "destructive" });
+    },
+  });
+
   const mesaUsers = users?.filter((u) => u.role === "mesa_produtos") ?? [];
   const bancoUsers = users?.filter((u) => u.role === "banco") ?? [];
 
@@ -154,7 +197,6 @@ export default function AdminUsuarios() {
         </div>
       </div>
 
-      {/* Team summaries */}
       {(mesaUsers.length > 0 || bancoUsers.length > 0) && (
         <div className="grid gap-4 sm:grid-cols-2">
           <Card>
@@ -221,8 +263,10 @@ export default function AdminUsuarios() {
                 <TableRow>
                   <TableHead>Nome</TableHead>
                   <TableHead>Email</TableHead>
+                  <TableHead>Telefone</TableHead>
                   <TableHead>Papel Atual</TableHead>
                   <TableHead>Alterar Papel</TableHead>
+                  <TableHead className="w-24 text-center">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -233,6 +277,8 @@ export default function AdminUsuarios() {
                     bancosParceiros={bancosParceiros ?? []}
                     onAssign={(newRole, bancoParcId) => assignRole.mutate({ userId: u.id, newRole, bancoParcId })}
                     isLoading={assignRole.isPending}
+                    onEdit={() => setEditUser(u)}
+                    onDelete={() => setDeleteUser(u)}
                   />
                 ))}
               </TableBody>
@@ -250,7 +296,127 @@ export default function AdminUsuarios() {
           setCreateOpen(false);
         }}
       />
+
+      <EditProfileDialog
+        user={editUser}
+        onOpenChange={(open) => { if (!open) setEditUser(null); }}
+        onSave={(userId, nome, telefone) => updateProfile.mutate({ userId, nome, telefone })}
+        isLoading={updateProfile.isPending}
+      />
+
+      <AlertDialog open={!!deleteUser} onOpenChange={(open) => { if (!open) setDeleteUser(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja remover o perfil de <strong>{deleteUser?.nome || deleteUser?.email}</strong>?
+              Esta ação removerá o papel e os vínculos do usuário. Não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteUser && deleteUserMutation.mutate(deleteUser.id)}
+              disabled={deleteUserMutation.isPending}
+            >
+              {deleteUserMutation.isPending ? "Removendo..." : "Remover"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
+  );
+}
+
+/* ── Edit Profile Dialog ── */
+
+function EditProfileDialog({
+  user,
+  onOpenChange,
+  onSave,
+  isLoading,
+}: {
+  user: UserWithRole | null;
+  onOpenChange: (v: boolean) => void;
+  onSave: (userId: string, nome: string, telefone: string) => void;
+  isLoading: boolean;
+}) {
+  const [nome, setNome] = useState("");
+  const [telefone, setTelefone] = useState("");
+
+  const isOpen = !!user;
+
+  // Sync state when user changes
+  if (user && nome === "" && telefone === "" && !isLoading) {
+    // Use effect-like initialization
+  }
+
+  return (
+    <Dialog
+      open={isOpen}
+      onOpenChange={(v) => {
+        if (!v) {
+          setNome("");
+          setTelefone("");
+        }
+        onOpenChange(v);
+      }}
+    >
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Editar Perfil</DialogTitle>
+        </DialogHeader>
+        <EditProfileForm
+          user={user}
+          onSave={onSave}
+          isLoading={isLoading}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditProfileForm({
+  user,
+  onSave,
+  isLoading,
+}: {
+  user: UserWithRole | null;
+  onSave: (userId: string, nome: string, telefone: string) => void;
+  isLoading: boolean;
+}) {
+  const [nome, setNome] = useState(user?.nome ?? "");
+  const [telefone, setTelefone] = useState(user?.telefone ?? "");
+
+  if (!user) return null;
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSave(user.id, nome.trim(), telefone.trim());
+      }}
+      className="space-y-4"
+    >
+      <div className="space-y-2">
+        <Label>Nome completo</Label>
+        <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome" required />
+      </div>
+      <div className="space-y-2">
+        <Label>Email</Label>
+        <Input value={user.email} disabled className="opacity-60" />
+        <p className="text-xs text-muted-foreground">O email não pode ser alterado por aqui.</p>
+      </div>
+      <div className="space-y-2">
+        <Label>Telefone</Label>
+        <Input value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="(00) 00000-0000" />
+      </div>
+      <Button type="submit" className="w-full gap-1" disabled={isLoading || !nome.trim()}>
+        <Pencil className="h-4 w-4" />
+        {isLoading ? "Salvando..." : "Salvar Alterações"}
+      </Button>
+    </form>
   );
 }
 
@@ -277,12 +443,8 @@ function CreateInternalUserDialog({
   const [loading, setLoading] = useState(false);
 
   const reset = () => {
-    setNome("");
-    setEmail("");
-    setSenha("");
-    setRole("mesa_produtos");
-    setBancoParcId("");
-    setShowSenha(false);
+    setNome(""); setEmail(""); setSenha("");
+    setRole("mesa_produtos"); setBancoParcId(""); setShowSenha(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -299,9 +461,6 @@ function CreateInternalUserDialog({
 
     setLoading(true);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-
       const res = await supabase.functions.invoke("create-internal-user", {
         body: {
           nome: nome.trim(),
@@ -312,14 +471,9 @@ function CreateInternalUserDialog({
         },
       });
 
-      if (res.error) {
-        throw new Error(res.error.message || "Erro ao criar usuário");
-      }
-
+      if (res.error) throw new Error(res.error.message || "Erro ao criar usuário");
       const result = res.data;
-      if (result?.error) {
-        throw new Error(result.error);
-      }
+      if (result?.error) throw new Error(result.error);
 
       toast({ title: "Usuário criado com sucesso!", description: `${nome} (${roleLabel(role)}) já pode acessar a plataforma.` });
       reset();
@@ -357,13 +511,7 @@ function CreateInternalUserDialog({
                 minLength={6}
                 required
               />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute right-1 top-0 h-10 w-10"
-                onClick={() => setShowSenha(!showSenha)}
-              >
+              <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-0 h-10 w-10" onClick={() => setShowSenha(!showSenha)}>
                 {showSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </Button>
             </div>
@@ -372,9 +520,7 @@ function CreateInternalUserDialog({
           <div className="space-y-2">
             <Label>Papel *</Label>
             <Select value={role} onValueChange={(v) => setRole(v as "mesa_produtos" | "banco")}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="mesa_produtos">Mesa de Produtos</SelectItem>
                 <SelectItem value="banco">Banco Parceiro</SelectItem>
@@ -385,16 +531,13 @@ function CreateInternalUserDialog({
             <div className="space-y-2">
               <Label>Banco Parceiro *</Label>
               <Select value={bancoParcId} onValueChange={setBancoParcId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o banco..." />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Selecione o banco..." /></SelectTrigger>
                 <SelectContent>
                   {bancosParceiros.map((b) => (
                     <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">Vários usuários podem ser vinculados ao mesmo banco para formar a equipe.</p>
             </div>
           )}
           <Button type="submit" className="w-full gap-1" disabled={loading}>
@@ -414,11 +557,15 @@ function UserRow({
   bancosParceiros,
   onAssign,
   isLoading,
+  onEdit,
+  onDelete,
 }: {
   user: UserWithRole;
   bancosParceiros: { id: string; nome: string }[];
   onAssign: (role: AppRole, bancoParcId?: string) => void;
   isLoading: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
 }) {
   const [selected, setSelected] = useState<AppRole | "">(user.role ?? "");
   const [bancoParcId, setBancoParcId] = useState<string>(user.banco_parceiro_id ?? "");
@@ -429,6 +576,7 @@ function UserRow({
     <TableRow>
       <TableCell className="font-medium">{user.nome || "—"}</TableCell>
       <TableCell className="text-muted-foreground">{user.email}</TableCell>
+      <TableCell className="text-muted-foreground">{user.telefone || "—"}</TableCell>
       <TableCell>
         <div className="flex flex-col gap-1">
           <Badge variant={roleBadgeVariant(user.role)}>{roleLabel(user.role)}</Badge>
@@ -474,6 +622,16 @@ function UserRow({
               </SelectContent>
             </Select>
           )}
+        </div>
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center justify-center gap-1">
+          <Button size="icon" variant="ghost" onClick={onEdit} title="Editar perfil">
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button size="icon" variant="ghost" onClick={onDelete} title="Remover usuário" className="text-destructive hover:text-destructive">
+            <Trash2 className="h-4 w-4" />
+          </Button>
         </div>
       </TableCell>
     </TableRow>
