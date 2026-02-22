@@ -85,7 +85,7 @@ export default function PropriedadeForm({ form, setForm, onSubmit, onCancel, isP
       <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Identificação</p>
       <div className="space-y-2">
         <Label>Nome da propriedade *</Label>
-        <Input value={form.nome_propriedade} onChange={set("nome_propriedade")} required />
+        <Input value={form.nome_propriedade} onChange={set("nome_propriedade")} required className="uppercase" />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -119,7 +119,7 @@ export default function PropriedadeForm({ form, setForm, onSubmit, onCancel, isP
 
       <div className="space-y-2">
         <Label>Endereço / Referência</Label>
-        <Input value={form.endereco} onChange={set("endereco")} placeholder="Estrada, rodovia, comunidade, etc." />
+        <Input value={form.endereco} onChange={set("endereco")} placeholder="Estrada, rodovia, comunidade, etc." className="uppercase" />
       </div>
 
       <Separator />
@@ -140,22 +140,22 @@ export default function PropriedadeForm({ form, setForm, onSubmit, onCancel, isP
         </div>
         <div className="space-y-2">
           <Label>Matrícula do imóvel</Label>
-          <Input value={form.matricula_imovel} onChange={set("matricula_imovel")} placeholder="Nº do registro" />
+          <Input value={form.matricula_imovel} onChange={set("matricula_imovel")} placeholder="Nº do registro" className="uppercase" />
         </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
         <div className="space-y-2">
           <Label>Código CAR</Label>
-          <Input value={form.codigo_car} onChange={set("codigo_car")} placeholder="Opcional" />
+          <Input value={form.codigo_car} onChange={set("codigo_car")} placeholder="Opcional" className="uppercase" />
         </div>
         <div className="space-y-2">
           <Label>Nº CCIR (INCRA)</Label>
-          <Input value={form.numero_ccir} onChange={set("numero_ccir")} placeholder="Opcional" />
+          <Input value={form.numero_ccir} onChange={set("numero_ccir")} placeholder="Opcional" className="uppercase" />
         </div>
         <div className="space-y-2">
           <Label>Nº ITR</Label>
-          <Input value={form.numero_itr} onChange={set("numero_itr")} placeholder="Opcional" />
+          <Input value={form.numero_itr} onChange={set("numero_itr")} placeholder="Opcional" className="uppercase" />
         </div>
       </div>
 
