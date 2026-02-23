@@ -91,6 +91,17 @@ Plataforma tipo "Uber de laudos agronômicos" conectando produtores rurais a eng
 
 ---
 
+## Fase 9 — AgroBanker (Canal de Originação B2B)
+
+- **Perfil AgroBanker**: Canal de captação similar a assessores de investimentos (XP/BTG)
+- **Tipos de entidade**: Revenda Agrícola, Cooperativa Agropecuária, Sindicato Rural, Associação de Produtores, Consultoria Agronômica, Escritório de Contabilidade Rural, Corretora de Seguros Agrícolas, Casa Agropecuária, ATER, Trading/Cerealista, Outro
+- **Tabelas**: `agrobankers`, `agrobanker_produtores` (vínculo com níveis indicação/gestão_ativa), `agrobanker_comissoes`
+- **Vínculo com solicitações**: campo `agrobanker_id` em `solicitacoes_laudo` para rastreio de origem
+- **Dois níveis de acesso**: indicação (rastreio) e gestão ativa (criar/gerenciar solicitações em nome do produtor)
+- **Dashboard**: Carteira de clientes, métricas de captação, financeiro e gestão de solicitações
+- **Monetização**: Estrutura preparada, modelo a definir
+
+
 ## Design e UX
 
 - Interface limpa e funcional, otimizada para uso em campo (mobile-friendly)

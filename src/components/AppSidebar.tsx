@@ -32,6 +32,9 @@ import {
   ToggleLeft,
   ShieldCheck,
   GitBranch,
+  Briefcase,
+  TrendingUp,
+  DollarSign,
 } from "lucide-react";
 
 interface NavItem {
@@ -65,6 +68,13 @@ const bancoNav: NavItem[] = [
   { title: "Painel", icon: Home, path: "/banco" },
 ];
 
+const agrobankerNav: NavItem[] = [
+  { title: "Painel", icon: Home, path: "/agrobanker" },
+  { title: "Carteira", icon: Users, path: "/agrobanker/carteira" },
+  { title: "Captações", icon: TrendingUp, path: "/agrobanker/captacoes" },
+  { title: "Comissões", icon: DollarSign, path: "/agrobanker/comissoes" },
+];
+
 const adminNav: NavItem[] = [
   { title: "Dashboard", icon: Home, path: "/" },
   { title: "Esteira & Desempenho", icon: GitBranch, path: "/admin/esteira" },
@@ -88,8 +98,8 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const navItems = role === "admin" ? adminNav : role === "mesa_produtos" ? mesaNav : role === "banco" ? bancoNav : role === "engenheiro" ? engenheiroNav : produtorNav;
-  const roleLabel = role === "admin" ? "Administrador" : role === "mesa_produtos" ? "Mesa de Produtos" : role === "banco" ? "Banco Parceiro" : role === "engenheiro" ? "Engenheiro/Projetista" : "Produtor";
+  const navItems = role === "admin" ? adminNav : role === "mesa_produtos" ? mesaNav : role === "banco" ? bancoNav : role === "agrobanker" ? agrobankerNav : role === "engenheiro" ? engenheiroNav : produtorNav;
+  const roleLabel = role === "admin" ? "Administrador" : role === "mesa_produtos" ? "Mesa de Produtos" : role === "banco" ? "Banco Parceiro" : role === "agrobanker" ? "AgroBanker" : role === "engenheiro" ? "Engenheiro/Projetista" : "Produtor";
 
   return (
     <Sidebar>

@@ -14,6 +14,153 @@ export type Database = {
   }
   public: {
     Tables: {
+      agrobanker_comissoes: {
+        Row: {
+          agrobanker_id: string
+          created_at: string
+          data_pagamento: string | null
+          id: string
+          solicitacao_id: string | null
+          status: string
+          tipo: string
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          agrobanker_id: string
+          created_at?: string
+          data_pagamento?: string | null
+          id?: string
+          solicitacao_id?: string | null
+          status?: string
+          tipo?: string
+          updated_at?: string
+          valor?: number
+        }
+        Update: {
+          agrobanker_id?: string
+          created_at?: string
+          data_pagamento?: string | null
+          id?: string
+          solicitacao_id?: string | null
+          status?: string
+          tipo?: string
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agrobanker_comissoes_agrobanker_id_fkey"
+            columns: ["agrobanker_id"]
+            isOneToOne: false
+            referencedRelation: "agrobankers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agrobanker_comissoes_solicitacao_id_fkey"
+            columns: ["solicitacao_id"]
+            isOneToOne: false
+            referencedRelation: "solicitacoes_laudo"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agrobanker_produtores: {
+        Row: {
+          agrobanker_id: string
+          created_at: string
+          id: string
+          nivel_acesso: string
+          produtor_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          agrobanker_id: string
+          created_at?: string
+          id?: string
+          nivel_acesso?: string
+          produtor_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          agrobanker_id?: string
+          created_at?: string
+          id?: string
+          nivel_acesso?: string
+          produtor_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agrobanker_produtores_agrobanker_id_fkey"
+            columns: ["agrobanker_id"]
+            isOneToOne: false
+            referencedRelation: "agrobankers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agrobanker_produtores_produtor_id_fkey"
+            columns: ["produtor_id"]
+            isOneToOne: false
+            referencedRelation: "produtores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agrobankers: {
+        Row: {
+          cnpj: string
+          created_at: string
+          descricao_tipo: string | null
+          endereco: string | null
+          id: string
+          municipio: string | null
+          nome_fantasia: string
+          razao_social: string
+          status_verificacao: string
+          telefone_comercial: string | null
+          tipo_entidade: string
+          uf: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cnpj?: string
+          created_at?: string
+          descricao_tipo?: string | null
+          endereco?: string | null
+          id?: string
+          municipio?: string | null
+          nome_fantasia?: string
+          razao_social?: string
+          status_verificacao?: string
+          telefone_comercial?: string | null
+          tipo_entidade?: string
+          uf?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cnpj?: string
+          created_at?: string
+          descricao_tipo?: string | null
+          endereco?: string | null
+          id?: string
+          municipio?: string | null
+          nome_fantasia?: string
+          razao_social?: string
+          status_verificacao?: string
+          telefone_comercial?: string | null
+          tipo_entidade?: string
+          uf?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       assinatura_laudo: {
         Row: {
           created_at: string
@@ -1166,6 +1313,7 @@ export type Database = {
       }
       solicitacoes_laudo: {
         Row: {
+          agrobanker_id: string | null
           aprovado_mesa_em: string | null
           aprovado_mesa_por: string | null
           area_cultivo_ha: number
@@ -1197,6 +1345,7 @@ export type Database = {
           valor_solicitado: number
         }
         Insert: {
+          agrobanker_id?: string | null
           aprovado_mesa_em?: string | null
           aprovado_mesa_por?: string | null
           area_cultivo_ha?: number
@@ -1228,6 +1377,7 @@ export type Database = {
           valor_solicitado?: number
         }
         Update: {
+          agrobanker_id?: string | null
           aprovado_mesa_em?: string | null
           aprovado_mesa_por?: string | null
           area_cultivo_ha?: number
@@ -1259,6 +1409,13 @@ export type Database = {
           valor_solicitado?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "solicitacoes_laudo_agrobanker_id_fkey"
+            columns: ["agrobanker_id"]
+            isOneToOne: false
+            referencedRelation: "agrobankers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "solicitacoes_laudo_banco_parceiro_id_fkey"
             columns: ["banco_parceiro_id"]
@@ -1396,6 +1553,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      get_agrobanker_id: { Args: never; Returns: string }
       get_banco_parceiro_id: { Args: never; Returns: string }
       get_engenheiro_assistente_grupo_ids: { Args: never; Returns: string[] }
       get_engenheiro_id: { Args: never; Returns: string }
@@ -1411,6 +1569,7 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
+      is_agrobanker: { Args: never; Returns: boolean }
       is_banco: { Args: never; Returns: boolean }
       is_engenheiro: { Args: never; Returns: boolean }
       is_mesa_produtos: { Args: never; Returns: boolean }

@@ -34,6 +34,7 @@ import AdminZarc from "@/pages/admin/AdminZarc";
 import AdminEsteira from "@/pages/admin/AdminEsteira";
 import RelatorioEngenheiro from "@/pages/RelatorioEngenheiro";
 import RelatorioProdutor from "@/pages/RelatorioProdutor";
+import AgroBankerDashboard from "@/pages/agrobanker/AgroBankerDashboard";
 import Pitch from "./pages/Pitch";
 import NotFound from "./pages/NotFound";
 
@@ -69,6 +70,10 @@ const App = () => (
               <Route path="/mesa/esteira" element={<MesaProdutos />} />
               <Route path="/mesa/envios-banco" element={<MesaEnviosBanco />} />
               <Route path="/banco" element={<BancoDashboard />} />
+              <Route path="/agrobanker" element={<AgroBankerDashboard />} />
+              <Route path="/agrobanker/carteira" element={<AgroBankerDashboard />} />
+              <Route path="/agrobanker/captacoes" element={<AgroBankerDashboard />} />
+              <Route path="/agrobanker/comissoes" element={<AgroBankerDashboard />} />
               <Route path="/admin/usuarios" element={<AdminUsuarios />} />
               <Route path="/admin/engenheiros" element={<AdminEngenheiros />} />
               <Route path="/admin/pagamentos" element={<AdminPagamentos />} />

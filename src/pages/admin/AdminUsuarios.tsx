@@ -22,7 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Users, ShieldCheck, Info, UserPlus, Eye, EyeOff, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 
-type AppRole = "produtor" | "engenheiro" | "admin" | "mesa_produtos" | "banco";
+type AppRole = "produtor" | "engenheiro" | "admin" | "mesa_produtos" | "banco" | "agrobanker";
 
 interface UserWithRole {
   id: string;
@@ -41,6 +41,7 @@ const roleLabel = (role: AppRole | null) => {
     admin: "Administrador",
     mesa_produtos: "Mesa de Produtos",
     banco: "Banco Parceiro",
+    agrobanker: "AgroBanker",
   };
   return role ? labels[role] ?? role : "Sem papel";
 };
