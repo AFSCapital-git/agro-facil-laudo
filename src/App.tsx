@@ -35,6 +35,10 @@ import AdminEsteira from "@/pages/admin/AdminEsteira";
 import RelatorioEngenheiro from "@/pages/RelatorioEngenheiro";
 import RelatorioProdutor from "@/pages/RelatorioProdutor";
 import AgroBankerDashboard from "@/pages/agrobanker/AgroBankerDashboard";
+import AgroBankerCarteira from "@/pages/agrobanker/AgroBankerCarteira";
+import AgroBankerCaptacoes from "@/pages/agrobanker/AgroBankerCaptacoes";
+import AgroBankerComissoes from "@/pages/agrobanker/AgroBankerComissoes";
+import MesaAgroBankers from "@/pages/mesa/MesaAgroBankers";
 import Pitch from "./pages/Pitch";
 import NotFound from "./pages/NotFound";
 
@@ -71,9 +75,10 @@ const App = () => (
               <Route path="/mesa/envios-banco" element={<MesaEnviosBanco />} />
               <Route path="/banco" element={<BancoDashboard />} />
               <Route path="/agrobanker" element={<AgroBankerDashboard />} />
-              <Route path="/agrobanker/carteira" element={<AgroBankerDashboard />} />
-              <Route path="/agrobanker/captacoes" element={<AgroBankerDashboard />} />
-              <Route path="/agrobanker/comissoes" element={<AgroBankerDashboard />} />
+              <Route path="/agrobanker/carteira" element={<AgroBankerCarteira />} />
+              <Route path="/agrobanker/captacoes" element={<AgroBankerCaptacoes />} />
+              <Route path="/agrobanker/comissoes" element={<AgroBankerComissoes />} />
+              <Route path="/mesa/agrobankers" element={<MesaAgroBankers />} />
               <Route path="/admin/usuarios" element={<AdminUsuarios />} />
               <Route path="/admin/engenheiros" element={<AdminEngenheiros />} />
               <Route path="/admin/pagamentos" element={<AdminPagamentos />} />
