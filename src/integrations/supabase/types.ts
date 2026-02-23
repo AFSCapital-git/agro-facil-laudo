@@ -1417,7 +1417,13 @@ export type Database = {
       is_produtor: { Args: never; Returns: boolean }
     }
     Enums: {
-      app_role: "produtor" | "engenheiro" | "admin" | "mesa_produtos" | "banco"
+      app_role:
+        | "produtor"
+        | "engenheiro"
+        | "admin"
+        | "mesa_produtos"
+        | "banco"
+        | "agrobanker"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1545,7 +1551,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["produtor", "engenheiro", "admin", "mesa_produtos", "banco"],
+      app_role: [
+        "produtor",
+        "engenheiro",
+        "admin",
+        "mesa_produtos",
+        "banco",
+        "agrobanker",
+      ],
     },
   },
 } as const
