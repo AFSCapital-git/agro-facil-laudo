@@ -49,6 +49,7 @@ const App = () => (
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route path="/pitch" element={<Pitch />} />
+            
             <Route
               element={
                 <ProtectedRoute>
