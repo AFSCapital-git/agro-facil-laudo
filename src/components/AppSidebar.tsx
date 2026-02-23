@@ -35,6 +35,7 @@ import {
   Briefcase,
   TrendingUp,
   DollarSign,
+  GraduationCap,
 } from "lucide-react";
 
 interface NavItem {
@@ -74,6 +75,7 @@ const agrobankerNav: NavItem[] = [
   { title: "Carteira", icon: Users, path: "/agrobanker/carteira" },
   { title: "Captações", icon: TrendingUp, path: "/agrobanker/captacoes" },
   { title: "Comissões", icon: DollarSign, path: "/agrobanker/comissoes" },
+  { title: "Treinamentos", icon: GraduationCap, path: "/agrobanker/treinamentos" },
 ];
 
 const adminNav: NavItem[] = [
