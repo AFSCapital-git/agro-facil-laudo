@@ -34,6 +34,7 @@ import AdminZarc from "@/pages/admin/AdminZarc";
 import AdminEsteira from "@/pages/admin/AdminEsteira";
 import RelatorioEngenheiro from "@/pages/RelatorioEngenheiro";
 import RelatorioProdutor from "@/pages/RelatorioProdutor";
+import Pitch from "./pages/Pitch";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,6 +48,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/pitch" element={<Pitch />} />
             <Route
               element={
                 <ProtectedRoute>
