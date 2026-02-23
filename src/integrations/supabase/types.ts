@@ -65,6 +65,113 @@ export type Database = {
           },
         ]
       }
+      agrobanker_convites: {
+        Row: {
+          agrobanker_id: string
+          cpf_cnpj: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          nome_produtor: string | null
+          produtor_id: string | null
+          status: string
+          telefone: string | null
+          token: string
+        }
+        Insert: {
+          agrobanker_id: string
+          cpf_cnpj?: string | null
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          nome_produtor?: string | null
+          produtor_id?: string | null
+          status?: string
+          telefone?: string | null
+          token?: string
+        }
+        Update: {
+          agrobanker_id?: string
+          cpf_cnpj?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          nome_produtor?: string | null
+          produtor_id?: string | null
+          status?: string
+          telefone?: string | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agrobanker_convites_agrobanker_id_fkey"
+            columns: ["agrobanker_id"]
+            isOneToOne: false
+            referencedRelation: "agrobankers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agrobanker_convites_produtor_id_fkey"
+            columns: ["produtor_id"]
+            isOneToOne: false
+            referencedRelation: "produtores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agrobanker_metas: {
+        Row: {
+          agrobanker_id: string
+          created_at: string
+          id: string
+          meta_captacoes: number
+          meta_valor: number
+          observacoes: string | null
+          periodo_fim: string
+          periodo_inicio: string
+          realizado_captacoes: number
+          realizado_valor: number
+          updated_at: string
+        }
+        Insert: {
+          agrobanker_id: string
+          created_at?: string
+          id?: string
+          meta_captacoes?: number
+          meta_valor?: number
+          observacoes?: string | null
+          periodo_fim: string
+          periodo_inicio: string
+          realizado_captacoes?: number
+          realizado_valor?: number
+          updated_at?: string
+        }
+        Update: {
+          agrobanker_id?: string
+          created_at?: string
+          id?: string
+          meta_captacoes?: number
+          meta_valor?: number
+          observacoes?: string | null
+          periodo_fim?: string
+          periodo_inicio?: string
+          realizado_captacoes?: number
+          realizado_valor?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agrobanker_metas_agrobanker_id_fkey"
+            columns: ["agrobanker_id"]
+            isOneToOne: false
+            referencedRelation: "agrobankers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agrobanker_produtores: {
         Row: {
           agrobanker_id: string
@@ -106,6 +213,92 @@ export type Database = {
             columns: ["produtor_id"]
             isOneToOne: false
             referencedRelation: "produtores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agrobanker_produtos: {
+        Row: {
+          agrobanker_id: string
+          ativo: boolean
+          comissao_fixa: number
+          comissao_percentual: number
+          created_at: string
+          id: string
+          observacoes: string | null
+          pronaf_produto_id: string
+          updated_at: string
+        }
+        Insert: {
+          agrobanker_id: string
+          ativo?: boolean
+          comissao_fixa?: number
+          comissao_percentual?: number
+          created_at?: string
+          id?: string
+          observacoes?: string | null
+          pronaf_produto_id: string
+          updated_at?: string
+        }
+        Update: {
+          agrobanker_id?: string
+          ativo?: boolean
+          comissao_fixa?: number
+          comissao_percentual?: number
+          created_at?: string
+          id?: string
+          observacoes?: string | null
+          pronaf_produto_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agrobanker_produtos_agrobanker_id_fkey"
+            columns: ["agrobanker_id"]
+            isOneToOne: false
+            referencedRelation: "agrobankers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agrobanker_produtos_pronaf_produto_id_fkey"
+            columns: ["pronaf_produto_id"]
+            isOneToOne: false
+            referencedRelation: "pronaf_produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agrobanker_regioes: {
+        Row: {
+          agrobanker_id: string
+          ativo: boolean
+          created_at: string
+          id: string
+          municipio: string | null
+          uf: string
+        }
+        Insert: {
+          agrobanker_id: string
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          municipio?: string | null
+          uf: string
+        }
+        Update: {
+          agrobanker_id?: string
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          municipio?: string | null
+          uf?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agrobanker_regioes_agrobanker_id_fkey"
+            columns: ["agrobanker_id"]
+            isOneToOne: false
+            referencedRelation: "agrobankers"
             referencedColumns: ["id"]
           },
         ]

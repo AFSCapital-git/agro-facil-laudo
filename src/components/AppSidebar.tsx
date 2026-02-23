@@ -61,6 +61,7 @@ const engenheiroNav: NavItem[] = [
 const mesaNav: NavItem[] = [
   { title: "Painel", icon: Home, path: "/mesa" },
   { title: "Esteira", icon: ClipboardCheck, path: "/mesa/esteira" },
+  { title: "AgroBankers", icon: Briefcase, path: "/mesa/agrobankers" },
   { title: "Envios ao Banco", icon: CreditCard, path: "/mesa/envios-banco" },
 ];
 
