@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
-import { ChevronLeft, ChevronRight, Leaf, Target, TrendingUp, Users, Shield, Layers, BarChart3, Rocket, DollarSign, CheckCircle2, ArrowRight, Globe, Smartphone, FileText, Building2, UserCheck, Clock, Zap, Lock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Leaf, Target, TrendingUp, Users, Shield, Layers, BarChart3, Rocket, DollarSign, CheckCircle2, ArrowRight, Globe, Smartphone, FileText, Building2, UserCheck, Clock, Zap, Lock, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
+import institucionalVideo from "@/assets/agrolaudo-institucional.mp4";
 
-const TOTAL_SLIDES = 10;
+const TOTAL_SLIDES = 11;
 
 export default function Pitch() {
   const [current, setCurrent] = useState(0);
@@ -27,12 +28,13 @@ export default function Pitch() {
         <SlideWrapper active={current === 1}><SlideProblema /></SlideWrapper>
         <SlideWrapper active={current === 2}><SlideSolucao /></SlideWrapper>
         <SlideWrapper active={current === 3}><SlideComoFunciona /></SlideWrapper>
-        <SlideWrapper active={current === 4}><SlidePlataforma /></SlideWrapper>
-        <SlideWrapper active={current === 5}><SlideMercado /></SlideWrapper>
-        <SlideWrapper active={current === 6}><SlideModelo /></SlideWrapper>
-        <SlideWrapper active={current === 7}><SlideDiferenciais /></SlideWrapper>
-        <SlideWrapper active={current === 8}><SlideRoadmap /></SlideWrapper>
-        <SlideWrapper active={current === 9}><SlideCTA /></SlideWrapper>
+        <SlideWrapper active={current === 4}><SlideVideo /></SlideWrapper>
+        <SlideWrapper active={current === 5}><SlidePlataforma /></SlideWrapper>
+        <SlideWrapper active={current === 6}><SlideMercado /></SlideWrapper>
+        <SlideWrapper active={current === 7}><SlideModelo /></SlideWrapper>
+        <SlideWrapper active={current === 8}><SlideDiferenciais /></SlideWrapper>
+        <SlideWrapper active={current === 9}><SlideRoadmap /></SlideWrapper>
+        <SlideWrapper active={current === 10}><SlideCTA /></SlideWrapper>
       </div>
 
       {/* Navigation */}
@@ -171,6 +173,24 @@ function SlideComoFunciona() {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function SlideVideo() {
+  return (
+    <div className="space-y-8">
+      <SectionLabel icon={Play}>Vídeo Institucional</SectionLabel>
+      <h2 className="text-4xl md:text-5xl font-bold font-['Sora']">Veja o AgroLaudo <span className="text-[hsl(80,55%,55%)]">em ação</span></h2>
+      <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-black/40 max-w-4xl mx-auto">
+        <video
+          src={institucionalVideo}
+          controls
+          className="w-full aspect-video"
+          poster=""
+        />
+      </div>
+      <p className="text-center text-white/40 text-sm">Do cadastro da propriedade à liberação do crédito — tudo em uma única plataforma.</p>
     </div>
   );
 }
