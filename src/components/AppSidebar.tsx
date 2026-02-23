@@ -92,6 +92,7 @@ const adminNav: NavItem[] = [
   { title: "Pagamentos", icon: CreditCard, path: "/admin/pagamentos" },
   { title: "Auditoria", icon: Shield, path: "/admin/auditoria" },
   { title: "Relatórios", icon: BarChart3, path: "/admin/relatorios" },
+  { title: "Treinamento", icon: GraduationCap, path: "/admin/treinamento" },
   { title: "Feature Flags", icon: ToggleLeft, path: "/admin/feature-flags" },
   { title: "Configurações", icon: Settings, path: "/admin/configuracoes" },
 ];

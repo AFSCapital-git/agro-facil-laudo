@@ -1660,6 +1660,326 @@ export type Database = {
           },
         ]
       }
+      treinamento_agenda: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          data_evento: string
+          descricao: string
+          hora_fim: string | null
+          hora_inicio: string | null
+          id: string
+          max_participantes: number | null
+          modulo_id: string | null
+          obrigatorio: boolean
+          recorrencia: string
+          tipo: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          data_evento: string
+          descricao?: string
+          hora_fim?: string | null
+          hora_inicio?: string | null
+          id?: string
+          max_participantes?: number | null
+          modulo_id?: string | null
+          obrigatorio?: boolean
+          recorrencia?: string
+          tipo?: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          data_evento?: string
+          descricao?: string
+          hora_fim?: string | null
+          hora_inicio?: string | null
+          id?: string
+          max_participantes?: number | null
+          modulo_id?: string | null
+          obrigatorio?: boolean
+          recorrencia?: string
+          tipo?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treinamento_agenda_modulo_id_fkey"
+            columns: ["modulo_id"]
+            isOneToOne: false
+            referencedRelation: "treinamento_modulos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      treinamento_badges: {
+        Row: {
+          ativo: boolean
+          cor: string
+          created_at: string
+          criterio_tipo: string
+          criterio_valor: string
+          descricao: string
+          icone: string
+          id: string
+          nome: string
+          pontos_bonus: number
+        }
+        Insert: {
+          ativo?: boolean
+          cor?: string
+          created_at?: string
+          criterio_tipo?: string
+          criterio_valor?: string
+          descricao?: string
+          icone?: string
+          id?: string
+          nome: string
+          pontos_bonus?: number
+        }
+        Update: {
+          ativo?: boolean
+          cor?: string
+          created_at?: string
+          criterio_tipo?: string
+          criterio_valor?: string
+          descricao?: string
+          icone?: string
+          id?: string
+          nome?: string
+          pontos_bonus?: number
+        }
+        Relationships: []
+      }
+      treinamento_badges_conquistados: {
+        Row: {
+          agrobanker_id: string
+          badge_id: string
+          data_conquista: string
+          id: string
+        }
+        Insert: {
+          agrobanker_id: string
+          badge_id: string
+          data_conquista?: string
+          id?: string
+        }
+        Update: {
+          agrobanker_id?: string
+          badge_id?: string
+          data_conquista?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treinamento_badges_conquistados_agrobanker_id_fkey"
+            columns: ["agrobanker_id"]
+            isOneToOne: false
+            referencedRelation: "agrobankers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treinamento_badges_conquistados_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "treinamento_badges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      treinamento_modulos: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          descricao: string
+          duracao_minutos: number
+          id: string
+          obrigatorio: boolean
+          ordem: number
+          pontos: number
+          pre_requisito_id: string | null
+          titulo: string
+          trilha_id: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string
+          duracao_minutos?: number
+          id?: string
+          obrigatorio?: boolean
+          ordem?: number
+          pontos?: number
+          pre_requisito_id?: string | null
+          titulo: string
+          trilha_id: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string
+          duracao_minutos?: number
+          id?: string
+          obrigatorio?: boolean
+          ordem?: number
+          pontos?: number
+          pre_requisito_id?: string | null
+          titulo?: string
+          trilha_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treinamento_modulos_pre_requisito_id_fkey"
+            columns: ["pre_requisito_id"]
+            isOneToOne: false
+            referencedRelation: "treinamento_modulos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treinamento_modulos_trilha_id_fkey"
+            columns: ["trilha_id"]
+            isOneToOne: false
+            referencedRelation: "treinamento_trilhas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      treinamento_progresso: {
+        Row: {
+          agrobanker_id: string
+          created_at: string
+          data_conclusao: string | null
+          data_inicio: string | null
+          id: string
+          modulo_id: string
+          pontuacao: number
+          status: string
+          tentativas: number
+          updated_at: string
+        }
+        Insert: {
+          agrobanker_id: string
+          created_at?: string
+          data_conclusao?: string | null
+          data_inicio?: string | null
+          id?: string
+          modulo_id: string
+          pontuacao?: number
+          status?: string
+          tentativas?: number
+          updated_at?: string
+        }
+        Update: {
+          agrobanker_id?: string
+          created_at?: string
+          data_conclusao?: string | null
+          data_inicio?: string | null
+          id?: string
+          modulo_id?: string
+          pontuacao?: number
+          status?: string
+          tentativas?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treinamento_progresso_agrobanker_id_fkey"
+            columns: ["agrobanker_id"]
+            isOneToOne: false
+            referencedRelation: "agrobankers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treinamento_progresso_modulo_id_fkey"
+            columns: ["modulo_id"]
+            isOneToOne: false
+            referencedRelation: "treinamento_modulos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      treinamento_sla: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          descricao: string
+          id: string
+          nome: string
+          penalidade: string
+          prazo_dias: number
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string
+          id?: string
+          nome: string
+          penalidade?: string
+          prazo_dias?: number
+          tipo?: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string
+          id?: string
+          nome?: string
+          penalidade?: string
+          prazo_dias?: number
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      treinamento_trilhas: {
+        Row: {
+          ativo: boolean
+          cor: string
+          created_at: string
+          descricao: string
+          icone: string
+          id: string
+          nome: string
+          ordem: number
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          cor?: string
+          created_at?: string
+          descricao?: string
+          icone?: string
+          id?: string
+          nome: string
+          ordem?: number
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          cor?: string
+          created_at?: string
+          descricao?: string
+          icone?: string
+          id?: string
+          nome?: string
+          ordem?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
