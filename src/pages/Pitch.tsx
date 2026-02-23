@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { ChevronLeft, ChevronRight, Leaf, Target, TrendingUp, Users, Shield, Layers, BarChart3, Rocket, DollarSign, CheckCircle2, ArrowRight, Globe, Smartphone, FileText, Building2, UserCheck, Clock, Zap, Lock, Sprout, Wrench, Landmark, Download, Printer } from "lucide-react";
+import { ChevronLeft, ChevronRight, Leaf, Target, TrendingUp, Users, Shield, Layers, BarChart3, Rocket, DollarSign, CheckCircle2, ArrowRight, Globe, Smartphone, FileText, Building2, UserCheck, Clock, Zap, Lock, Sprout, Wrench, Landmark, Download, Printer, Briefcase, Network, MapPin, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 import html2canvas from "html2canvas-pro";
 import jsPDF from "jspdf";
 
-const TOTAL_SLIDES = 12;
+const TOTAL_SLIDES = 14;
 
 export default function Pitch() {
   const [current, setCurrent] = useState(0);
@@ -92,12 +92,14 @@ export default function Pitch() {
         <SlideWrapper active={current === 3} index={3}><SlideComoFunciona /></SlideWrapper>
         <SlideWrapper active={current === 4} index={4}><SlideFluxoProdutorEngenheiro /></SlideWrapper>
         <SlideWrapper active={current === 5} index={5}><SlideFluxoMesaBancoAdmin /></SlideWrapper>
-        <SlideWrapper active={current === 6} index={6}><SlidePlataforma /></SlideWrapper>
-        <SlideWrapper active={current === 7} index={7}><SlideMercado /></SlideWrapper>
-        <SlideWrapper active={current === 8} index={8}><SlideModelo /></SlideWrapper>
-        <SlideWrapper active={current === 9} index={9}><SlideDiferenciais /></SlideWrapper>
-        <SlideWrapper active={current === 10} index={10}><SlideRoadmap /></SlideWrapper>
-        <SlideWrapper active={current === 11} index={11}><SlideCTA /></SlideWrapper>
+        <SlideWrapper active={current === 6} index={6}><SlideAgroBankerIntro /></SlideWrapper>
+        <SlideWrapper active={current === 7} index={7}><SlideAgroBankerDetalhes /></SlideWrapper>
+        <SlideWrapper active={current === 8} index={8}><SlidePlataforma /></SlideWrapper>
+        <SlideWrapper active={current === 9} index={9}><SlideMercado /></SlideWrapper>
+        <SlideWrapper active={current === 10} index={10}><SlideModelo /></SlideWrapper>
+        <SlideWrapper active={current === 11} index={11}><SlideDiferenciais /></SlideWrapper>
+        <SlideWrapper active={current === 12} index={12}><SlideRoadmap /></SlideWrapper>
+        <SlideWrapper active={current === 13} index={13}><SlideCTA /></SlideWrapper>
       </div>
 
       {/* Navigation */}
@@ -151,6 +153,7 @@ function SlideCover() {
       </p>
       <div className="flex items-center justify-center gap-6 pt-4 text-sm text-white/40">
         <span className="flex items-center gap-2"><Globe className="w-4 h-4" /> SaaS B2B2C</span>
+        <span className="flex items-center gap-2"><Briefcase className="w-4 h-4" /> Canal AgroBanker</span>
         <span className="flex items-center gap-2"><Smartphone className="w-4 h-4" /> Mobile-first</span>
         <span className="flex items-center gap-2"><FileText className="w-4 h-4" /> Crédito Rural</span>
       </div>
@@ -193,15 +196,16 @@ function SlideSolucao() {
       <h2 className="text-4xl md:text-5xl font-bold font-['Sora'] leading-tight">
         Uma plataforma <span className="text-[hsl(80,55%,55%)]">completa</span> que digitaliza todo o fluxo de laudos agronômicos
       </h2>
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
         {[
-          { emoji: "🌾", title: "Para o Produtor", items: ["Cadastro de propriedades com CAR/CCIR", "Solicitação em poucos cliques", "Acompanhamento em tempo real", "Download do PDF do laudo"] },
-          { emoji: "👷", title: "Para o Engenheiro", items: ["Demandas geolocalizadas", "Checklist guiado de vistoria", "Assinatura digital integrada", "Pagamentos rastreáveis"] },
-          { emoji: "🏦", title: "Para o Banco", items: ["Dashboard dedicado por parceiro", "Documentação centralizada", "Workflow de aprovação/devolução", "Chat direto com a mesa"] },
+          { emoji: "🌾", title: "Produtor", items: ["Cadastro de propriedades com CAR/CCIR", "Solicitação em poucos cliques", "Acompanhamento em tempo real", "Download do PDF do laudo"] },
+          { emoji: "👷", title: "Engenheiro", items: ["Demandas geolocalizadas", "Checklist guiado de vistoria", "Assinatura digital integrada", "Pagamentos rastreáveis"] },
+          { emoji: "🏦", title: "Banco", items: ["Dashboard dedicado por parceiro", "Documentação centralizada", "Workflow de aprovação/devolução", "Chat direto com a mesa"] },
+          { emoji: "🤝", title: "AgroBanker", items: ["Carteira própria de produtores", "Catálogo de produtos habilitados", "Originação de solicitações", "Comissões por operação"] },
         ].map((col, i) => (
-          <div key={i} className="p-6 rounded-xl bg-white/5 border border-white/10 space-y-4">
+          <div key={i} className="p-5 rounded-xl bg-white/5 border border-white/10 space-y-4">
             <div className="text-3xl">{col.emoji}</div>
-            <h3 className="text-xl font-bold">{col.title}</h3>
+            <h3 className="text-lg font-bold">{col.title}</h3>
             <ul className="space-y-2">
               {col.items.map((item, j) => (
                 <li key={j} className="flex items-start gap-2 text-sm text-white/60">
@@ -289,7 +293,7 @@ function SlideFluxoMesaBancoAdmin() {
   ];
   const adminModules = [
     { modulo: "Esteira", funcionalidade: "Pipeline visual com métricas de SLA e desempenho por equipe", status: "✅" },
-    { modulo: "Usuários", funcionalidade: "Gestão multi-role com 5 perfis e permissões RLS", status: "✅" },
+    { modulo: "Usuários", funcionalidade: "Gestão multi-role com 6 perfis e permissões RLS", status: "✅" },
     { modulo: "PRONAF", funcionalidade: "Produtos, documentos exigidos e regras regionais configuráveis", status: "✅" },
     { modulo: "Financeiro", funcionalidade: "Pagamentos, taxas e configurações de valores por produto", status: "✅" },
     { modulo: "Auditoria", funcionalidade: "Log completo de ações com IP, user-agent e timestamp", status: "✅" },
@@ -330,9 +334,87 @@ function ProfileTable({ icon: Icon, title, rows }: { icon: React.ComponentType<{
   );
 }
 
+function SlideAgroBankerIntro() {
+  return (
+    <div className="space-y-8">
+      <SectionLabel icon={Briefcase}>Novo Módulo</SectionLabel>
+      <h2 className="text-4xl md:text-5xl font-bold font-['Sora'] leading-tight">
+        Canal <span className="text-[hsl(80,55%,55%)]">AgroBanker</span> — Distribuição B2B
+      </h2>
+      <p className="text-lg text-white/50 max-w-3xl">
+        Inspirado em plataformas como XP e BTG, o módulo AgroBanker transforma parceiros (revendas, cooperativas, sindicatos) em canais de distribuição de crédito rural com isolamento total de dados.
+      </p>
+      <div className="grid md:grid-cols-3 gap-6">
+        {[
+          { icon: Users, title: "Carteira de Produtores", desc: "Três formas de onboarding: cadastro manual, convite por e-mail/link ou vinculação de usuários existentes por CPF.", highlight: "3 métodos" },
+          { icon: Package, title: "Catálogo de Produtos", desc: "Mesa habilita produtos PRONAF específicos para cada parceiro, com comissões personalizadas (% ou fixa).", highlight: "Personalizado" },
+          { icon: Network, title: "Originação Completa", desc: "AgroBanker cria solicitações em nome dos produtores vinculados, com seleção de propriedade, produto e banco.", highlight: "End-to-end" },
+        ].map((f, i) => (
+          <div key={i} className="p-6 rounded-xl bg-white/5 border border-white/10 space-y-3 hover:border-[hsl(80,55%,55%)]/30 transition">
+            <div className="flex items-center justify-between">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[hsl(80,55%,55%)]/15">
+                <f.icon className="w-5 h-5 text-[hsl(80,55%,55%)]" />
+              </div>
+              <span className="text-xs font-bold px-2 py-1 rounded-full bg-[hsl(80,55%,55%)]/15 text-[hsl(80,55%,55%)]">{f.highlight}</span>
+            </div>
+            <h3 className="text-lg font-bold">{f.title}</h3>
+            <p className="text-sm text-white/50">{f.desc}</p>
+          </div>
+        ))}
+      </div>
+      <div className="rounded-xl overflow-hidden border border-white/10 max-w-4xl mx-auto">
+        <img src="/images/agrobanker-dashboard.png" alt="Painel AgroBanker com métricas de carteira, solicitações e comissões" className="w-full" />
+      </div>
+    </div>
+  );
+}
+
+function SlideAgroBankerDetalhes() {
+  const mesaControls = [
+    { icon: Package, label: "Habilitar/desabilitar produtos", desc: "Cada AgroBanker recebe apenas os produtos PRONAF que a Mesa definir" },
+    { icon: DollarSign, label: "Comissões por produto", desc: "Percentual (%) e/ou valor fixo (R$) configurados individualmente" },
+    { icon: MapPin, label: "Restrição regional", desc: "Limitar atuação por UF e município, garantindo cobertura organizada" },
+    { icon: Target, label: "Metas e quotas", desc: "Definição de metas de captação por período com acompanhamento de realizado" },
+  ];
+  const agrobankerModules = [
+    { modulo: "Dashboard", funcionalidade: "KPIs de carteira, conversão, captações e comissões pendentes", status: "✅" },
+    { modulo: "Carteira", funcionalidade: "Cadastro manual, convite por link e vinculação de produtores existentes", status: "✅" },
+    { modulo: "Captações", funcionalidade: "Catálogo de produtos habilitados e originação de solicitações", status: "✅" },
+    { modulo: "Comissões", funcionalidade: "Acompanhamento de ganhos pendentes e pagos por operação", status: "✅" },
+  ];
+  return (
+    <div className="space-y-8">
+      <SectionLabel icon={Layers}>Controles & Funcionalidades</SectionLabel>
+      <h2 className="text-3xl md:text-4xl font-bold font-['Sora']">
+        <span className="text-[hsl(80,55%,55%)]">Mesa</span> controla, <span className="text-[hsl(80,55%,55%)]">AgroBanker</span> executa
+      </h2>
+      <div className="grid md:grid-cols-2 gap-6">
+        <div className="space-y-4">
+          <h3 className="text-lg font-bold flex items-center gap-2"><Shield className="w-5 h-5 text-[hsl(35,65%,50%)]" /> Controles da Mesa</h3>
+          {mesaControls.map((c, i) => (
+            <div key={i} className="flex gap-3 p-4 rounded-lg bg-white/5 border border-white/10">
+              <c.icon className="w-5 h-5 text-[hsl(35,65%,50%)] shrink-0 mt-0.5" />
+              <div>
+                <span className="font-semibold text-sm">{c.label}</span>
+                <p className="text-xs text-white/40 mt-0.5">{c.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div>
+          <ProfileTable icon={Briefcase} title="🤝 AgroBanker" rows={agrobankerModules} />
+          <div className="mt-4 rounded-xl overflow-hidden border border-white/10">
+            <img src="/images/agrobanker-captacoes.png" alt="Tela de captações com catálogo de produtos PRONAF" className="w-full" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SlidePlataforma() {
   const features = [
-    { icon: Users, label: "5 perfis de acesso", desc: "Produtor, Engenheiro, Mesa, Banco e Admin" },
+    { icon: Users, label: "6 perfis de acesso", desc: "Produtor, Engenheiro, Mesa, Banco, AgroBanker e Admin" },
     { icon: Shield, label: "RLS row-level security", desc: "Cada dado só é visível para quem tem permissão" },
     { icon: FileText, label: "Documentos PRONAF", desc: "Regras dinâmicas por produto e região" },
     { icon: Zap, label: "Notificações em tempo real", desc: "Push interno em cada mudança de status" },
@@ -393,6 +475,7 @@ function SlideModelo() {
             {[
               { label: "Taxa por laudo emitido", desc: "Valor fixo ou percentual configurável por produto PRONAF" },
               { label: "Taxa de plataforma", desc: "Percentual sobre o valor do serviço (configurável pelo admin)" },
+              { label: "Comissões AgroBanker", desc: "Canal B2B com comissão por operação originada (% + fixo)" },
               { label: "Planos para bancos parceiros", desc: "Acesso ao dashboard dedicado e fluxo de aprovação" },
               { label: "Assistência técnica", desc: "Engenheiro projetista auxilia produtores na montagem de documentação" },
             ].map((r, i) => (
@@ -428,7 +511,7 @@ function SlideDiferenciais() {
   const diffs = [
     { icon: Layers, title: "Plataforma end-to-end", desc: "Do cadastro da propriedade à liberação do crédito pelo banco, tudo em um só lugar." },
     { icon: Shield, title: "Segurança enterprise", desc: "RLS por perfil, auditoria completa, assinatura digital com hash e rastreabilidade total." },
-    { icon: UserCheck, title: "Gestão multi-role", desc: "5 perfis especializados com dashboards e permissões dedicadas para cada ator do ecossistema." },
+    { icon: UserCheck, title: "Gestão multi-role", desc: "6 perfis especializados com dashboards e permissões dedicadas, incluindo canal B2B AgroBanker." },
     { icon: Zap, title: "Regras dinâmicas", desc: "Produtos PRONAF, regras regionais e ZARC configuráveis pelo admin sem necessidade de código." },
   ];
   return (
@@ -454,7 +537,7 @@ function SlideDiferenciais() {
 
 function SlideRoadmap() {
   const phases = [
-    { q: "Q1 2026", status: "done", items: ["MVP completo com 5 perfis", "Fluxo produtor → engenheiro → banco", "Geração de PDF e assinatura digital", "Chat interno e notificações"] },
+    { q: "Q1 2026", status: "done", items: ["MVP completo com 6 perfis", "Fluxo produtor → engenheiro → banco", "Canal B2B AgroBanker com comissões", "Chat interno e notificações"] },
     { q: "Q2 2026", status: "active", items: ["App mobile nativo (PWA)", "Integração ICP-Brasil", "API aberta para bancos", "Onboarding de 3 bancos piloto"] },
     { q: "Q3 2026", status: "pending", items: ["IA para análise de risco", "Scoring automático de laudos", "Expansão para 5 estados", "Meta: 500 laudos/mês"] },
     { q: "Q4 2026", status: "pending", items: ["Marketplace de serviços agrícolas", "Integração com CAR e SICOR", "Cobertura nacional", "Meta: 2.000 laudos/mês"] },
@@ -513,7 +596,7 @@ function SlideCTA() {
         </div>
         <div className="w-px h-10 bg-white/20" />
         <div className="text-center">
-          <div className="text-2xl font-bold text-white/80">5 perfis</div>
+          <div className="text-2xl font-bold text-white/80">6 perfis</div>
           <div className="text-xs">Implementados</div>
         </div>
         <div className="w-px h-10 bg-white/20" />
