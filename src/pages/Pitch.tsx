@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
-import { ChevronLeft, ChevronRight, Leaf, Target, TrendingUp, Users, Shield, Layers, BarChart3, Rocket, DollarSign, CheckCircle2, ArrowRight, Globe, Smartphone, FileText, Building2, UserCheck, Clock, Zap, Lock, Play } from "lucide-react";
+import { ChevronLeft, ChevronRight, Leaf, Target, TrendingUp, Users, Shield, Layers, BarChart3, Rocket, DollarSign, CheckCircle2, ArrowRight, Globe, Smartphone, FileText, Building2, UserCheck, Clock, Zap, Lock, Sprout, Wrench, Landmark } from "lucide-react";
 import { cn } from "@/lib/utils";
-import institucionalVideo from "@/assets/agrolaudo-institucional.mp4";
 
-const TOTAL_SLIDES = 11;
+const TOTAL_SLIDES = 12;
 
 export default function Pitch() {
   const [current, setCurrent] = useState(0);
@@ -28,13 +27,14 @@ export default function Pitch() {
         <SlideWrapper active={current === 1}><SlideProblema /></SlideWrapper>
         <SlideWrapper active={current === 2}><SlideSolucao /></SlideWrapper>
         <SlideWrapper active={current === 3}><SlideComoFunciona /></SlideWrapper>
-        <SlideWrapper active={current === 4}><SlideVideo /></SlideWrapper>
-        <SlideWrapper active={current === 5}><SlidePlataforma /></SlideWrapper>
-        <SlideWrapper active={current === 6}><SlideMercado /></SlideWrapper>
-        <SlideWrapper active={current === 7}><SlideModelo /></SlideWrapper>
-        <SlideWrapper active={current === 8}><SlideDiferenciais /></SlideWrapper>
-        <SlideWrapper active={current === 9}><SlideRoadmap /></SlideWrapper>
-        <SlideWrapper active={current === 10}><SlideCTA /></SlideWrapper>
+        <SlideWrapper active={current === 4}><SlideFluxoProdutorEngenheiro /></SlideWrapper>
+        <SlideWrapper active={current === 5}><SlideFluxoMesaBancoAdmin /></SlideWrapper>
+        <SlideWrapper active={current === 6}><SlidePlataforma /></SlideWrapper>
+        <SlideWrapper active={current === 7}><SlideMercado /></SlideWrapper>
+        <SlideWrapper active={current === 8}><SlideModelo /></SlideWrapper>
+        <SlideWrapper active={current === 9}><SlideDiferenciais /></SlideWrapper>
+        <SlideWrapper active={current === 10}><SlideRoadmap /></SlideWrapper>
+        <SlideWrapper active={current === 11}><SlideCTA /></SlideWrapper>
       </div>
 
       {/* Navigation */}
@@ -177,20 +177,88 @@ function SlideComoFunciona() {
   );
 }
 
-function SlideVideo() {
+function SlideFluxoProdutorEngenheiro() {
+  const produtorModules = [
+    { modulo: "Cadastro", funcionalidade: "Propriedades com CAR, CCIR, ITR, matrícula e geolocalização", status: "✅" },
+    { modulo: "Solicitação", funcionalidade: "Formulário dinâmico com regras por produto PRONAF e região", status: "✅" },
+    { modulo: "Documentos", funcionalidade: "Upload com checklist obrigatório por produto, validação e status", status: "✅" },
+    { modulo: "Orçamento", funcionalidade: "Orçamento de custeio por categorias (insumos, mão-de-obra, etc.)", status: "✅" },
+    { modulo: "Acompanhamento", funcionalidade: "Timeline de status em tempo real com notificações push", status: "✅" },
+    { modulo: "Laudo PDF", funcionalidade: "Download do laudo finalizado com assinatura digital", status: "✅" },
+  ];
+  const engenheiroModules = [
+    { modulo: "Demandas", funcionalidade: "Listagem de solicitações atribuídas com filtros por status", status: "✅" },
+    { modulo: "Vistoria", funcionalidade: "Checklist técnico com campos de solo, cultura, risco e ZARC", status: "✅" },
+    { modulo: "Fotos geoloc.", funcionalidade: "Upload de mídias com latitude, longitude e timestamp", status: "✅" },
+    { modulo: "Relatório", funcionalidade: "Formulário completo de laudo com parecer e recomendações", status: "✅" },
+    { modulo: "Assinatura", funcionalidade: "Assinatura digital com hash SHA-256 e registro de IP", status: "✅" },
+    { modulo: "Pagamentos", funcionalidade: "Visualização de pagamentos pendentes e histórico", status: "✅" },
+  ];
   return (
     <div className="space-y-8">
-      <SectionLabel icon={Play}>Vídeo Institucional</SectionLabel>
-      <h2 className="text-4xl md:text-5xl font-bold font-['Sora']">Veja o AgroLaudo <span className="text-[hsl(80,55%,55%)]">em ação</span></h2>
-      <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-black/40 max-w-4xl mx-auto">
-        <video
-          src={institucionalVideo}
-          controls
-          className="w-full aspect-video"
-          poster=""
-        />
+      <SectionLabel icon={Sprout}>O que foi construído</SectionLabel>
+      <h2 className="text-3xl md:text-4xl font-bold font-['Sora']">Funcionalidades por perfil — <span className="text-[hsl(80,55%,55%)]">Produtor & Engenheiro</span></h2>
+      <div className="grid md:grid-cols-2 gap-6">
+        <ProfileTable icon={Sprout} title="🌾 Produtor Rural" rows={produtorModules} />
+        <ProfileTable icon={Wrench} title="👷 Engenheiro Agrônomo" rows={engenheiroModules} />
       </div>
-      <p className="text-center text-white/40 text-sm">Do cadastro da propriedade à liberação do crédito — tudo em uma única plataforma.</p>
+    </div>
+  );
+}
+
+function SlideFluxoMesaBancoAdmin() {
+  const mesaModules = [
+    { modulo: "Triagem", funcionalidade: "Análise, aprovação e atribuição de engenheiros por região", status: "✅" },
+    { modulo: "Documentos", funcionalidade: "Habilitação, validação e devolução de docs por solicitação", status: "✅" },
+    { modulo: "Envio Banco", funcionalidade: "Empacotamento e envio do dossiê completo ao banco parceiro", status: "✅" },
+    { modulo: "Produtos", funcionalidade: "Gestão de regras regionais e produtos PRONAF dinâmicos", status: "✅" },
+    { modulo: "Chat", funcionalidade: "Comunicação interna com produtor, engenheiro e banco", status: "✅" },
+  ];
+  const bancoModules = [
+    { modulo: "Dashboard", funcionalidade: "Visão das solicitações vinculadas ao banco parceiro", status: "✅" },
+    { modulo: "Aprovação", funcionalidade: "Workflow de aprovação/devolução com observações", status: "✅" },
+    { modulo: "Documentação", funcionalidade: "Acesso centralizado a todos os documentos e laudos", status: "✅" },
+    { modulo: "Chat", funcionalidade: "Canal direto com a mesa de produtos", status: "✅" },
+  ];
+  const adminModules = [
+    { modulo: "Esteira", funcionalidade: "Pipeline visual com métricas de SLA e desempenho por equipe", status: "✅" },
+    { modulo: "Usuários", funcionalidade: "Gestão multi-role com 5 perfis e permissões RLS", status: "✅" },
+    { modulo: "PRONAF", funcionalidade: "Produtos, documentos exigidos e regras regionais configuráveis", status: "✅" },
+    { modulo: "Financeiro", funcionalidade: "Pagamentos, taxas e configurações de valores por produto", status: "✅" },
+    { modulo: "Auditoria", funcionalidade: "Log completo de ações com IP, user-agent e timestamp", status: "✅" },
+    { modulo: "ZARC / Regiões", funcionalidade: "Regras agronômicas e mapeamento regional de engenheiros", status: "✅" },
+  ];
+  return (
+    <div className="space-y-8">
+      <SectionLabel icon={Layers}>O que foi construído</SectionLabel>
+      <h2 className="text-3xl md:text-4xl font-bold font-['Sora']">Funcionalidades — <span className="text-[hsl(80,55%,55%)]">Mesa, Banco & Admin</span></h2>
+      <div className="grid md:grid-cols-3 gap-5">
+        <ProfileTable icon={Users} title="📋 Mesa de Produtos" rows={mesaModules} />
+        <ProfileTable icon={Landmark} title="🏦 Banco Parceiro" rows={bancoModules} />
+        <ProfileTable icon={Shield} title="⚙️ Administrador" rows={adminModules} />
+      </div>
+    </div>
+  );
+}
+
+function ProfileTable({ icon: Icon, title, rows }: { icon: React.ComponentType<{ className?: string }>; title: string; rows: { modulo: string; funcionalidade: string; status: string }[] }) {
+  return (
+    <div className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
+      <div className="px-4 py-3 bg-white/5 border-b border-white/10 flex items-center gap-2">
+        <Icon className="w-4 h-4 text-[hsl(80,55%,55%)]" />
+        <span className="font-bold text-sm">{title}</span>
+      </div>
+      <div className="divide-y divide-white/5">
+        {rows.map((r, i) => (
+          <div key={i} className="flex items-start gap-3 px-4 py-2.5 text-sm">
+            <span className="text-[hsl(80,55%,55%)] shrink-0 mt-0.5">{r.status}</span>
+            <div>
+              <span className="font-semibold text-white/80">{r.modulo}</span>
+              <span className="text-white/40 ml-1.5">— {r.funcionalidade}</span>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
