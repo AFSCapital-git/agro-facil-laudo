@@ -109,20 +109,7 @@ export default function AgroBankerTreinamentos() {
     ? modulos
     : modulos.filter(m => m.trilha_id === activeTab);
 
-  if (!hasDbData && !loading) {
-    return (
-      <div className="space-y-6">
-        <PageHeader title="Portal de Treinamento" description="As trilhas de treinamento ainda estão sendo configuradas pelo administrador." icon={<GraduationCap className="h-5 w-5" />} />
-        <Card>
-          <CardContent className="p-8 text-center space-y-3">
-            <GraduationCap className="h-12 w-12 mx-auto text-muted-foreground" />
-            <p className="text-muted-foreground">Nenhuma trilha de treinamento disponível no momento.</p>
-            <p className="text-xs text-muted-foreground">Entre em contato com o administrador para mais informações.</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // Removed empty-state gate so the full UI always renders
 
   return (
     <div className="space-y-6">
