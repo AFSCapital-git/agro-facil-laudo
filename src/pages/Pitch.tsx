@@ -1,11 +1,55 @@
-import { useState, useEffect, useCallback } from "react";
-import { ChevronLeft, ChevronRight, Leaf, Target, TrendingUp, Users, Shield, Layers, BarChart3, Rocket, DollarSign, CheckCircle2, ArrowRight, Globe, Smartphone, FileText, Building2, UserCheck, Clock, Zap, Lock, Sprout, Wrench, Landmark } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { ChevronLeft, ChevronRight, Leaf, Target, TrendingUp, Users, Shield, Layers, BarChart3, Rocket, DollarSign, CheckCircle2, ArrowRight, Globe, Smartphone, FileText, Building2, UserCheck, Clock, Zap, Lock, Sprout, Wrench, Landmark, Download, Printer } from "lucide-react";
 import { cn } from "@/lib/utils";
+import html2canvas from "html2canvas-pro";
+import jsPDF from "jspdf";
 
 const TOTAL_SLIDES = 12;
 
 export default function Pitch() {
   const [current, setCurrent] = useState(0);
+  const [generating, setGenerating] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const generatePDF = useCallback(async () => {
+    if (!containerRef.current || generating) return;
+    setGenerating(true);
+    const savedCurrent = current;
+    
+    try {
+      const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: [1280, 720] });
+      
+      for (let i = 0; i < TOTAL_SLIDES; i++) {
+        setCurrent(i);
+        await new Promise(r => setTimeout(r, 600));
+        
+        const slideEl = containerRef.current.querySelector(`[data-slide="${i}"]`) as HTMLElement;
+        if (!slideEl) continue;
+        
+        const canvas = await html2canvas(slideEl, {
+          backgroundColor: "#1a2a1a",
+          scale: 2,
+          useCORS: true,
+          width: 1280,
+          height: 720,
+        });
+        
+        if (i > 0) pdf.addPage([1280, 720], "landscape");
+        pdf.addImage(canvas.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, 1280, 720);
+      }
+      
+      pdf.save("AgroLaudo-PitchDeck.pdf");
+    } catch (err) {
+      console.error("Erro ao gerar PDF:", err);
+    } finally {
+      setCurrent(savedCurrent);
+      setGenerating(false);
+    }
+  }, [current, generating]);
+
+  const handlePrint = useCallback(() => {
+    window.print();
+  }, []);
 
   const next = useCallback(() => setCurrent((c) => Math.min(c + 1, TOTAL_SLIDES - 1)), []);
   const prev = useCallback(() => setCurrent((c) => Math.max(c - 1, 0)), []);
@@ -20,25 +64,44 @@ export default function Pitch() {
   }, [next, prev]);
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-[hsl(150,20%,8%)] text-[hsl(40,30%,92%)] select-none">
+    <div className="h-screen w-screen overflow-hidden bg-[hsl(150,20%,8%)] text-[hsl(40,30%,92%)] select-none print:overflow-visible print:h-auto">
+      {/* PDF/Print buttons */}
+      <div className="fixed top-6 left-8 flex gap-2 z-50 print:hidden">
+        <button
+          onClick={generatePDF}
+          disabled={generating}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[hsl(80,55%,55%)]/20 border border-[hsl(80,55%,55%)]/30 text-[hsl(80,55%,55%)] text-sm font-medium hover:bg-[hsl(80,55%,55%)]/30 transition disabled:opacity-50"
+        >
+          <Download className="w-4 h-4" />
+          {generating ? "Gerando..." : "Baixar PDF"}
+        </button>
+        <button
+          onClick={handlePrint}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white/70 text-sm font-medium hover:bg-white/20 transition"
+        >
+          <Printer className="w-4 h-4" />
+          Imprimir
+        </button>
+      </div>
+
       {/* Slide container */}
-      <div className="relative h-full w-full">
-        <SlideWrapper active={current === 0}><SlideCover /></SlideWrapper>
-        <SlideWrapper active={current === 1}><SlideProblema /></SlideWrapper>
-        <SlideWrapper active={current === 2}><SlideSolucao /></SlideWrapper>
-        <SlideWrapper active={current === 3}><SlideComoFunciona /></SlideWrapper>
-        <SlideWrapper active={current === 4}><SlideFluxoProdutorEngenheiro /></SlideWrapper>
-        <SlideWrapper active={current === 5}><SlideFluxoMesaBancoAdmin /></SlideWrapper>
-        <SlideWrapper active={current === 6}><SlidePlataforma /></SlideWrapper>
-        <SlideWrapper active={current === 7}><SlideMercado /></SlideWrapper>
-        <SlideWrapper active={current === 8}><SlideModelo /></SlideWrapper>
-        <SlideWrapper active={current === 9}><SlideDiferenciais /></SlideWrapper>
-        <SlideWrapper active={current === 10}><SlideRoadmap /></SlideWrapper>
-        <SlideWrapper active={current === 11}><SlideCTA /></SlideWrapper>
+      <div ref={containerRef} className="relative h-full w-full">
+        <SlideWrapper active={current === 0} index={0}><SlideCover /></SlideWrapper>
+        <SlideWrapper active={current === 1} index={1}><SlideProblema /></SlideWrapper>
+        <SlideWrapper active={current === 2} index={2}><SlideSolucao /></SlideWrapper>
+        <SlideWrapper active={current === 3} index={3}><SlideComoFunciona /></SlideWrapper>
+        <SlideWrapper active={current === 4} index={4}><SlideFluxoProdutorEngenheiro /></SlideWrapper>
+        <SlideWrapper active={current === 5} index={5}><SlideFluxoMesaBancoAdmin /></SlideWrapper>
+        <SlideWrapper active={current === 6} index={6}><SlidePlataforma /></SlideWrapper>
+        <SlideWrapper active={current === 7} index={7}><SlideMercado /></SlideWrapper>
+        <SlideWrapper active={current === 8} index={8}><SlideModelo /></SlideWrapper>
+        <SlideWrapper active={current === 9} index={9}><SlideDiferenciais /></SlideWrapper>
+        <SlideWrapper active={current === 10} index={10}><SlideRoadmap /></SlideWrapper>
+        <SlideWrapper active={current === 11} index={11}><SlideCTA /></SlideWrapper>
       </div>
 
       {/* Navigation */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 z-50">
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 z-50 print:hidden">
         <button onClick={prev} disabled={current === 0} className="p-2 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-30 transition">
           <ChevronLeft className="w-5 h-5" />
         </button>
@@ -53,16 +116,20 @@ export default function Pitch() {
       </div>
 
       {/* Slide counter */}
-      <div className="fixed top-6 right-8 text-sm text-white/40 z-50 font-mono">
+      <div className="fixed top-6 right-8 text-sm text-white/40 z-50 font-mono print:hidden">
         {String(current + 1).padStart(2, "0")} / {TOTAL_SLIDES}
       </div>
     </div>
   );
 }
 
-function SlideWrapper({ active, children }: { active: boolean; children: React.ReactNode }) {
+function SlideWrapper({ active, index, children }: { active: boolean; index: number; children: React.ReactNode }) {
   return (
-    <div className={cn("absolute inset-0 flex items-center justify-center transition-all duration-500", active ? "opacity-100 scale-100" : "opacity-0 scale-95 pointer-events-none")}>
+    <div data-slide={index} className={cn(
+      "absolute inset-0 flex items-center justify-center transition-all duration-500",
+      "print:relative print:opacity-100 print:scale-100 print:pointer-events-auto print:break-after-page print:h-screen",
+      active ? "opacity-100 scale-100" : "opacity-0 scale-95 pointer-events-none"
+    )}>
       <div className="w-full max-w-6xl mx-auto px-8 md:px-16">{children}</div>
     </div>
   );

@@ -110,3 +110,17 @@
     font-family: 'Sora', sans-serif;
   }
 }
+
+@media print {
+  body {
+    background: hsl(150, 20%, 8%) !important;
+    color: hsl(40, 30%, 92%) !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  @page {
+    size: landscape;
+    margin: 0;
+  }
+}
