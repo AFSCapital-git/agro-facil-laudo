@@ -8,9 +8,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Leaf, ArrowRight } from "lucide-react";
+import { AgroBankerFields } from "@/components/auth/AgroBankerFields";
 
 type AuthMode = "login" | "register";
-type UserRole = "produtor" | "engenheiro";
+type UserRole = "produtor" | "engenheiro" | "agrobanker";
 
 export default function Auth() {
   const [mode, setMode] = useState<AuthMode>("login");
@@ -31,6 +32,15 @@ export default function Auth() {
   const [jaEngenheiro, setJaEngenheiro] = useState(false);
   const [tipoLicenca, setTipoLicenca] = useState("");
   const [numeroLicenca, setNumeroLicenca] = useState("");
+
+  // AgroBanker fields
+  const [abCnpj, setAbCnpj] = useState("");
+  const [abRazaoSocial, setAbRazaoSocial] = useState("");
+  const [abNomeFantasia, setAbNomeFantasia] = useState("");
+  const [abTipoEntidade, setAbTipoEntidade] = useState("revenda_agricola");
+  const [abDescricaoTipo, setAbDescricaoTipo] = useState("");
+  const [abMunicipio, setAbMunicipio] = useState("");
+  const [abUf, setAbUf] = useState("");
 
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -82,7 +92,7 @@ export default function Auth() {
     // Insert role-specific data
     if (role === "produtor") {
       await supabase.from("produtores").insert({ user_id: userId, cpf_cnpj: cpfCnpj });
-    } else {
+    } else if (role === "engenheiro") {
       await supabase.from("engenheiros").insert({
         user_id: userId,
         crea: jaEngenheiro ? numeroLicenca : "",
@@ -92,6 +102,17 @@ export default function Auth() {
         tipo_licenca: tipoLicenca,
         numero_licenca: numeroLicenca,
       });
+    } else if (role === "agrobanker") {
+      await supabase.from("agrobankers" as any).insert({
+        user_id: userId,
+        cnpj: abCnpj,
+        razao_social: abRazaoSocial,
+        nome_fantasia: abNomeFantasia,
+        tipo_entidade: abTipoEntidade,
+        descricao_tipo: abTipoEntidade === "outro" ? abDescricaoTipo : "",
+        municipio: abMunicipio,
+        uf: abUf,
+      } as any);
     }
 
     setLoading(false);
@@ -144,15 +165,18 @@ export default function Auth() {
                       <SelectContent>
                         <SelectItem value="produtor">Produtor Rural</SelectItem>
                         <SelectItem value="engenheiro">Engenheiro/Projetista</SelectItem>
+                        <SelectItem value="agrobanker">AgroBanker</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
+
                   {role === "produtor" && (
                     <div className="space-y-2">
                       <Label htmlFor="cpf">CPF / CNPJ</Label>
                       <Input id="cpf" value={cpfCnpj} onChange={(e) => setCpfCnpj(e.target.value)} required />
                     </div>
                   )}
+
                   {role === "engenheiro" && (
                     <>
                       <div className="flex items-center gap-2 rounded-md border p-3">
@@ -196,6 +220,18 @@ export default function Auth() {
                         <Input id="raio" type="number" value={raioAtendimento} onChange={(e) => setRaioAtendimento(e.target.value)} />
                       </div>
                     </>
+                  )}
+
+                  {role === "agrobanker" && (
+                    <AgroBankerFields
+                      cnpj={abCnpj} setCnpj={setAbCnpj}
+                      razaoSocial={abRazaoSocial} setRazaoSocial={setAbRazaoSocial}
+                      nomeFantasia={abNomeFantasia} setNomeFantasia={setAbNomeFantasia}
+                      tipoEntidade={abTipoEntidade} setTipoEntidade={setAbTipoEntidade}
+                      descricaoTipo={abDescricaoTipo} setDescricaoTipo={setAbDescricaoTipo}
+                      municipio={abMunicipio} setMunicipio={setAbMunicipio}
+                      uf={abUf} setUf={setAbUf}
+                    />
                   )}
                 </>
               )}
