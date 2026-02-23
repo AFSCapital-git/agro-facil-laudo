@@ -1,255 +1,128 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import {
-  GraduationCap,
-  BookOpen,
-  ShieldCheck,
-  Package,
-  Users,
-  Target,
-  Clock,
-  CheckCircle2,
-  Lock,
-  Play,
-  Star,
-  Award,
-  TrendingUp,
-  FileText,
-  Sprout,
-  Landmark,
-  Heart,
-  Scale,
-  Eye,
-  Handshake,
+  GraduationCap, BookOpen, ShieldCheck, Package, Target, Clock, CheckCircle2,
+  Lock, Play, Star, Award, Heart, Scale, Eye, Handshake, TrendingUp, FileText, Sprout,
+  Landmark, Users,
 } from "lucide-react";
 
-interface TrainingModule {
-  id: string;
-  title: string;
-  description: string;
-  duration: string;
-  icon: React.ComponentType<{ className?: string }>;
-  status: "disponivel" | "em_andamento" | "concluido" | "bloqueado";
-  progress: number;
-  category: string;
-  badge?: string;
-  required?: boolean;
-}
-
-const trainingModules: TrainingModule[] = [
-  // Cultura e Valores
-  {
-    id: "cult-1",
-    title: "Bem-vindo à AFSAgro",
-    description: "Conheça nossa missão de democratizar o acesso ao crédito rural e os valores que guiam nossa atuação no agronegócio brasileiro.",
-    duration: "20 min",
-    icon: Heart,
-    status: "disponivel",
-    progress: 0,
-    category: "cultura",
-    badge: "Embaixador AFSAgro",
-    required: true,
-  },
-  {
-    id: "cult-2",
-    title: "Código de Conduta e Ética",
-    description: "Princípios éticos, relacionamento com produtores, transparência nas operações e responsabilidade social no campo.",
-    duration: "30 min",
-    icon: Scale,
-    status: "disponivel",
-    progress: 0,
-    category: "cultura",
-    required: true,
-  },
-  {
-    id: "cult-3",
-    title: "Visão de Mercado Agro",
-    description: "Panorama do agronegócio brasileiro, Plano Safra, papel do crédito rural e oportunidades de crescimento.",
-    duration: "45 min",
-    icon: TrendingUp,
-    status: "disponivel",
-    progress: 0,
-    category: "cultura",
-  },
-  {
-    id: "cult-4",
-    title: "O Papel do AgroBanker",
-    description: "Como você se posiciona como assessor de crédito rural, diferencial competitivo e modelo de atendimento consultivo.",
-    duration: "35 min",
-    icon: Handshake,
-    status: "bloqueado",
-    progress: 0,
-    category: "cultura",
-    badge: "Assessor Certificado",
-  },
-
-  // Compliance
-  {
-    id: "comp-1",
-    title: "LGPD no Agro",
-    description: "Proteção de dados pessoais dos produtores, consentimento, armazenamento seguro e boas práticas de privacidade.",
-    duration: "40 min",
-    icon: ShieldCheck,
-    status: "disponivel",
-    progress: 0,
-    category: "compliance",
-    required: true,
-  },
-  {
-    id: "comp-2",
-    title: "Prevenção à Lavagem de Dinheiro",
-    description: "PLD/FT aplicada ao crédito rural: identificação de operações suspeitas, KYC do produtor e obrigações regulatórias.",
-    duration: "50 min",
-    icon: Eye,
-    status: "disponivel",
-    progress: 0,
-    category: "compliance",
-    required: true,
-  },
-  {
-    id: "comp-3",
-    title: "Regulamentação do Crédito Rural",
-    description: "Manual de Crédito Rural (MCR), resolução do Banco Central, regras PRONAF e responsabilidades dos intermediários.",
-    duration: "60 min",
-    icon: FileText,
-    status: "bloqueado",
-    progress: 0,
-    category: "compliance",
-    badge: "Compliance Certificado",
-  },
-  {
-    id: "comp-4",
-    title: "Conduta Anticorrupção",
-    description: "Lei Anticorrupção, conflito de interesses, presentes e hospitalidade, canal de denúncias.",
-    duration: "35 min",
-    icon: Scale,
-    status: "bloqueado",
-    progress: 0,
-    category: "compliance",
-  },
-
-  // Produtos
-  {
-    id: "prod-1",
-    title: "PRONAF Custeio — Guia Completo",
-    description: "Regras, limites, juros, prazos, documentação exigida e processo de solicitação para linhas de custeio PRONAF.",
-    duration: "55 min",
-    icon: Sprout,
-    status: "disponivel",
-    progress: 0,
-    category: "produtos",
-    required: true,
-  },
-  {
-    id: "prod-2",
-    title: "PRONAF Investimento — Guia Completo",
-    description: "Máquinas, equipamentos, infraestrutura: como orientar o produtor nas linhas de investimento do PRONAF.",
-    duration: "50 min",
-    icon: Package,
-    status: "disponivel",
-    progress: 0,
-    category: "produtos",
-  },
-  {
-    id: "prod-3",
-    title: "Análise de Viabilidade Econômica",
-    description: "Como avaliar a capacidade de pagamento do produtor, orçamento de custeio e indicadores financeiros rurais.",
-    duration: "45 min",
-    icon: TrendingUp,
-    status: "bloqueado",
-    progress: 0,
-    category: "produtos",
-    badge: "Analista de Crédito",
-  },
-  {
-    id: "prod-4",
-    title: "Documentação e Laudos Técnicos",
-    description: "Entenda o fluxo completo do laudo agronômico, documentos necessários (CAR, CCIR, ITR) e como acelerar o processo.",
-    duration: "40 min",
-    icon: FileText,
-    status: "disponivel",
-    progress: 0,
-    category: "produtos",
-  },
-
-  // Comercial
-  {
-    id: "com-1",
-    title: "Técnicas de Prospecção no Agro",
-    description: "Como identificar e abordar produtores rurais, construir rede de contatos e gerar leads qualificados no campo.",
-    duration: "40 min",
-    icon: Target,
-    status: "disponivel",
-    progress: 0,
-    category: "comercial",
-  },
-  {
-    id: "com-2",
-    title: "Venda Consultiva de Crédito",
-    description: "Diagnóstico das necessidades do produtor, apresentação de soluções personalizadas e fechamento de operações.",
-    duration: "50 min",
-    icon: Users,
-    status: "disponivel",
-    progress: 0,
-    category: "comercial",
-    badge: "Consultor Sênior",
-  },
-  {
-    id: "com-3",
-    title: "Gestão de Carteira",
-    description: "Como organizar sua carteira de produtores, acompanhar safras, identificar cross-sell e garantir recorrência.",
-    duration: "35 min",
-    icon: Landmark,
-    status: "bloqueado",
-    progress: 0,
-    category: "comercial",
-  },
-  {
-    id: "com-4",
-    title: "Uso da Plataforma AgroLaudo",
-    description: "Tutorial completo da plataforma: cadastro de produtores, originação de solicitações, acompanhamento e comissões.",
-    duration: "30 min",
-    icon: BookOpen,
-    status: "disponivel",
-    progress: 0,
-    category: "comercial",
-    required: true,
-  },
-];
-
-const categoryConfig: Record<string, { label: string; icon: React.ComponentType<{ className?: string }>; color: string }> = {
-  cultura: { label: "Cultura & Valores", icon: Heart, color: "hsl(var(--primary))" },
-  compliance: { label: "Compliance", icon: ShieldCheck, color: "hsl(35, 65%, 50%)" },
-  produtos: { label: "Produtos", icon: Package, color: "hsl(145, 45%, 40%)" },
-  comercial: { label: "Comercial", icon: Target, color: "hsl(210, 60%, 50%)" },
-};
-
-const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
-  disponivel: { label: "Disponível", variant: "outline" },
-  em_andamento: { label: "Em Andamento", variant: "default" },
-  concluido: { label: "Concluído", variant: "secondary" },
-  bloqueado: { label: "Bloqueado", variant: "destructive" },
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  BookOpen, Heart, ShieldCheck, Package, Target, Scale, Eye, Handshake, TrendingUp,
+  FileText, Sprout, Landmark, Users, GraduationCap, Star, Award,
 };
 
 export default function AgroBankerTreinamentos() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("todas");
+  const [trilhas, setTrilhas] = useState<any[]>([]);
+  const [modulos, setModulos] = useState<any[]>([]);
+  const [progresso, setProgresso] = useState<any[]>([]);
+  const [badges, setBadges] = useState<any[]>([]);
+  const [badgesConquistados, setBadgesConquistados] = useState<any[]>([]);
+  const [agrobankerId, setAgrobankerId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const totalModules = trainingModules.length;
-  const completedModules = trainingModules.filter((m) => m.status === "concluido").length;
-  const requiredModules = trainingModules.filter((m) => m.required);
-  const requiredCompleted = requiredModules.filter((m) => m.status === "concluido").length;
-  const inProgress = trainingModules.filter((m) => m.status === "em_andamento").length;
-  const badges = trainingModules.filter((m) => m.badge && m.status === "concluido").length;
-  const totalBadges = trainingModules.filter((m) => m.badge).length;
+  useEffect(() => {
+    fetchData();
+  }, [user]);
 
-  const filtered = activeTab === "todas"
-    ? trainingModules
-    : trainingModules.filter((m) => m.category === activeTab);
+  async function fetchData() {
+    setLoading(true);
+    // Get agrobanker_id
+    const { data: abData } = await supabase.from("agrobankers").select("id").eq("user_id", user?.id || "").maybeSingle();
+    const abId = abData?.id;
+    setAgrobankerId(abId || null);
+
+    const [t, m, b] = await Promise.all([
+      supabase.from("treinamento_trilhas").select("*").eq("ativo", true).order("ordem"),
+      supabase.from("treinamento_modulos").select("*").eq("ativo", true).order("ordem"),
+      supabase.from("treinamento_badges").select("*").eq("ativo", true),
+    ]);
+    setTrilhas(t.data || []);
+    setModulos(m.data || []);
+    setBadges(b.data || []);
+
+    if (abId) {
+      const [p, bc] = await Promise.all([
+        supabase.from("treinamento_progresso").select("*").eq("agrobanker_id", abId),
+        supabase.from("treinamento_badges_conquistados").select("*").eq("agrobanker_id", abId),
+      ]);
+      setProgresso(p.data || []);
+      setBadgesConquistados(bc.data || []);
+    }
+    setLoading(false);
+  }
+
+  async function iniciarModulo(moduloId: string) {
+    if (!agrobankerId) return;
+    const existing = progresso.find(p => p.modulo_id === moduloId);
+    if (!existing) {
+      await supabase.from("treinamento_progresso").insert({
+        agrobanker_id: agrobankerId,
+        modulo_id: moduloId,
+        status: "em_andamento",
+        data_inicio: new Date().toISOString(),
+      });
+      fetchData();
+    }
+  }
+
+  function getModuloStatus(moduloId: string): "disponivel" | "em_andamento" | "concluido" | "bloqueado" {
+    const prog = progresso.find(p => p.modulo_id === moduloId);
+    if (prog) {
+      if (prog.status === "concluido") return "concluido";
+      if (prog.status === "em_andamento") return "em_andamento";
+    }
+    const mod = modulos.find(m => m.id === moduloId);
+    if (mod?.pre_requisito_id) {
+      const preReqProg = progresso.find(p => p.modulo_id === mod.pre_requisito_id);
+      if (!preReqProg || preReqProg.status !== "concluido") return "bloqueado";
+    }
+    return "disponivel";
+  }
+
+  const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
+    disponivel: { label: "Disponível", variant: "outline" },
+    em_andamento: { label: "Em Andamento", variant: "default" },
+    concluido: { label: "Concluído", variant: "secondary" },
+    bloqueado: { label: "Bloqueado", variant: "destructive" },
+  };
+
+  // If no data from DB yet, show static content as fallback
+  const hasDbData = trilhas.length > 0;
+
+  const completedModules = modulos.filter(m => getModuloStatus(m.id) === "concluido").length;
+  const totalModules = modulos.length;
+  const requiredModules = modulos.filter(m => m.obrigatorio);
+  const requiredCompleted = requiredModules.filter(m => getModuloStatus(m.id) === "concluido").length;
+  const inProgressCount = modulos.filter(m => getModuloStatus(m.id) === "em_andamento").length;
+  const totalPontos = progresso.reduce((s, p) => s + (p.pontuacao || 0), 0);
+
+  const filteredModulos = activeTab === "todas"
+    ? modulos
+    : modulos.filter(m => m.trilha_id === activeTab);
+
+  if (!hasDbData && !loading) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Portal de Treinamento" description="As trilhas de treinamento ainda estão sendo configuradas pelo administrador." icon={<GraduationCap className="h-5 w-5" />} />
+        <Card>
+          <CardContent className="p-8 text-center space-y-3">
+            <GraduationCap className="h-12 w-12 mx-auto text-muted-foreground" />
+            <p className="text-muted-foreground">Nenhuma trilha de treinamento disponível no momento.</p>
+            <p className="text-xs text-muted-foreground">Entre em contato com o administrador para mais informações.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -289,7 +162,7 @@ export default function AgroBankerTreinamentos() {
               <Play className="h-5 w-5 text-accent-foreground" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{inProgress}</p>
+              <p className="text-2xl font-bold">{inProgressCount}</p>
               <p className="text-xs text-muted-foreground">Em andamento</p>
             </div>
           </CardContent>
@@ -300,7 +173,7 @@ export default function AgroBankerTreinamentos() {
               <Award className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{badges}/{totalBadges}</p>
+              <p className="text-2xl font-bold">{badgesConquistados.length}/{badges.length}</p>
               <p className="text-xs text-muted-foreground">Certificações obtidas</p>
             </div>
           </CardContent>
@@ -315,98 +188,99 @@ export default function AgroBankerTreinamentos() {
               <Star className="h-4 w-4 text-primary" />
               <span className="font-semibold text-sm">Progresso Geral</span>
             </div>
-            <span className="text-sm text-muted-foreground">
-              {Math.round((completedModules / totalModules) * 100)}%
-            </span>
+            <div className="flex items-center gap-3">
+              <Badge variant="secondary">{totalPontos} pontos</Badge>
+              <span className="text-sm text-muted-foreground">
+                {totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0}%
+              </span>
+            </div>
           </div>
-          <Progress value={(completedModules / totalModules) * 100} className="h-2" />
+          <Progress value={totalModules > 0 ? (completedModules / totalModules) * 100 : 0} className="h-2" />
           <p className="text-xs text-muted-foreground">
             Complete todos os módulos obrigatórios para se tornar um AgroBanker Certificado.
           </p>
         </CardContent>
       </Card>
 
-      {/* Tabs */}
+      {/* Tabs by trilha */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full justify-start flex-wrap h-auto gap-1">
           <TabsTrigger value="todas" className="gap-1.5">
             <GraduationCap className="h-3.5 w-3.5" /> Todas
           </TabsTrigger>
-          {Object.entries(categoryConfig).map(([key, cat]) => (
-            <TabsTrigger key={key} value={key} className="gap-1.5">
-              <cat.icon className="h-3.5 w-3.5" /> {cat.label}
-            </TabsTrigger>
-          ))}
+          {trilhas.map(t => {
+            const Icon = iconMap[t.icone] || BookOpen;
+            return (
+              <TabsTrigger key={t.id} value={t.id} className="gap-1.5">
+                <Icon className="h-3.5 w-3.5" /> {t.nome}
+              </TabsTrigger>
+            );
+          })}
         </TabsList>
 
         <TabsContent value={activeTab} className="mt-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((mod) => {
-              const st = statusConfig[mod.status];
-              const cat = categoryConfig[mod.category];
+            {filteredModulos.map(mod => {
+              const status = getModuloStatus(mod.id);
+              const st = statusConfig[status];
+              const trilha = trilhas.find(t => t.id === mod.trilha_id);
+              const Icon = iconMap[trilha?.icone] || BookOpen;
+
               return (
                 <Card
                   key={mod.id}
-                  className={`transition-all ${mod.status === "bloqueado" ? "opacity-60" : "hover:shadow-md hover:border-primary/30"}`}
+                  className={`transition-all ${status === "bloqueado" ? "opacity-60" : "hover:shadow-md hover:border-primary/30"}`}
                 >
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
                       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                        <mod.icon className="h-5 w-5 text-primary" />
+                        <Icon className="h-5 w-5 text-primary" />
                       </div>
                       <div className="flex items-center gap-1.5">
-                        {mod.required && (
-                          <Badge variant="destructive" className="text-[10px] px-1.5">
-                            Obrigatório
-                          </Badge>
+                        {mod.obrigatorio && (
+                          <Badge variant="destructive" className="text-[10px] px-1.5">Obrigatório</Badge>
                         )}
                         <Badge variant={st.variant} className="text-[10px] px-1.5">
-                          {mod.status === "bloqueado" && <Lock className="h-2.5 w-2.5 mr-0.5" />}
-                          {mod.status === "concluido" && <CheckCircle2 className="h-2.5 w-2.5 mr-0.5" />}
+                          {status === "bloqueado" && <Lock className="h-2.5 w-2.5 mr-0.5" />}
+                          {status === "concluido" && <CheckCircle2 className="h-2.5 w-2.5 mr-0.5" />}
                           {st.label}
                         </Badge>
                       </div>
                     </div>
-                    <CardTitle className="text-sm mt-3">{mod.title}</CardTitle>
-                    <CardDescription className="text-xs leading-relaxed">
-                      {mod.description}
-                    </CardDescription>
+                    <CardTitle className="text-sm mt-3">{mod.titulo}</CardTitle>
+                    <CardDescription className="text-xs leading-relaxed">{mod.descricao}</CardDescription>
                   </CardHeader>
                   <CardContent className="pb-3 space-y-3">
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" /> {mod.duration}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <cat.icon className="h-3 w-3" /> {cat.label}
-                      </span>
+                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {mod.duracao_minutos} min</span>
+                      <span className="flex items-center gap-1"><Star className="h-3 w-3" /> {mod.pontos} pts</span>
                     </div>
-                    {mod.status === "em_andamento" && (
-                      <Progress value={mod.progress} className="h-1.5" />
-                    )}
-                    {mod.badge && (
-                      <div className="flex items-center gap-1.5 text-xs text-primary bg-primary/5 rounded-md px-2 py-1">
-                        <Award className="h-3 w-3" />
-                        <span>Certificação: <strong>{mod.badge}</strong></span>
-                      </div>
+                    {trilha && (
+                      <Badge variant="outline" className="text-[10px]" style={{ borderColor: trilha.cor }}>{trilha.nome}</Badge>
                     )}
                   </CardContent>
                   <CardFooter className="pt-0">
                     <Button
                       className="w-full gap-2"
                       size="sm"
-                      variant={mod.status === "bloqueado" ? "outline" : mod.status === "concluido" ? "secondary" : "default"}
-                      disabled={mod.status === "bloqueado"}
+                      variant={status === "bloqueado" ? "outline" : status === "concluido" ? "secondary" : "default"}
+                      disabled={status === "bloqueado"}
+                      onClick={() => status === "disponivel" && iniciarModulo(mod.id)}
                     >
-                      {mod.status === "bloqueado" && <><Lock className="h-3.5 w-3.5" /> Pré-requisito pendente</>}
-                      {mod.status === "disponivel" && <><Play className="h-3.5 w-3.5" /> Iniciar módulo</>}
-                      {mod.status === "em_andamento" && <><Play className="h-3.5 w-3.5" /> Continuar</>}
-                      {mod.status === "concluido" && <><CheckCircle2 className="h-3.5 w-3.5" /> Revisar</>}
+                      {status === "bloqueado" && <><Lock className="h-3.5 w-3.5" /> Pré-requisito pendente</>}
+                      {status === "disponivel" && <><Play className="h-3.5 w-3.5" /> Iniciar módulo</>}
+                      {status === "em_andamento" && <><Play className="h-3.5 w-3.5" /> Continuar</>}
+                      {status === "concluido" && <><CheckCircle2 className="h-3.5 w-3.5" /> Revisar</>}
                     </Button>
                   </CardFooter>
                 </Card>
               );
             })}
+            {filteredModulos.length === 0 && (
+              <div className="col-span-full text-center py-8 text-muted-foreground text-sm">
+                Nenhum módulo disponível nesta trilha.
+              </div>
+            )}
           </div>
         </TabsContent>
       </Tabs>

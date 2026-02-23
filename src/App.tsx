@@ -32,6 +32,7 @@ import AdminSLA from "@/pages/admin/AdminSLA";
 import AdminFeatureFlags from "@/pages/admin/AdminFeatureFlags";
 import AdminZarc from "@/pages/admin/AdminZarc";
 import AdminEsteira from "@/pages/admin/AdminEsteira";
+import AdminTreinamento from "@/pages/admin/AdminTreinamento";
 import RelatorioEngenheiro from "@/pages/RelatorioEngenheiro";
 import RelatorioProdutor from "@/pages/RelatorioProdutor";
 import AgroBankerDashboard from "@/pages/agrobanker/AgroBankerDashboard";
@@ -95,7 +96,7 @@ const App = () => (
               <Route path="/admin/relatorios" element={<AdminRelatorios />} />
               <Route path="/admin/produtos-pronaf" element={<AdminProdutosPronaf />} />
               <Route path="/admin/esteira" element={<AdminEsteira />} />
-              <Route path="/admin/produtos-pronaf" element={<AdminProdutosPronaf />} />
+              <Route path="/admin/treinamento" element={<AdminTreinamento />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
