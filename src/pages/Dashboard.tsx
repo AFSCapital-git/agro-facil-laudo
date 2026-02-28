@@ -21,8 +21,6 @@ export default function Dashboard() {
   const nome = user?.user_metadata?.nome?.split(" ")[0] || "Usuário";
   const navigate = useNavigate();
 
-  if (role === "admin") return <AdminDashboard />;
-
   const today = new Date();
   const greeting = today.getHours() < 12 ? "Bom dia" : today.getHours() < 18 ? "Boa tarde" : "Boa noite";
   const dateStr = today.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
@@ -87,6 +85,8 @@ export default function Dashboard() {
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
   const isLoading = role === "produtor" ? loadingProd : loadingEng;
+
+  if (role === "admin") return <AdminDashboard />;
 
   // Quick actions per role
   const quickActions = role === "produtor"
