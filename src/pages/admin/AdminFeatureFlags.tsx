@@ -7,6 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogDescription,
@@ -51,10 +54,7 @@ export default function AdminFeatureFlags() {
   const { data: flags, isLoading } = useQuery({
     queryKey: ["feature_flags"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("feature_flags")
-        .select("*")
-        .order("chave");
+      const { data, error } = await (supabase as any).from("feature_flags").select("*").order("chave");
       if (error) throw error;
       return data as FeatureFlag[];
     },
@@ -84,17 +84,10 @@ export default function AdminFeatureFlags() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       let parsedValor: any;
-      try {
-        parsedValor = JSON.parse(form.valor);
-      } catch {
-        parsedValor = form.valor;
-      }
+      try { parsedValor = JSON.parse(form.valor); } catch { parsedValor = form.valor; }
       const payload = {
-        chave: form.chave,
-        descricao: form.descricao,
-        escopo_tipo: form.escopo_tipo,
-        escopo_id: form.escopo_tipo === "global" ? null : form.escopo_id || null,
-        valor: parsedValor,
+        chave: form.chave, descricao: form.descricao, escopo_tipo: form.escopo_tipo,
+        escopo_id: form.escopo_tipo === "global" ? null : form.escopo_id || null, valor: parsedValor,
       };
       if (editing) {
         const { error } = await (supabase as any).from("feature_flags").update(payload).eq("id", editing.id);
@@ -140,13 +133,7 @@ export default function AdminFeatureFlags() {
 
   const openEdit = (f: FeatureFlag) => {
     setEditing(f);
-    setForm({
-      chave: f.chave,
-      descricao: f.descricao,
-      escopo_tipo: f.escopo_tipo,
-      escopo_id: f.escopo_id ?? "",
-      valor: JSON.stringify(f.valor),
-    });
+    setForm({ chave: f.chave, descricao: f.descricao, escopo_tipo: f.escopo_tipo, escopo_id: f.escopo_id ?? "", valor: JSON.stringify(f.valor) });
     setOpenDialog(true);
   };
 
@@ -162,38 +149,34 @@ export default function AdminFeatureFlags() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-display text-2xl font-bold">Feature Flags</h1>
-          <p className="text-muted-foreground">Gerencie funcionalidades por escopo (global, banco, UF, produto).</p>
-        </div>
-        <Button onClick={openNew}>
-          <Plus className="mr-2 h-4 w-4" /> Nova Flag
-        </Button>
-      </div>
+      <PageHeader
+        title="Feature Flags"
+        description="Gerencie funcionalidades por escopo (global, banco, UF, produto)."
+        icon={<ToggleLeft className="h-5 w-5" />}
+        actions={<Button onClick={openNew}><Plus className="mr-2 h-4 w-4" /> Nova Flag</Button>}
+      />
 
-      <div className="flex gap-3">
-        <Select value={filterEscopo} onValueChange={setFilterEscopo}>
-          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="global">Global</SelectItem>
-            <SelectItem value="banco">Banco</SelectItem>
-            <SelectItem value="uf">UF</SelectItem>
-            <SelectItem value="produto">Produto</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <Card>
+        <CardContent className="py-3">
+          <Select value={filterEscopo} onValueChange={setFilterEscopo}>
+            <SelectTrigger className="w-40 h-9"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="global">Global</SelectItem>
+              <SelectItem value="banco">Banco</SelectItem>
+              <SelectItem value="uf">UF</SelectItem>
+              <SelectItem value="produto">Produto</SelectItem>
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
 
       {isLoading ? (
-        <p className="text-muted-foreground">Carregando...</p>
+        <Card><CardContent className="p-6 space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-md" />)}
+        </CardContent></Card>
       ) : !filtered.length ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-3 py-12">
-            <ToggleLeft className="h-10 w-10 text-muted-foreground" />
-            <p className="text-muted-foreground">Nenhuma flag configurada.</p>
-          </CardContent>
-        </Card>
+        <EmptyState icon={<ToggleLeft className="h-6 w-6" />} title="Nenhuma flag configurada" description="Crie a primeira feature flag para controlar funcionalidades." action={<Button onClick={openNew}><Plus className="mr-2 h-4 w-4" /> Nova Flag</Button>} />
       ) : (
         <Card>
           <CardContent className="p-0">
@@ -213,25 +196,18 @@ export default function AdminFeatureFlags() {
                   <TableRow key={f.id} className="cursor-pointer" onClick={() => openEdit(f)}>
                     <TableCell className="font-mono text-sm">{f.chave}</TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="text-xs">
-                        {ESCOPO_LABELS[f.escopo_tipo] ?? f.escopo_tipo}
-                      </Badge>
+                      <Badge variant="outline" className="text-xs">{ESCOPO_LABELS[f.escopo_tipo] ?? f.escopo_tipo}</Badge>
                       {f.escopo_id && <span className="ml-1 text-xs text-muted-foreground">{getEscopoLabel(f)}</span>}
                     </TableCell>
                     <TableCell className="text-xs max-w-32 truncate">{JSON.stringify(f.valor)}</TableCell>
                     <TableCell className="text-xs text-muted-foreground max-w-48 truncate">{f.descricao}</TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Switch
-                        checked={f.ativo}
-                        onCheckedChange={(v) => toggleMutation.mutate({ id: f.id, ativo: v })}
-                      />
+                      <Switch checked={f.ativo} onCheckedChange={(v) => toggleMutation.mutate({ id: f.id, ativo: v })} />
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive">
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive"><Trash2 className="h-3 w-3" /></Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
@@ -260,24 +236,8 @@ export default function AdminFeatureFlags() {
             <DialogDescription>Configure a flag e seu escopo de aplicação.</DialogDescription>
           </DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); saveMutation.mutate(); }} className="space-y-4">
-            <div>
-              <Label>Chave *</Label>
-              <Input
-                value={form.chave}
-                onChange={(e) => setForm({ ...form, chave: e.target.value })}
-                placeholder="ex: exige_car, valida_zarc"
-                required
-                className="font-mono"
-              />
-            </div>
-            <div>
-              <Label>Descrição</Label>
-              <Input
-                value={form.descricao}
-                onChange={(e) => setForm({ ...form, descricao: e.target.value })}
-                placeholder="O que essa flag controla?"
-              />
-            </div>
+            <div><Label>Chave *</Label><Input value={form.chave} onChange={(e) => setForm({ ...form, chave: e.target.value })} placeholder="ex: exige_car, valida_zarc" required className="font-mono" /></div>
+            <div><Label>Descrição</Label><Input value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} placeholder="O que essa flag controla?" /></div>
             <div>
               <Label>Escopo</Label>
               <Select value={form.escopo_tipo} onValueChange={(v) => setForm({ ...form, escopo_tipo: v, escopo_id: "" })}>
@@ -291,54 +251,18 @@ export default function AdminFeatureFlags() {
               </Select>
             </div>
             {form.escopo_tipo === "banco" && (
-              <div>
-                <Label>Banco</Label>
-                <Select value={form.escopo_id} onValueChange={(v) => setForm({ ...form, escopo_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                  <SelectContent>
-                    {bancos?.map((b) => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
+              <div><Label>Banco</Label><Select value={form.escopo_id} onValueChange={(v) => setForm({ ...form, escopo_id: v })}><SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger><SelectContent>{bancos?.map((b) => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}</SelectContent></Select></div>
             )}
             {form.escopo_tipo === "uf" && (
-              <div>
-                <Label>UF</Label>
-                <Select value={form.escopo_id} onValueChange={(v) => setForm({ ...form, escopo_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                  <SelectContent>
-                    {UF_LIST.map((uf) => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
+              <div><Label>UF</Label><Select value={form.escopo_id} onValueChange={(v) => setForm({ ...form, escopo_id: v })}><SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger><SelectContent>{UF_LIST.map((uf) => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}</SelectContent></Select></div>
             )}
             {form.escopo_tipo === "produto" && (
-              <div>
-                <Label>Produto</Label>
-                <Select value={form.escopo_id} onValueChange={(v) => setForm({ ...form, escopo_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                  <SelectContent>
-                    {produtos?.map((p) => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
+              <div><Label>Produto</Label><Select value={form.escopo_id} onValueChange={(v) => setForm({ ...form, escopo_id: v })}><SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger><SelectContent>{produtos?.map((p) => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}</SelectContent></Select></div>
             )}
-            <div>
-              <Label>Valor (JSON)</Label>
-              <Input
-                value={form.valor}
-                onChange={(e) => setForm({ ...form, valor: e.target.value })}
-                placeholder='true, false, {"key": "value"}'
-                className="font-mono"
-              />
-            </div>
+            <div><Label>Valor (JSON)</Label><Input value={form.valor} onChange={(e) => setForm({ ...form, valor: e.target.value })} placeholder='true, false, {"key": "value"}' className="font-mono" /></div>
             <div className="flex justify-end gap-2">
-              <DialogClose asChild>
-                <Button variant="outline" type="button">Cancelar</Button>
-              </DialogClose>
-              <Button type="submit" disabled={saveMutation.isPending || !form.chave}>
-                {saveMutation.isPending ? "Salvando..." : "Salvar"}
-              </Button>
+              <DialogClose asChild><Button variant="outline" type="button">Cancelar</Button></DialogClose>
+              <Button type="submit" disabled={saveMutation.isPending || !form.chave}>{saveMutation.isPending ? "Salvando..." : "Salvar"}</Button>
             </div>
           </form>
         </DialogContent>

@@ -3,16 +3,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Users, CheckCircle2, XCircle } from "lucide-react";
+import { Users, CheckCircle2, XCircle, Clock, UserCheck, FileText } from "lucide-react";
 
 export default function AdminEngenheiros() {
   const { toast } = useToast();
@@ -27,7 +26,6 @@ export default function AdminEngenheiros() {
         .order("created_at", { ascending: false });
       if (error) throw error;
 
-      // Fetch profiles separately since FK points to auth.users, not profiles
       const userIds = data.map((e) => e.user_id);
       const { data: profiles } = await supabase
         .from("profiles")
@@ -62,22 +60,32 @@ export default function AdminEngenheiros() {
     return "outline";
   };
 
+  const total = engenheiros?.length ?? 0;
+  const aprovados = engenheiros?.filter((e) => e.status_verificacao === "aprovado").length ?? 0;
+  const pendentes = engenheiros?.filter((e) => e.status_verificacao === "pendente").length ?? 0;
+  const totalLaudos = engenheiros?.reduce((s, e) => s + e.total_laudos_concluidos, 0) ?? 0;
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-bold">Engenheiros</h1>
-        <p className="text-muted-foreground">Aprove ou reprove cadastros de engenheiros.</p>
+      <PageHeader
+        title="Engenheiros"
+        description="Aprove ou reprove cadastros de engenheiros."
+        icon={<Users className="h-5 w-5" />}
+      />
+
+      <div className="grid gap-4 sm:grid-cols-4">
+        <StatCard icon={<Users className="h-4 w-4" />} title="Total Cadastrados" value={String(total)} loading={isLoading} delay={0} />
+        <StatCard icon={<UserCheck className="h-4 w-4" />} title="Aprovados" value={String(aprovados)} loading={isLoading} delay={100} />
+        <StatCard icon={<Clock className="h-4 w-4" />} title="Pendentes" value={String(pendentes)} loading={isLoading} delay={200} />
+        <StatCard icon={<FileText className="h-4 w-4" />} title="Laudos Concluídos" value={String(totalLaudos)} loading={isLoading} delay={300} />
       </div>
 
       {isLoading ? (
-        <p className="text-muted-foreground">Carregando...</p>
+        <Card><CardContent className="p-6 space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-md" />)}
+        </CardContent></Card>
       ) : !engenheiros?.length ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-3 py-12">
-            <Users className="h-10 w-10 text-muted-foreground" />
-            <p className="text-muted-foreground">Nenhum engenheiro cadastrado.</p>
-          </CardContent>
-        </Card>
+        <EmptyState icon={<Users className="h-6 w-6" />} title="Nenhum engenheiro cadastrado" description="Os engenheiros aparecem aqui ao se registrarem na plataforma." />
       ) : (
         <Card>
           <CardContent className="p-0">

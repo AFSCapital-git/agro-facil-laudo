@@ -6,6 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose, DialogDescription,
@@ -17,8 +21,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { Plus, Pencil, Trash2, ShieldCheck, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, ShieldCheck, Search, AlertTriangle, Leaf } from "lucide-react";
 
 const UFS = [
   "AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA",
@@ -154,131 +157,141 @@ export default function AdminZarc() {
     return <Badge variant="secondary">Médio</Badge>;
   };
 
+  const totalRegras = regras?.length ?? 0;
+  const riscoBaixo = regras?.filter((r) => r.risco === "baixo").length ?? 0;
+  const riscoAlto = regras?.filter((r) => r.risco === "alto").length ?? 0;
+  const culturas = new Set(regras?.map((r) => r.cultura)).size;
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-display text-2xl font-bold flex items-center gap-2">
-            <ShieldCheck className="h-6 w-6" /> Motor ZARC
-          </h1>
-          <p className="text-muted-foreground">Gerencie regras de zoneamento agrícola de risco climático.</p>
-        </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={openNew}><Plus className="mr-2 h-4 w-4" /> Nova Regra</Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{editing ? "Editar Regra ZARC" : "Nova Regra ZARC"}</DialogTitle>
-              <DialogDescription>Defina os parâmetros de zoneamento.</DialogDescription>
-            </DialogHeader>
-            <form onSubmit={(e) => { e.preventDefault(); saveMutation.mutate(); }} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Cultura *</Label>
-                  <Input value={form.cultura} onChange={(e) => setForm({ ...form, cultura: e.target.value })} required />
+      <PageHeader
+        title="Motor ZARC"
+        description="Gerencie regras de zoneamento agrícola de risco climático."
+        icon={<ShieldCheck className="h-5 w-5" />}
+        actions={
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={openNew}><Plus className="mr-2 h-4 w-4" /> Nova Regra</Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>{editing ? "Editar Regra ZARC" : "Nova Regra ZARC"}</DialogTitle>
+                <DialogDescription>Defina os parâmetros de zoneamento.</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={(e) => { e.preventDefault(); saveMutation.mutate(); }} className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Cultura *</Label>
+                    <Input value={form.cultura} onChange={(e) => setForm({ ...form, cultura: e.target.value })} required />
+                  </div>
+                  <div>
+                    <Label>UF *</Label>
+                    <Select value={form.uf} onValueChange={(v) => setForm({ ...form, uf: v })}>
+                      <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                      <SelectContent>
+                        {UFS.map((uf) => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Município</Label>
+                    <Input value={form.municipio} onChange={(e) => setForm({ ...form, municipio: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Tipo de Solo</Label>
+                    <Input value={form.tipo_solo} onChange={(e) => setForm({ ...form, tipo_solo: e.target.value })} placeholder="Ex: Arenoso, Argiloso" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Ciclo</Label>
+                    <Input value={form.ciclo} onChange={(e) => setForm({ ...form, ciclo: e.target.value })} placeholder="Ex: Precoce, Médio" />
+                  </div>
+                  <div>
+                    <Label>Safra</Label>
+                    <Input value={form.safra} onChange={(e) => setForm({ ...form, safra: e.target.value })} placeholder="Ex: 2025/2026" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <Label>Decêndio Início</Label>
+                    <Input type="number" min={1} max={36} value={form.periodo_plantio_inicio} onChange={(e) => setForm({ ...form, periodo_plantio_inicio: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Decêndio Fim</Label>
+                    <Input type="number" min={1} max={36} value={form.periodo_plantio_fim} onChange={(e) => setForm({ ...form, periodo_plantio_fim: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Risco *</Label>
+                    <Select value={form.risco} onValueChange={(v) => setForm({ ...form, risco: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="baixo">Baixo</SelectItem>
+                        <SelectItem value="medio">Médio</SelectItem>
+                        <SelectItem value="alto">Alto</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <div>
-                  <Label>UF *</Label>
-                  <Select value={form.uf} onValueChange={(v) => setForm({ ...form, uf: v })}>
-                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                    <SelectContent>
-                      {UFS.map((uf) => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Label>Observações</Label>
+                  <Textarea value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Município</Label>
-                  <Input value={form.municipio} onChange={(e) => setForm({ ...form, municipio: e.target.value })} />
+                <div className="flex justify-end gap-2">
+                  <DialogClose asChild><Button variant="outline" type="button">Cancelar</Button></DialogClose>
+                  <Button type="submit" disabled={saveMutation.isPending || !form.cultura || !form.uf}>
+                    {saveMutation.isPending ? "Salvando..." : "Salvar"}
+                  </Button>
                 </div>
-                <div>
-                  <Label>Tipo de Solo</Label>
-                  <Input value={form.tipo_solo} onChange={(e) => setForm({ ...form, tipo_solo: e.target.value })} placeholder="Ex: Arenoso, Argiloso" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Ciclo</Label>
-                  <Input value={form.ciclo} onChange={(e) => setForm({ ...form, ciclo: e.target.value })} placeholder="Ex: Precoce, Médio" />
-                </div>
-                <div>
-                  <Label>Safra</Label>
-                  <Input value={form.safra} onChange={(e) => setForm({ ...form, safra: e.target.value })} placeholder="Ex: 2025/2026" />
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <Label>Decêndio Início</Label>
-                  <Input type="number" min={1} max={36} value={form.periodo_plantio_inicio} onChange={(e) => setForm({ ...form, periodo_plantio_inicio: e.target.value })} />
-                </div>
-                <div>
-                  <Label>Decêndio Fim</Label>
-                  <Input type="number" min={1} max={36} value={form.periodo_plantio_fim} onChange={(e) => setForm({ ...form, periodo_plantio_fim: e.target.value })} />
-                </div>
-                <div>
-                  <Label>Risco *</Label>
-                  <Select value={form.risco} onValueChange={(v) => setForm({ ...form, risco: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="baixo">Baixo</SelectItem>
-                      <SelectItem value="medio">Médio</SelectItem>
-                      <SelectItem value="alto">Alto</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div>
-                <Label>Observações</Label>
-                <Textarea value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
-              </div>
-              <div className="flex justify-end gap-2">
-                <DialogClose asChild><Button variant="outline" type="button">Cancelar</Button></DialogClose>
-                <Button type="submit" disabled={saveMutation.isPending || !form.cultura || !form.uf}>
-                  {saveMutation.isPending ? "Salvando..." : "Salvar"}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+              </form>
+            </DialogContent>
+          </Dialog>
+        }
+      />
+
+      <div className="grid gap-4 sm:grid-cols-4">
+        <StatCard icon={<ShieldCheck className="h-4 w-4" />} title="Total Regras" value={String(totalRegras)} loading={isLoading} delay={0} />
+        <StatCard icon={<Leaf className="h-4 w-4" />} title="Culturas Distintas" value={String(culturas)} loading={isLoading} delay={100} />
+        <StatCard icon={<ShieldCheck className="h-4 w-4" />} title="Risco Baixo" value={String(riscoBaixo)} loading={isLoading} delay={200} />
+        <StatCard icon={<AlertTriangle className="h-4 w-4" />} title="Risco Alto" value={String(riscoAlto)} loading={isLoading} delay={300} />
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3 items-end">
-        <div className="w-40">
-          <Label className="text-xs">Filtrar UF</Label>
-          <Select value={filterUf} onValueChange={setFilterUf}>
-            <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              {UFS.map((uf) => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex-1 max-w-xs">
-          <Label className="text-xs">Filtrar Cultura</Label>
-          <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              className="pl-8"
-              placeholder="Buscar cultura..."
-              value={filterCultura}
-              onChange={(e) => setFilterCultura(e.target.value)}
-            />
+      <Card>
+        <CardContent className="py-3 flex gap-3 items-end">
+          <div className="w-40">
+            <Label className="text-xs font-medium text-muted-foreground">Filtrar UF</Label>
+            <Select value={filterUf} onValueChange={setFilterUf}>
+              <SelectTrigger className="h-9"><SelectValue placeholder="Todas" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                {UFS.map((uf) => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
-        </div>
-      </div>
+          <div className="flex-1 max-w-xs">
+            <Label className="text-xs font-medium text-muted-foreground">Filtrar Cultura</Label>
+            <div className="relative">
+              <Search className="absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
+              <Input
+                className="pl-8 h-9"
+                placeholder="Buscar cultura..."
+                value={filterCultura}
+                onChange={(e) => setFilterCultura(e.target.value)}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {isLoading ? (
-        <p className="text-muted-foreground">Carregando...</p>
+        <Card><CardContent className="p-6 space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full rounded-md" />)}
+        </CardContent></Card>
       ) : !filtered?.length ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-3 py-12">
-            <ShieldCheck className="h-10 w-10 text-muted-foreground" />
-            <p className="text-muted-foreground">Nenhuma regra ZARC cadastrada.</p>
-          </CardContent>
-        </Card>
+        <EmptyState icon={<ShieldCheck className="h-6 w-6" />} title="Nenhuma regra ZARC encontrada" description={filterUf !== "all" || filterCultura ? "Tente ajustar os filtros." : "Cadastre a primeira regra de zoneamento."} />
       ) : (
         <Card>
           <Table>

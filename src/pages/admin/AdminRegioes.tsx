@@ -4,6 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -72,23 +75,19 @@ export default function AdminRegioes() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-display text-2xl font-bold">Regiões</h1>
-          <p className="text-muted-foreground">Gerencie as regiões de atuação para atribuição automática de engenheiros.</p>
-        </div>
-        <Button onClick={openNew}><Plus className="mr-1 h-4 w-4" /> Nova Região</Button>
-      </div>
+      <PageHeader
+        title="Regiões"
+        description="Gerencie as regiões de atuação para atribuição automática de engenheiros."
+        icon={<MapPin className="h-5 w-5" />}
+        actions={<Button onClick={openNew}><Plus className="mr-1 h-4 w-4" /> Nova Região</Button>}
+      />
 
       {isLoading ? (
-        <p className="text-muted-foreground">Carregando...</p>
+        <Card><CardContent className="p-6 space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 w-full rounded-md" />)}
+        </CardContent></Card>
       ) : !regioes?.length ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-3 py-12">
-            <MapPin className="h-10 w-10 text-muted-foreground" />
-            <p className="text-muted-foreground">Nenhuma região cadastrada.</p>
-          </CardContent>
-        </Card>
+        <EmptyState icon={<MapPin className="h-6 w-6" />} title="Nenhuma região cadastrada" description="Crie regiões para organizar a atribuição de engenheiros." action={<Button onClick={openNew}><Plus className="mr-1 h-4 w-4" /> Nova Região</Button>} />
       ) : (
         <Card>
           <CardContent className="p-0">

@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/ui/page-header";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -79,15 +81,16 @@ export default function AdminSLA() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-bold">Configuração de SLA</h1>
-        <p className="text-muted-foreground">Defina prazos máximos por etapa e o prazo global das solicitações.</p>
-      </div>
+      <PageHeader
+        title="Configuração de SLA"
+        description="Defina prazos máximos por etapa e o prazo global das solicitações."
+        icon={<Clock className="h-5 w-5" />}
+      />
 
       <Card className="max-w-lg">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            <Clock className="h-4 w-4" /> Prazo Global
+            <Clock className="h-4 w-4 text-primary" /> Prazo Global
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -99,7 +102,9 @@ export default function AdminSLA() {
       </Card>
 
       {isLoading ? (
-        <p className="text-muted-foreground">Carregando...</p>
+        <Card><CardContent className="p-6 space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full rounded-md" />)}
+        </CardContent></Card>
       ) : (
         <Card>
           <CardHeader>

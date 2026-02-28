@@ -5,15 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { BarChart3, Download } from "lucide-react";
+import { BarChart3, Download, FileText, Wallet } from "lucide-react";
 
 function exportCSV(headers: string[], rows: string[][], filename: string) {
   const csv = [headers.join(","), ...rows.map((r) => r.map((c) => `"${c}"`).join(","))].join("\n");
@@ -34,7 +33,7 @@ export default function AdminRelatorios() {
   });
   const [ate, setAte] = useState(() => new Date().toISOString().split("T")[0]);
 
-  const { data: laudos } = useQuery({
+  const { data: laudos, isLoading: loadingLaudos } = useQuery({
     queryKey: ["admin_relatorio_laudos", de, ate],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -61,7 +60,6 @@ export default function AdminRelatorios() {
     },
   });
 
-  // Laudos by engineer
   const engMap = new Map<string, { nome: string; crea: string; count: number }>();
   laudos?.forEach((l) => {
     const eng = (l as any).engenheiros;
@@ -95,39 +93,28 @@ export default function AdminRelatorios() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-bold">Relatórios</h1>
-        <p className="text-muted-foreground">Relatórios da plataforma com exportação CSV.</p>
-      </div>
+      <PageHeader
+        title="Relatórios"
+        description="Relatórios da plataforma com exportação CSV."
+        icon={<BarChart3 className="h-5 w-5" />}
+      />
 
-      <div className="flex items-end gap-4 flex-wrap">
-        <div className="space-y-1">
-          <Label className="text-xs">De</Label>
-          <Input type="date" value={de} onChange={(e) => setDe(e.target.value)} className="w-40" />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Até</Label>
-          <Input type="date" value={ate} onChange={(e) => setAte(e.target.value)} className="w-40" />
-        </div>
-      </div>
+      <Card>
+        <CardContent className="py-3 flex items-end gap-4 flex-wrap">
+          <div className="space-y-1">
+            <Label className="text-xs font-medium text-muted-foreground">De</Label>
+            <Input type="date" value={de} onChange={(e) => setDe(e.target.value)} className="w-40 h-9" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs font-medium text-muted-foreground">Até</Label>
+            <Input type="date" value={ate} onChange={(e) => setAte(e.target.value)} className="w-40 h-9" />
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Laudos finalizados no período</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold font-display">{laudos?.length ?? "—"}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Total pendente (geral)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold font-display text-warning">{formatCurrency(pagPendente ?? 0)}</p>
-          </CardContent>
-        </Card>
+        <StatCard icon={<FileText className="h-4 w-4" />} title="Laudos Finalizados no Período" value={String(laudos?.length ?? 0)} loading={loadingLaudos} delay={0} />
+        <StatCard icon={<Wallet className="h-4 w-4" />} title="Total Pendente (Geral)" value={formatCurrency(pagPendente ?? 0)} delay={100} />
       </div>
 
       {/* Laudos by engineer */}
@@ -139,10 +126,13 @@ export default function AdminRelatorios() {
           </Button>
         </CardHeader>
         <CardContent className="p-0">
-          {engRows.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-8">
-              <BarChart3 className="h-8 w-8 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Sem dados no período.</p>
+          {loadingLaudos ? (
+            <div className="p-6 space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full rounded-md" />)}
+            </div>
+          ) : engRows.length === 0 ? (
+            <div className="p-6">
+              <EmptyState icon={<BarChart3 className="h-6 w-6" />} title="Sem dados no período" description="Ajuste o intervalo de datas para ver os resultados." />
             </div>
           ) : (
             <Table>
@@ -158,7 +148,7 @@ export default function AdminRelatorios() {
                   <TableRow key={e.crea}>
                     <TableCell className="font-medium">{e.nome}</TableCell>
                     <TableCell>{e.crea}</TableCell>
-                    <TableCell className="text-right">{e.count}</TableCell>
+                    <TableCell className="text-right font-medium">{e.count}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -176,7 +166,11 @@ export default function AdminRelatorios() {
           </Button>
         </CardHeader>
         <CardContent className="p-0">
-          {!laudos?.length ? (
+          {loadingLaudos ? (
+            <div className="p-6 space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full rounded-md" />)}
+            </div>
+          ) : !laudos?.length ? (
             <p className="p-6 text-center text-sm text-muted-foreground">Nenhum laudo no período.</p>
           ) : (
             <Table>

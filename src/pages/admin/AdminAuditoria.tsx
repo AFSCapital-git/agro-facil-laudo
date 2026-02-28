@@ -4,6 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -12,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Shield, LogIn } from "lucide-react";
+import { Shield, LogIn, Activity } from "lucide-react";
 import { format } from "date-fns";
 
 export default function AdminAuditoria() {
@@ -79,9 +83,16 @@ export default function AdminAuditoria() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-bold">Auditoria</h1>
-        <p className="text-muted-foreground">Logs de alterações e acessos da plataforma.</p>
+      <PageHeader
+        title="Auditoria"
+        description="Logs de alterações e acessos da plataforma."
+        icon={<Shield className="h-5 w-5" />}
+      />
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard icon={<Activity className="h-4 w-4" />} title="Alterações Registradas" value={String(auditLogs?.length ?? 0)} loading={loadingAudit} delay={0} />
+        <StatCard icon={<LogIn className="h-4 w-4" />} title="Logins Registrados" value={String(loginLogs?.length ?? 0)} loading={loadingLogins} delay={100} />
+        <StatCard icon={<Shield className="h-4 w-4" />} title="Resultados Filtrados" value={String(filteredAudit.length)} loading={loadingAudit} delay={200} />
       </div>
 
       <Tabs defaultValue="changes">
@@ -95,34 +106,33 @@ export default function AdminAuditoria() {
         </TabsList>
 
         <TabsContent value="changes" className="space-y-4">
-          <div className="flex flex-wrap gap-3">
-            <Input
-              placeholder="Buscar..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-60"
-            />
-            <Select value={entityFilter} onValueChange={setEntityFilter}>
-              <SelectTrigger className="w-44">
-                <SelectValue placeholder="Entidade" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas</SelectItem>
-                <SelectItem value="solicitacao">Solicitação</SelectItem>
-                <SelectItem value="laudo">Laudo</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <Card>
+            <CardContent className="py-3 flex flex-wrap gap-3">
+              <Input
+                placeholder="Buscar..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-60 h-9"
+              />
+              <Select value={entityFilter} onValueChange={setEntityFilter}>
+                <SelectTrigger className="w-44 h-9">
+                  <SelectValue placeholder="Entidade" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  <SelectItem value="solicitacao">Solicitação</SelectItem>
+                  <SelectItem value="laudo">Laudo</SelectItem>
+                </SelectContent>
+              </Select>
+            </CardContent>
+          </Card>
 
           {loadingAudit ? (
-            <p className="text-muted-foreground">Carregando...</p>
+            <Card><CardContent className="p-6 space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full rounded-md" />)}
+            </CardContent></Card>
           ) : !filteredAudit.length ? (
-            <Card>
-              <CardContent className="flex flex-col items-center gap-3 py-12">
-                <Shield className="h-10 w-10 text-muted-foreground" />
-                <p className="text-muted-foreground">Nenhum registro encontrado.</p>
-              </CardContent>
-            </Card>
+            <EmptyState icon={<Shield className="h-6 w-6" />} title="Nenhum registro encontrado" description="Tente ajustar os filtros de busca." />
           ) : (
             <Card>
               <ScrollArea className="max-h-[600px]">
@@ -170,14 +180,11 @@ export default function AdminAuditoria() {
 
         <TabsContent value="logins" className="space-y-4">
           {loadingLogins ? (
-            <p className="text-muted-foreground">Carregando...</p>
+            <Card><CardContent className="p-6 space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 w-full rounded-md" />)}
+            </CardContent></Card>
           ) : !(loginLogs ?? []).length ? (
-            <Card>
-              <CardContent className="flex flex-col items-center gap-3 py-12">
-                <LogIn className="h-10 w-10 text-muted-foreground" />
-                <p className="text-muted-foreground">Nenhum login registrado.</p>
-              </CardContent>
-            </Card>
+            <EmptyState icon={<LogIn className="h-6 w-6" />} title="Nenhum login registrado" />
           ) : (
             <Card>
               <ScrollArea className="max-h-[600px]">
