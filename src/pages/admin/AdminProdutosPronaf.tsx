@@ -7,44 +7,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogClose,
-  DialogDescription,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose, DialogDescription,
 } from "@/components/ui/dialog";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, FileText, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Pencil, Trash2, FileText, ChevronDown, ChevronUp, Package, CheckCircle2 } from "lucide-react";
 
 interface PronafProduto {
   id: string;
@@ -92,8 +74,6 @@ export default function AdminProdutosPronaf() {
   const [editingProduto, setEditingProduto] = useState<PronafProduto | null>(null);
   const [form, setForm] = useState(emptyProduto);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  // Doc form
   const [openDoc, setOpenDoc] = useState(false);
   const [docForm, setDocForm] = useState({ nome_documento: "", descricao: "", obrigatorio: true, ordem: 0 });
   const [docProdutoId, setDocProdutoId] = useState<string | null>(null);
@@ -101,10 +81,7 @@ export default function AdminProdutosPronaf() {
   const { data: produtos, isLoading } = useQuery({
     queryKey: ["pronaf_produtos"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("pronaf_produtos")
-        .select("*")
-        .order("nome");
+      const { data, error } = await supabase.from("pronaf_produtos").select("*").order("nome");
       if (error) throw error;
       return data as PronafProduto[];
     },
@@ -113,10 +90,7 @@ export default function AdminProdutosPronaf() {
   const { data: documentos } = useQuery({
     queryKey: ["pronaf_documentos"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("pronaf_documentos")
-        .select("*")
-        .order("ordem");
+      const { data, error } = await supabase.from("pronaf_documentos").select("*").order("ordem");
       if (error) throw error;
       return data as PronafDocumento[];
     },
@@ -197,202 +171,151 @@ export default function AdminProdutosPronaf() {
   const openEdit = (p: PronafProduto) => {
     setEditingProduto(p);
     setForm({
-      nome: p.nome,
-      finalidade: p.finalidade,
-      grupo_alvo: p.grupo_alvo,
-      o_que_financia: p.o_que_financia,
-      limite_valor: p.limite_valor,
-      juros: p.juros,
-      prazo_reembolso: p.prazo_reembolso,
-      carencia: p.carencia,
-      bonus_adimplencia: p.bonus_adimplencia,
-      valor_engenheiro: p.valor_engenheiro ?? 0,
-      tipo_valor_engenheiro: p.tipo_valor_engenheiro ?? "fixo",
+      nome: p.nome, finalidade: p.finalidade, grupo_alvo: p.grupo_alvo,
+      o_que_financia: p.o_que_financia, limite_valor: p.limite_valor, juros: p.juros,
+      prazo_reembolso: p.prazo_reembolso, carencia: p.carencia, bonus_adimplencia: p.bonus_adimplencia,
+      valor_engenheiro: p.valor_engenheiro ?? 0, tipo_valor_engenheiro: p.tipo_valor_engenheiro ?? "fixo",
     });
     setOpenProduto(true);
   };
 
-  const openNew = () => {
-    setEditingProduto(null);
-    setForm(emptyProduto);
-    setOpenProduto(true);
-  };
+  const openNew = () => { setEditingProduto(null); setForm(emptyProduto); setOpenProduto(true); };
 
   const getDocsForProduct = (produtoId: string) =>
     documentos?.filter((d) => d.produto_id === produtoId) ?? [];
 
+  const totalProdutos = produtos?.length ?? 0;
+  const ativos = produtos?.filter((p) => p.ativo).length ?? 0;
+  const totalDocs = documentos?.length ?? 0;
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-display text-2xl font-bold">Produtos PRONAF</h1>
-          <p className="text-muted-foreground">Gerencie modalidades e documentações exigidas.</p>
-        </div>
-        <Dialog open={openProduto} onOpenChange={setOpenProduto}>
-          <DialogTrigger asChild>
-            <Button onClick={openNew}>
-              <Plus className="mr-2 h-4 w-4" /> Novo Produto
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{editingProduto ? "Editar Produto" : "Novo Produto PRONAF"}</DialogTitle>
-              <DialogDescription>Preencha os dados da modalidade PRONAF.</DialogDescription>
-            </DialogHeader>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                saveProduto.mutate();
-              }}
-              className="space-y-4"
-            >
-              <div>
-                <Label>Nome</Label>
-                <Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} required />
-              </div>
-              <div>
-                <Label>Finalidade</Label>
-                <Select value={form.finalidade} onValueChange={(v) => setForm({ ...form, finalidade: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="investimento">Investimento</SelectItem>
-                    <SelectItem value="custeio">Custeio</SelectItem>
-                    <SelectItem value="capital_de_giro">Capital de Giro</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Grupo Alvo</Label>
-                <Textarea value={form.grupo_alvo} onChange={(e) => setForm({ ...form, grupo_alvo: e.target.value })} />
-              </div>
-              <div>
-                <Label>O que financia</Label>
-                <Textarea value={form.o_que_financia} onChange={(e) => setForm({ ...form, o_que_financia: e.target.value })} />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+      <PageHeader
+        title="Produtos PRONAF"
+        description="Gerencie modalidades e documentações exigidas."
+        icon={<Package className="h-5 w-5" />}
+        actions={
+          <Dialog open={openProduto} onOpenChange={setOpenProduto}>
+            <DialogTrigger asChild>
+              <Button onClick={openNew}><Plus className="mr-2 h-4 w-4" /> Novo Produto</Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>{editingProduto ? "Editar Produto" : "Novo Produto PRONAF"}</DialogTitle>
+                <DialogDescription>Preencha os dados da modalidade PRONAF.</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={(e) => { e.preventDefault(); saveProduto.mutate(); }} className="space-y-4">
                 <div>
-                  <Label>Limite de Valor</Label>
-                  <Input value={form.limite_valor} onChange={(e) => setForm({ ...form, limite_valor: e.target.value })} />
+                  <Label>Nome</Label>
+                  <Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} required />
                 </div>
                 <div>
-                  <Label>Juros</Label>
-                  <Input value={form.juros} onChange={(e) => setForm({ ...form, juros: e.target.value })} />
+                  <Label>Finalidade</Label>
+                  <Select value={form.finalidade} onValueChange={(v) => setForm({ ...form, finalidade: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="investimento">Investimento</SelectItem>
+                      <SelectItem value="custeio">Custeio</SelectItem>
+                      <SelectItem value="capital_de_giro">Capital de Giro</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
-                  <Label>Prazo de Reembolso</Label>
-                  <Input value={form.prazo_reembolso} onChange={(e) => setForm({ ...form, prazo_reembolso: e.target.value })} />
+                  <Label>Grupo Alvo</Label>
+                  <Textarea value={form.grupo_alvo} onChange={(e) => setForm({ ...form, grupo_alvo: e.target.value })} />
                 </div>
                 <div>
-                  <Label>Carência</Label>
-                  <Input value={form.carencia} onChange={(e) => setForm({ ...form, carencia: e.target.value })} />
+                  <Label>O que financia</Label>
+                  <Textarea value={form.o_que_financia} onChange={(e) => setForm({ ...form, o_que_financia: e.target.value })} />
                 </div>
-              </div>
-              <div>
-                <Label>Bônus de Adimplência</Label>
-                <Input value={form.bonus_adimplencia} onChange={(e) => setForm({ ...form, bonus_adimplencia: e.target.value })} />
-              </div>
-              <div className="border-t pt-3 space-y-3">
-                <h4 className="font-medium text-sm">Precificação do Engenheiro</h4>
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label>Tipo de Valor</Label>
-                    <Select value={form.tipo_valor_engenheiro} onValueChange={(v) => setForm({ ...form, tipo_valor_engenheiro: v })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="fixo">Valor Fixo (R$)</SelectItem>
-                        <SelectItem value="percentual">Percentual (%)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>{form.tipo_valor_engenheiro === "fixo" ? "Valor (R$)" : "Percentual (%)"}</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={form.valor_engenheiro}
-                      onChange={(e) => setForm({ ...form, valor_engenheiro: parseFloat(e.target.value) || 0 })}
-                    />
+                  <div><Label>Limite de Valor</Label><Input value={form.limite_valor} onChange={(e) => setForm({ ...form, limite_valor: e.target.value })} /></div>
+                  <div><Label>Juros</Label><Input value={form.juros} onChange={(e) => setForm({ ...form, juros: e.target.value })} /></div>
+                  <div><Label>Prazo de Reembolso</Label><Input value={form.prazo_reembolso} onChange={(e) => setForm({ ...form, prazo_reembolso: e.target.value })} /></div>
+                  <div><Label>Carência</Label><Input value={form.carencia} onChange={(e) => setForm({ ...form, carencia: e.target.value })} /></div>
+                </div>
+                <div><Label>Bônus de Adimplência</Label><Input value={form.bonus_adimplencia} onChange={(e) => setForm({ ...form, bonus_adimplencia: e.target.value })} /></div>
+                <div className="border-t pt-3 space-y-3">
+                  <h4 className="font-medium text-sm">Precificação do Engenheiro</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Tipo de Valor</Label>
+                      <Select value={form.tipo_valor_engenheiro} onValueChange={(v) => setForm({ ...form, tipo_valor_engenheiro: v })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="fixo">Valor Fixo (R$)</SelectItem>
+                          <SelectItem value="percentual">Percentual (%)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>{form.tipo_valor_engenheiro === "fixo" ? "Valor (R$)" : "Percentual (%)"}</Label>
+                      <Input type="number" step="0.01" value={form.valor_engenheiro} onChange={(e) => setForm({ ...form, valor_engenheiro: parseFloat(e.target.value) || 0 })} />
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="flex justify-end gap-2">
-                <DialogClose asChild>
-                  <Button variant="outline" type="button">Cancelar</Button>
-                </DialogClose>
-                <Button type="submit" disabled={saveProduto.isPending}>
-                  {saveProduto.isPending ? "Salvando..." : "Salvar"}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+                <div className="flex justify-end gap-2">
+                  <DialogClose asChild><Button variant="outline" type="button">Cancelar</Button></DialogClose>
+                  <Button type="submit" disabled={saveProduto.isPending}>{saveProduto.isPending ? "Salvando..." : "Salvar"}</Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        }
+      />
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard icon={<Package className="h-4 w-4" />} title="Total Produtos" value={String(totalProdutos)} loading={isLoading} delay={0} />
+        <StatCard icon={<CheckCircle2 className="h-4 w-4" />} title="Ativos" value={String(ativos)} loading={isLoading} delay={100} />
+        <StatCard icon={<FileText className="h-4 w-4" />} title="Documentos Exigidos" value={String(totalDocs)} loading={isLoading} delay={200} />
       </div>
 
       {isLoading ? (
-        <p className="text-muted-foreground">Carregando...</p>
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-lg" />)}
+        </div>
       ) : !produtos?.length ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-3 py-12">
-            <FileText className="h-10 w-10 text-muted-foreground" />
-            <p className="text-muted-foreground">Nenhum produto cadastrado.</p>
-          </CardContent>
-        </Card>
+        <EmptyState icon={<Package className="h-6 w-6" />} title="Nenhum produto cadastrado" description="Cadastre a primeira modalidade PRONAF." action={<Button onClick={openNew}><Plus className="mr-2 h-4 w-4" /> Novo Produto</Button>} />
       ) : (
         <div className="space-y-3">
           {produtos.map((p) => {
             const docs = getDocsForProduct(p.id);
             const isExpanded = expandedId === p.id;
             return (
-              <Card key={p.id}>
+              <Card key={p.id} className="hover:shadow-sm transition-shadow">
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
-                    <div
-                      className="flex-1 cursor-pointer"
-                      onClick={() => setExpandedId(isExpanded ? null : p.id)}
-                    >
+                    <div className="flex-1 cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : p.id)}>
                       <div className="flex items-center gap-2">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                          <Package className="h-4 w-4" />
+                        </div>
                         <CardTitle className="text-base">{p.nome}</CardTitle>
-                        <Badge variant={p.ativo ? "default" : "secondary"}>
-                          {p.ativo ? "Ativo" : "Inativo"}
-                        </Badge>
+                        <Badge variant={p.ativo ? "default" : "secondary"}>{p.ativo ? "Ativo" : "Inativo"}</Badge>
                         <Badge variant="outline">{p.finalidade}</Badge>
                       </div>
-                      <p className="mt-1 text-sm text-muted-foreground line-clamp-1">
-                        {p.grupo_alvo}
-                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground line-clamp-1 ml-10">{p.grupo_alvo}</p>
                     </div>
                     <div className="flex items-center gap-1">
                       <Button size="icon" variant="ghost" onClick={() => setExpandedId(isExpanded ? null : p.id)}>
                         {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                       </Button>
-                      <Button size="icon" variant="ghost" onClick={() => openEdit(p)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => toggleAtivo.mutate({ id: p.id, ativo: !p.ativo })}
-                      >
+                      <Button size="icon" variant="ghost" onClick={() => openEdit(p)}><Pencil className="h-4 w-4" /></Button>
+                      <Button size="sm" variant="ghost" onClick={() => toggleAtivo.mutate({ id: p.id, ativo: !p.ativo })}>
                         {p.ativo ? "Desativar" : "Ativar"}
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button size="icon" variant="ghost" className="text-destructive">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <Button size="icon" variant="ghost" className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
                             <AlertDialogTitle>Excluir produto?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Isso removerá o produto e todas as documentações associadas.
-                            </AlertDialogDescription>
+                            <AlertDialogDescription>Isso removerá o produto e todas as documentações associadas.</AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => deleteProduto.mutate(p.id)}>
-                              Excluir
-                            </AlertDialogAction>
+                            <AlertDialogAction onClick={() => deleteProduto.mutate(p.id)}>Excluir</AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
@@ -409,21 +332,15 @@ export default function AdminProdutosPronaf() {
                       <div><span className="font-medium">Bônus:</span> {p.bonus_adimplencia || "—"}</div>
                       <div>
                         <span className="font-medium">Pagamento Eng.:</span>{" "}
-                        {p.tipo_valor_engenheiro === "percentual"
-                          ? `${p.valor_engenheiro}%`
-                          : `R$ ${(p.valor_engenheiro ?? 0).toFixed(2)}`}
+                        {p.tipo_valor_engenheiro === "percentual" ? `${p.valor_engenheiro}%` : `R$ ${(p.valor_engenheiro ?? 0).toFixed(2)}`}
                       </div>
                     </div>
                     {p.o_que_financia && (
-                      <div className="text-sm">
-                        <span className="font-medium">O que financia:</span> {p.o_que_financia}
-                      </div>
+                      <div className="text-sm"><span className="font-medium">O que financia:</span> {p.o_que_financia}</div>
                     )}
-
                     <div className="border-t pt-3">
                       <ProdutoRegrasRegionais produtoId={p.id} produtoNome={p.nome} />
                     </div>
-
                     <div className="border-t pt-3">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-medium text-sm">Documentações Exigidas ({docs.length})</h4>
@@ -434,119 +351,44 @@ export default function AdminProdutosPronaf() {
                             </Button>
                           </DialogTrigger>
                           <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Adicionar Documento</DialogTitle>
-                              <DialogDescription>Documentação exigida para {p.nome}.</DialogDescription>
-                            </DialogHeader>
-                            <form
-                              onSubmit={(e) => {
-                                e.preventDefault();
-                                saveDoc.mutate();
-                              }}
-                              className="space-y-4"
-                            >
-                              <div>
-                                <Label>Nome do Documento</Label>
-                                <Input
-                                  value={docForm.nome_documento}
-                                  onChange={(e) => setDocForm({ ...docForm, nome_documento: e.target.value })}
-                                  required
-                                />
+                            <DialogHeader><DialogTitle>Adicionar Documento</DialogTitle></DialogHeader>
+                            <form onSubmit={(e) => { e.preventDefault(); saveDoc.mutate(); }} className="space-y-4">
+                              <div><Label>Nome do Documento</Label><Input value={docForm.nome_documento} onChange={(e) => setDocForm({ ...docForm, nome_documento: e.target.value })} required /></div>
+                              <div><Label>Descrição</Label><Textarea value={docForm.descricao} onChange={(e) => setDocForm({ ...docForm, descricao: e.target.value })} /></div>
+                              <div className="flex items-center gap-2">
+                                <input type="checkbox" checked={docForm.obrigatorio} onChange={(e) => setDocForm({ ...docForm, obrigatorio: e.target.checked })} className="rounded" />
+                                <Label>Obrigatório</Label>
                               </div>
-                              <div>
-                                <Label>Descrição</Label>
-                                <Textarea
-                                  value={docForm.descricao}
-                                  onChange={(e) => setDocForm({ ...docForm, descricao: e.target.value })}
-                                />
-                              </div>
-                              <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                  <Label>Ordem</Label>
-                                  <Input
-                                    type="number"
-                                    value={docForm.ordem}
-                                    onChange={(e) => setDocForm({ ...docForm, ordem: parseInt(e.target.value) || 0 })}
-                                  />
-                                </div>
-                                <div className="flex items-end gap-2">
-                                  <input
-                                    type="checkbox"
-                                    id={`obrigatorio-${p.id}`}
-                                    checked={docForm.obrigatorio}
-                                    onChange={(e) => setDocForm({ ...docForm, obrigatorio: e.target.checked })}
-                                    className="h-4 w-4"
-                                  />
-                                  <Label htmlFor={`obrigatorio-${p.id}`}>Obrigatório</Label>
-                                </div>
-                              </div>
+                              <div><Label>Ordem</Label><Input type="number" value={docForm.ordem} onChange={(e) => setDocForm({ ...docForm, ordem: parseInt(e.target.value) || 0 })} /></div>
                               <div className="flex justify-end gap-2">
-                                <DialogClose asChild>
-                                  <Button variant="outline" type="button">Cancelar</Button>
-                                </DialogClose>
-                                <Button type="submit" disabled={saveDoc.isPending}>
-                                  {saveDoc.isPending ? "Salvando..." : "Salvar"}
-                                </Button>
+                                <DialogClose asChild><Button variant="outline" type="button">Cancelar</Button></DialogClose>
+                                <Button type="submit" disabled={saveDoc.isPending}>{saveDoc.isPending ? "Salvando..." : "Adicionar"}</Button>
                               </div>
                             </form>
                           </DialogContent>
                         </Dialog>
                       </div>
                       {docs.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">Nenhum documento cadastrado.</p>
+                        <p className="text-xs text-muted-foreground">Nenhuma documentação cadastrada.</p>
                       ) : (
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>#</TableHead>
                               <TableHead>Documento</TableHead>
                               <TableHead>Obrigatório</TableHead>
-                              <TableHead className="w-12" />
+                              <TableHead className="w-16" />
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {docs.map((doc) => (
-                              <TableRow key={doc.id}>
-                                <TableCell className="text-muted-foreground">{doc.ordem}</TableCell>
+                            {docs.map((d) => (
+                              <TableRow key={d.id}>
                                 <TableCell>
-                                  <div>
-                                    <span className="font-medium">{doc.nome_documento}</span>
-                                    {doc.descricao && (
-                                      <p className="text-xs text-muted-foreground">{doc.descricao}</p>
-                                    )}
-                                  </div>
+                                  <div><span className="font-medium text-sm">{d.nome_documento}</span>{d.descricao && <p className="text-xs text-muted-foreground">{d.descricao}</p>}</div>
                                 </TableCell>
-                                <TableCell>
-                                  <Badge variant={doc.obrigatorio ? "default" : "outline"}>
-                                    {doc.obrigatorio ? "Sim" : "Não"}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell>
-                                  <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                      <Button size="icon" variant="ghost" className="text-destructive">
-                                        <Trash2 className="h-3 w-3" />
-                                      </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                      <AlertDialogHeader>
-                                        <AlertDialogTitle>Excluir documento?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                          Remover "{doc.nome_documento}" da lista de documentações.
-                                        </AlertDialogDescription>
-                                      </AlertDialogHeader>
-                                      <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => deleteDoc.mutate(doc.id)}>
-                                          Excluir
-                                        </AlertDialogAction>
-                                      </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                  </AlertDialog>
-                                </TableCell>
+                                <TableCell><Badge variant={d.obrigatorio ? "default" : "outline"}>{d.obrigatorio ? "Sim" : "Não"}</Badge></TableCell>
+                                <TableCell><Button size="icon" variant="ghost" className="text-destructive" onClick={() => deleteDoc.mutate(d.id)}><Trash2 className="h-3.5 w-3.5" /></Button></TableCell>
                               </TableRow>
-                            ))}
-                          </TableBody>
+                            ))}</TableBody>
                         </Table>
                       )}
                     </div>

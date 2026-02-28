@@ -3,16 +3,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { CreditCard } from "lucide-react";
+import { CreditCard, Wallet, Clock, CheckCircle2 } from "lucide-react";
 
 export default function AdminPagamentos() {
   const { toast } = useToast();
@@ -53,22 +52,33 @@ export default function AdminPagamentos() {
   const formatCurrency = (v: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
+  const total = pagamentos?.length ?? 0;
+  const pendentes = pagamentos?.filter((p) => p.status_pagamento === "pendente") ?? [];
+  const pagos = pagamentos?.filter((p) => p.status_pagamento === "pago") ?? [];
+  const valorPendente = pendentes.reduce((s, p) => s + p.valor_bruto, 0);
+  const valorPago = pagos.reduce((s, p) => s + p.valor_bruto, 0);
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-bold">Gestão de Pagamentos</h1>
-        <p className="text-muted-foreground">Gerencie os pagamentos dos engenheiros.</p>
+      <PageHeader
+        title="Gestão de Pagamentos"
+        description="Gerencie os pagamentos dos engenheiros."
+        icon={<CreditCard className="h-5 w-5" />}
+      />
+
+      <div className="grid gap-4 sm:grid-cols-4">
+        <StatCard icon={<CreditCard className="h-4 w-4" />} title="Total Pagamentos" value={String(total)} loading={isLoading} delay={0} />
+        <StatCard icon={<Clock className="h-4 w-4" />} title="Pendentes" value={String(pendentes.length)} description={formatCurrency(valorPendente)} loading={isLoading} delay={100} />
+        <StatCard icon={<CheckCircle2 className="h-4 w-4" />} title="Pagos" value={String(pagos.length)} description={formatCurrency(valorPago)} loading={isLoading} delay={200} />
+        <StatCard icon={<Wallet className="h-4 w-4" />} title="Valor Pendente" value={formatCurrency(valorPendente)} loading={isLoading} delay={300} />
       </div>
 
       {isLoading ? (
-        <p className="text-muted-foreground">Carregando...</p>
+        <Card><CardContent className="p-6 space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-md" />)}
+        </CardContent></Card>
       ) : !pagamentos?.length ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-3 py-12">
-            <CreditCard className="h-10 w-10 text-muted-foreground" />
-            <p className="text-muted-foreground">Nenhum pagamento registrado.</p>
-          </CardContent>
-        </Card>
+        <EmptyState icon={<CreditCard className="h-6 w-6" />} title="Nenhum pagamento registrado" description="Os pagamentos aparecem aqui quando laudos são finalizados." />
       ) : (
         <Card>
           <CardContent className="p-0">
@@ -92,7 +102,7 @@ export default function AdminPagamentos() {
                     <TableRow key={p.id}>
                       <TableCell className="font-medium">{profile?.nome || "—"}</TableCell>
                       <TableCell>{eng?.crea || "—"}</TableCell>
-                      <TableCell>{formatCurrency(p.valor_bruto)}</TableCell>
+                      <TableCell className="font-medium">{formatCurrency(p.valor_bruto)}</TableCell>
                       <TableCell>
                         <Badge variant={p.status_pagamento === "pago" ? "default" : "outline"}>
                           {p.status_pagamento}

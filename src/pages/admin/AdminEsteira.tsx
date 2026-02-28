@@ -6,6 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -13,7 +17,7 @@ import {
   Tabs, TabsContent, TabsList, TabsTrigger,
 } from "@/components/ui/tabs";
 import {
-  ArrowRight, Download, BarChart3, GitBranch, Users, Clock, CheckCircle2, XCircle, FileText,
+  ArrowRight, Download, BarChart3, GitBranch, Users, Clock, CheckCircle2, XCircle, FileText, TrendingUp, AlertTriangle,
 } from "lucide-react";
 
 /* ── Pipeline stages ── */
@@ -62,9 +66,7 @@ export default function AdminEsteira() {
   });
   const [ate, setAte] = useState(() => new Date().toISOString().split("T")[0]);
 
-  /* ── Data fetching ── */
-
-  const { data: solicitacoes } = useQuery({
+  const { data: solicitacoes, isLoading: loadingSol } = useQuery({
     queryKey: ["admin_esteira_solicitacoes"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -174,7 +176,6 @@ export default function AdminEsteira() {
     return counts;
   }, [solicitacoes]);
 
-  // Mesa performance: events by mesa user in period
   const mesaPerformance = useMemo(() => {
     const map = new Map<string, { nome: string; acoes: number; aprovacoes: number; reprovacoes: number }>();
     mesaUsers?.forEach((u) => {
@@ -191,7 +192,6 @@ export default function AdminEsteira() {
     return Array.from(map.values()).sort((a, b) => b.acoes - a.acoes);
   }, [eventos, mesaUsers]);
 
-  // Engenheiro performance: laudos count & avg time
   const engPerformance = useMemo(() => {
     const map = new Map<string, { nome: string; crea: string; laudos_total: number; finalizados: number; em_andamento: number }>();
     engenheiros?.forEach((e) => {
@@ -218,13 +218,11 @@ export default function AdminEsteira() {
     return Array.from(map.values()).sort((a, b) => b.finalizados - a.finalizados);
   }, [solicitacoes, engenheiros]);
 
-  // Banco performance: counts per banco
   const bancoPerformance = useMemo(() => {
     const map = new Map<string, { nome: string; total: number; aprovados: number; reprovados: number; pendentes: number }>();
     solicitacoes?.forEach((s) => {
       if (!s.banco_parceiro_id) return;
       if (!map.has(s.banco_parceiro_id)) {
-        const nome = (s as any).pronaf_produtos?.nome || s.banco_parceiro_id;
         map.set(s.banco_parceiro_id, { nome: "", total: 0, aprovados: 0, reprovados: 0, pendentes: 0 });
       }
       const entry = map.get(s.banco_parceiro_id)!;
@@ -233,14 +231,12 @@ export default function AdminEsteira() {
       else if (s.status_banco === "reprovado") entry.reprovados++;
       else entry.pendentes++;
     });
-    // Enrich with banco names from bancoUsers
     bancoUsers?.forEach((bu) => {
       const bpId = bu.banco_parceiro_id;
       if (map.has(bpId)) {
         map.get(bpId)!.nome = (bu as any).bancos_parceiros?.nome || bpId;
       }
     });
-    // Also try direct name from solicitacoes
     solicitacoes?.forEach((s) => {
       if (s.banco_parceiro_id && map.has(s.banco_parceiro_id) && !map.get(s.banco_parceiro_id)!.nome) {
         map.get(s.banco_parceiro_id)!.nome = s.banco_parceiro_id;
@@ -250,8 +246,9 @@ export default function AdminEsteira() {
   }, [solicitacoes, bancoUsers]);
 
   const totalSolicitacoes = solicitacoes?.length ?? 0;
-
-  /* ── CSV exports ── */
+  const pendentes = statusCounts["pendente"] ?? 0;
+  const emAnalise = (statusCounts["em_analise_mesa"] ?? 0) + (statusCounts["docs_em_validacao"] ?? 0);
+  const prontas = statusCounts["pronta_para_banco"] ?? 0;
 
   const handleExportMesa = () => {
     const headers = ["Membro", "Ações no Período", "Aprovações", "Reprovações"];
@@ -273,58 +270,73 @@ export default function AdminEsteira() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-bold flex items-center gap-2">
-          <GitBranch className="h-6 w-6" /> Esteira & Desempenho
-        </h1>
-        <p className="text-muted-foreground">Visão completa do pipeline e métricas de desempenho de todas as equipes.</p>
+      <PageHeader
+        title="Esteira & Desempenho"
+        description="Visão completa do pipeline e métricas de desempenho de todas as equipes."
+        icon={<GitBranch className="h-5 w-5" />}
+      />
+
+      {/* KPI Summary */}
+      <div className="grid gap-4 sm:grid-cols-4">
+        <StatCard icon={<FileText className="h-4 w-4" />} title="Total Solicitações" value={String(totalSolicitacoes)} loading={loadingSol} delay={0} />
+        <StatCard icon={<AlertTriangle className="h-4 w-4" />} title="Pendentes" value={String(pendentes)} loading={loadingSol} delay={100} />
+        <StatCard icon={<Clock className="h-4 w-4" />} title="Em Análise" value={String(emAnalise)} loading={loadingSol} delay={200} />
+        <StatCard icon={<TrendingUp className="h-4 w-4" />} title="Prontas p/ Banco" value={String(prontas)} loading={loadingSol} delay={300} />
       </div>
 
       {/* Date filter */}
-      <div className="flex items-end gap-4 flex-wrap">
-        <div className="space-y-1">
-          <Label className="text-xs">De</Label>
-          <Input type="date" value={de} onChange={(e) => setDe(e.target.value)} className="w-40" />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Até</Label>
-          <Input type="date" value={ate} onChange={(e) => setAte(e.target.value)} className="w-40" />
-        </div>
-      </div>
-
-      {/* ── Pipeline Funnel ── */}
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <FileText className="h-4 w-4" /> Pipeline de Solicitações
-            <Badge variant="outline" className="ml-auto">{totalSolicitacoes} total</Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap items-center gap-1">
-            {pipelineStages.map((stage, i) => {
-              const count = statusCounts[stage.key] || 0;
-              const pct = totalSolicitacoes > 0 ? Math.round((count / totalSolicitacoes) * 100) : 0;
-              return (
-                <div key={stage.key} className="flex items-center gap-1">
-                  <div className="flex flex-col items-center min-w-[80px]">
-                    <div className={`w-full rounded-md px-2 py-2 text-center ${stage.color} text-white text-xs font-medium`}>
-                      {count}
-                    </div>
-                    <span className="text-[10px] text-muted-foreground mt-1 text-center leading-tight">{stage.label}</span>
-                    <span className="text-[10px] text-muted-foreground">{pct}%</span>
-                  </div>
-                  {i < pipelineStages.length - 1 && (
-                    <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
-                  )}
-                </div>
-              );
-            })}
+        <CardContent className="py-3 flex items-end gap-4 flex-wrap">
+          <div className="space-y-1">
+            <Label className="text-xs font-medium text-muted-foreground">De</Label>
+            <Input type="date" value={de} onChange={(e) => setDe(e.target.value)} className="w-40 h-9" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs font-medium text-muted-foreground">Até</Label>
+            <Input type="date" value={ate} onChange={(e) => setAte(e.target.value)} className="w-40 h-9" />
           </div>
         </CardContent>
       </Card>
 
-      {/* ── Banco & Laudo Funnels ── */}
+      {/* Pipeline Funnel */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <FileText className="h-4 w-4 text-primary" /> Pipeline de Solicitações
+            <Badge variant="outline" className="ml-auto">{totalSolicitacoes} total</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loadingSol ? (
+            <div className="flex gap-2">
+              {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-16 flex-1 rounded-md" />)}
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-1">
+              {pipelineStages.map((stage, i) => {
+                const count = statusCounts[stage.key] || 0;
+                const pct = totalSolicitacoes > 0 ? Math.round((count / totalSolicitacoes) * 100) : 0;
+                return (
+                  <div key={stage.key} className="flex items-center gap-1">
+                    <div className="flex flex-col items-center min-w-[80px]">
+                      <div className={`w-full rounded-md px-2 py-2 text-center ${stage.color} text-white text-xs font-medium`}>
+                        {count}
+                      </div>
+                      <span className="text-[10px] text-muted-foreground mt-1 text-center leading-tight">{stage.label}</span>
+                      <span className="text-[10px] text-muted-foreground">{pct}%</span>
+                    </div>
+                    {i < pipelineStages.length - 1 && (
+                      <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Banco & Laudo Funnels */}
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
           <CardHeader className="pb-2">
@@ -374,7 +386,7 @@ export default function AdminEsteira() {
         </Card>
       </div>
 
-      {/* ── Team Performance Tabs ── */}
+      {/* Team Performance Tabs */}
       <Tabs defaultValue="mesa">
         <TabsList>
           <TabsTrigger value="mesa">Mesa de Produtos ({mesaPerformance.length})</TabsTrigger>
@@ -382,12 +394,11 @@ export default function AdminEsteira() {
           <TabsTrigger value="bancos">Bancos ({bancoPerformance.length})</TabsTrigger>
         </TabsList>
 
-        {/* Mesa */}
         <TabsContent value="mesa">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
-                <Users className="h-4 w-4" /> Desempenho da Mesa
+                <Users className="h-4 w-4 text-primary" /> Desempenho da Mesa
               </CardTitle>
               <Button size="sm" variant="outline" className="gap-1" onClick={handleExportMesa}>
                 <Download className="h-3.5 w-3.5" /> CSV
@@ -395,7 +406,9 @@ export default function AdminEsteira() {
             </CardHeader>
             <CardContent className="p-0">
               {mesaPerformance.length === 0 ? (
-                <EmptyState text="Nenhum membro da mesa cadastrado." />
+                <div className="p-6">
+                  <EmptyState icon={<Users className="h-6 w-6" />} title="Nenhum membro da mesa cadastrado" description="Adicione membros na página de Usuários." />
+                </div>
               ) : (
                 <Table>
                   <TableHeader>
@@ -426,12 +439,11 @@ export default function AdminEsteira() {
           </Card>
         </TabsContent>
 
-        {/* Engenheiros */}
         <TabsContent value="engenheiros">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
-                <Users className="h-4 w-4" /> Desempenho dos Engenheiros
+                <BarChart3 className="h-4 w-4 text-primary" /> Desempenho dos Engenheiros
               </CardTitle>
               <Button size="sm" variant="outline" className="gap-1" onClick={handleExportEng}>
                 <Download className="h-3.5 w-3.5" /> CSV
@@ -439,7 +451,9 @@ export default function AdminEsteira() {
             </CardHeader>
             <CardContent className="p-0">
               {engPerformance.length === 0 ? (
-                <EmptyState text="Nenhum engenheiro aprovado." />
+                <div className="p-6">
+                  <EmptyState icon={<Users className="h-6 w-6" />} title="Nenhum engenheiro com laudos" />
+                </div>
               ) : (
                 <Table>
                   <TableHeader>
@@ -455,14 +469,12 @@ export default function AdminEsteira() {
                     {engPerformance.map((e, i) => (
                       <TableRow key={i}>
                         <TableCell className="font-medium">{e.nome}</TableCell>
-                        <TableCell className="text-muted-foreground">{e.crea}</TableCell>
+                        <TableCell>{e.crea}</TableCell>
                         <TableCell className="text-right">{e.laudos_total}</TableCell>
                         <TableCell className="text-right">
                           <span className="text-success font-medium">{e.finalizados}</span>
                         </TableCell>
-                        <TableCell className="text-right">
-                          <span className="text-warning font-medium">{e.em_andamento}</span>
-                        </TableCell>
+                        <TableCell className="text-right">{e.em_andamento}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -472,12 +484,11 @@ export default function AdminEsteira() {
           </Card>
         </TabsContent>
 
-        {/* Bancos */}
         <TabsContent value="bancos">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
-                <Users className="h-4 w-4" /> Desempenho por Banco
+                <BarChart3 className="h-4 w-4 text-primary" /> Desempenho por Banco
               </CardTitle>
               <Button size="sm" variant="outline" className="gap-1" onClick={handleExportBanco}>
                 <Download className="h-3.5 w-3.5" /> CSV
@@ -485,7 +496,9 @@ export default function AdminEsteira() {
             </CardHeader>
             <CardContent className="p-0">
               {bancoPerformance.length === 0 ? (
-                <EmptyState text="Nenhuma solicitação vinculada a banco." />
+                <div className="p-6">
+                  <EmptyState icon={<Users className="h-6 w-6" />} title="Nenhum dado bancário disponível" />
+                </div>
               ) : (
                 <Table>
                   <TableHeader>
@@ -518,15 +531,6 @@ export default function AdminEsteira() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
-  );
-}
-
-function EmptyState({ text }: { text: string }) {
-  return (
-    <div className="flex flex-col items-center gap-2 py-8">
-      <BarChart3 className="h-8 w-8 text-muted-foreground" />
-      <p className="text-sm text-muted-foreground">{text}</p>
     </div>
   );
 }

@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -132,30 +135,26 @@ export default function AdminBancos() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-display text-2xl font-bold">Bancos Parceiros</h1>
-          <p className="text-muted-foreground">Gerencie os bancos e seus usuários vinculados.</p>
-        </div>
-        <Button onClick={openNew}><Plus className="mr-1 h-4 w-4" /> Novo Banco</Button>
-      </div>
+      <PageHeader
+        title="Bancos Parceiros"
+        description="Gerencie os bancos e seus usuários vinculados."
+        icon={<Landmark className="h-5 w-5" />}
+        actions={<Button onClick={openNew}><Plus className="mr-1 h-4 w-4" /> Novo Banco</Button>}
+      />
 
       {isLoading ? (
-        <p className="text-muted-foreground">Carregando...</p>
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-lg" />)}
+        </div>
       ) : !bancos?.length ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-3 py-12">
-            <Landmark className="h-10 w-10 text-muted-foreground" />
-            <p className="text-muted-foreground">Nenhum banco cadastrado.</p>
-          </CardContent>
-        </Card>
+        <EmptyState icon={<Landmark className="h-6 w-6" />} title="Nenhum banco cadastrado" description="Adicione o primeiro banco parceiro para começar." action={<Button onClick={openNew}><Plus className="mr-1 h-4 w-4" /> Novo Banco</Button>} />
       ) : (
         <div className="space-y-3">
           {bancos.map((b) => {
             const isExpanded = expandedBanco === b.id;
             const linkedUsers = getUsersForBanco(b.id);
             return (
-              <Card key={b.id}>
+              <Card key={b.id} className="hover:shadow-sm transition-shadow">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div
@@ -163,7 +162,9 @@ export default function AdminBancos() {
                       onClick={() => setExpandedBanco(isExpanded ? null : b.id)}
                     >
                       <div className="flex items-center gap-2">
-                        <Landmark className="h-4 w-4 text-muted-foreground" />
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                          <Landmark className="h-4 w-4" />
+                        </div>
                         <span className="font-medium">{b.nome}</span>
                         <Badge variant={b.ativo ? "default" : "outline"}>
                           {b.ativo ? "Ativo" : "Inativo"}
@@ -198,7 +199,7 @@ export default function AdminBancos() {
                         </Button>
                       </div>
                       {linkedUsers.length === 0 ? (
-                        <p className="text-xs text-muted-foreground">Nenhum usuário vinculado. Atribua o papel "Banco Parceiro" a um usuário na página de Usuários e depois vincule aqui.</p>
+                        <p className="text-xs text-muted-foreground">Nenhum usuário vinculado.</p>
                       ) : (
                         <Table>
                           <TableHeader>
@@ -214,12 +215,7 @@ export default function AdminBancos() {
                                 <TableCell className="font-medium">{bu.profiles?.nome || "—"}</TableCell>
                                 <TableCell className="text-muted-foreground">{bu.profiles?.email || "—"}</TableCell>
                                 <TableCell>
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="text-destructive"
-                                    onClick={() => unlinkUserMutation.mutate(bu.id)}
-                                  >
+                                  <Button size="icon" variant="ghost" className="text-destructive" onClick={() => unlinkUserMutation.mutate(bu.id)}>
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </Button>
                                 </TableCell>
@@ -237,7 +233,6 @@ export default function AdminBancos() {
         </div>
       )}
 
-      {/* Edit/Create banco dialog */}
       <Dialog open={open} onOpenChange={(v) => { if (!v) closeDialog(); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -263,7 +258,6 @@ export default function AdminBancos() {
         </DialogContent>
       </Dialog>
 
-      {/* Link user dialog */}
       <Dialog open={linkOpen} onOpenChange={setLinkOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

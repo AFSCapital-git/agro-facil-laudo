@@ -5,8 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { PageHeader } from "@/components/ui/page-header";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
+import { Settings } from "lucide-react";
 
 export default function AdminConfiguracoes() {
   const { toast } = useToast();
@@ -19,11 +21,7 @@ export default function AdminConfiguracoes() {
   const { data: config } = useQuery({
     queryKey: ["admin_config"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("configuracoes_plataforma")
-        .select("*")
-        .limit(1)
-        .single();
+      const { data, error } = await supabase.from("configuracoes_plataforma").select("*").limit(1).single();
       if (error) throw error;
       return data;
     },
@@ -62,17 +60,17 @@ export default function AdminConfiguracoes() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-bold">Configurações Gerais</h1>
-        <p className="text-muted-foreground">
-          Valores padrão da plataforma. A remuneração do engenheiro é configurada individualmente por produto na aba{" "}
-          <span className="font-medium text-foreground">Produtos PRONAF</span>.
-        </p>
-      </div>
+      <PageHeader
+        title="Configurações Gerais"
+        description="Valores padrão da plataforma. A remuneração do engenheiro é configurada individualmente por produto na aba Produtos PRONAF."
+        icon={<Settings className="h-5 w-5" />}
+      />
 
       <Card className="max-w-lg">
         <CardHeader>
-          <CardTitle className="text-base">Remuneração do Engenheiro</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Settings className="h-4 w-4 text-primary" /> Remuneração do Engenheiro
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <RadioGroup
@@ -93,24 +91,12 @@ export default function AdminConfiguracoes() {
           {tipoRemuneracao === "fixo" ? (
             <div className="space-y-2">
               <Label>Valor base por laudo (R$)</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={valorBase}
-                onChange={(e) => setValorBase(e.target.value)}
-              />
+              <Input type="number" step="0.01" value={valorBase} onChange={(e) => setValorBase(e.target.value)} />
             </div>
           ) : (
             <div className="space-y-2">
               <Label>Percentual sobre o valor solicitado (%)</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                max="100"
-                value={percentualTaxa}
-                onChange={(e) => setPercentualTaxa(e.target.value)}
-              />
+              <Input type="number" step="0.01" min="0" max="100" value={percentualTaxa} onChange={(e) => setPercentualTaxa(e.target.value)} />
             </div>
           )}
         </CardContent>
@@ -123,11 +109,7 @@ export default function AdminConfiguracoes() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>Prazo padrão de pagamento (dias)</Label>
-            <Input
-              type="number"
-              value={prazoDias}
-              onChange={(e) => setPrazoDias(e.target.value)}
-            />
+            <Input type="number" value={prazoDias} onChange={(e) => setPrazoDias(e.target.value)} />
           </div>
           <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
             {saveMutation.isPending ? "Salvando..." : "Salvar Configurações"}

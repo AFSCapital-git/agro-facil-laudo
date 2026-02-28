@@ -3,10 +3,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -18,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Ban, Plus } from "lucide-react";
+import { Ban, Plus, ShieldOff, Shield } from "lucide-react";
 import { format } from "date-fns";
 
 export default function AdminBlacklist() {
@@ -35,7 +38,6 @@ export default function AdminBlacklist() {
     queryFn: async () => {
       const { data, error } = await supabase.from("blacklist").select("*").order("created_at", { ascending: false });
       if (error) throw error;
-      // Fetch profile names for user_ids
       const userIds = [...new Set(data?.map((e) => e.user_id).filter(Boolean))];
       let profileMap: Record<string, string> = {};
       if (userIds.length) {
@@ -84,25 +86,30 @@ export default function AdminBlacklist() {
     onError: (err: Error) => toast({ title: "Erro", description: err.message, variant: "destructive" }),
   });
 
+  const totalEntries = entries?.length ?? 0;
+  const bloqueados = entries?.filter((e: any) => e.ativo).length ?? 0;
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-display text-2xl font-bold">Blacklist</h1>
-          <p className="text-muted-foreground">Bloqueie produtores ou engenheiros de operar na plataforma.</p>
-        </div>
-        <Button onClick={() => setOpen(true)}><Plus className="mr-1 h-4 w-4" /> Adicionar</Button>
+      <PageHeader
+        title="Blacklist"
+        description="Bloqueie produtores ou engenheiros de operar na plataforma."
+        icon={<Ban className="h-5 w-5" />}
+        actions={<Button onClick={() => setOpen(true)}><Plus className="mr-1 h-4 w-4" /> Adicionar</Button>}
+      />
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard icon={<Ban className="h-4 w-4" />} title="Total Registros" value={String(totalEntries)} loading={isLoading} delay={0} />
+        <StatCard icon={<ShieldOff className="h-4 w-4" />} title="Bloqueados Ativos" value={String(bloqueados)} loading={isLoading} delay={100} />
+        <StatCard icon={<Shield className="h-4 w-4" />} title="Desbloqueados" value={String(totalEntries - bloqueados)} loading={isLoading} delay={200} />
       </div>
 
       {isLoading ? (
-        <p className="text-muted-foreground">Carregando...</p>
+        <Card><CardContent className="p-6 space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-md" />)}
+        </CardContent></Card>
       ) : !entries?.length ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-3 py-12">
-            <Ban className="h-10 w-10 text-muted-foreground" />
-            <p className="text-muted-foreground">Nenhum usuário na blacklist.</p>
-          </CardContent>
-        </Card>
+        <EmptyState icon={<Ban className="h-6 w-6" />} title="Nenhum usuário na blacklist" description="A lista está limpa. Adicione usuários que devem ser bloqueados." />
       ) : (
         <Card>
           <CardContent className="p-0">
