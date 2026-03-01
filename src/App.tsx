@@ -42,6 +42,7 @@ import AgroBankerComissoes from "@/pages/agrobanker/AgroBankerComissoes";
 import AgroBankerTreinamentos from "@/pages/agrobanker/AgroBankerTreinamentos";
 import MesaAgroBankers from "@/pages/mesa/MesaAgroBankers";
 import Pitch from "./pages/Pitch";
+import Institucional from "./pages/Institucional";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -56,6 +57,7 @@ const App = () => (
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route path="/pitch" element={<Pitch />} />
+            <Route path="/institucional" element={<Institucional />} />
             
             <Route
               element={
