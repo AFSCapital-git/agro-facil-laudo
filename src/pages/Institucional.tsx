@@ -1,9 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Leaf, ArrowRight, Shield, Zap, Globe, Satellite, Users, Building2,
   Sprout, Briefcase, Wrench, FileText, Lock, TrendingUp, ChevronDown,
   MapPin, Clock, DollarSign, Network, Eye, Smartphone, CheckCircle2,
+  Play, Pause, Volume2, VolumeX,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -46,6 +47,56 @@ function SectionTag({ icon: Icon, children }: { icon: React.ComponentType<{ clas
   );
 }
 
+function VideoBlock({ src, overlay, children }: { src: string; overlay?: boolean; children?: React.ReactNode }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  
+  return (
+    <div className="relative rounded-3xl overflow-hidden">
+      <video
+        ref={videoRef}
+        src={src}
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="w-full h-full object-cover"
+      />
+      {overlay && (
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+      )}
+      {children && (
+        <div className="absolute inset-0 flex items-end p-8">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ScreenshotShowcase({ src, label, role }: { src: string; label: string; role: string }) {
+  return (
+    <div className="group rounded-2xl overflow-hidden border border-[hsl(40,18%,87%)] bg-white shadow-sm hover:shadow-xl hover:border-[hsl(145,45%,28%)]/25 transition-all duration-300">
+      <div className="aspect-video overflow-hidden bg-[hsl(40,30%,95%)]">
+        <img
+          src={src}
+          alt={label}
+          className="w-full h-full object-cover object-top group-hover:scale-[1.02] transition-transform duration-500"
+          loading="lazy"
+        />
+      </div>
+      <div className="p-4 flex items-center gap-3">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[hsl(145,45%,28%)]/10">
+          <Users className="w-4 h-4 text-[hsl(145,45%,28%)]" />
+        </div>
+        <div>
+          <p className="text-sm font-bold font-display">{role}</p>
+          <p className="text-xs text-[hsl(150,10%,45%)]">{label}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Main Page ─── */
 
 export default function Institucional() {
@@ -80,17 +131,22 @@ export default function Institucional() {
         </div>
       </nav>
 
-      {/* ═══ HERO ═══ */}
-      <section className="relative pt-32 pb-24 px-6 overflow-hidden">
-        {/* Decorative background */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full bg-[hsl(145,45%,28%)]/5 blur-3xl" />
-          <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] rounded-full bg-[hsl(35,65%,50%)]/5 blur-3xl" />
-        </div>
+      {/* ═══ HERO com vídeo de fundo ═══ */}
+      <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+        {/* Video background */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
+          src="/videos/guata-hero.mp4"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-[hsl(150,20%,8%)]/70 via-[hsl(150,20%,8%)]/50 to-[hsl(150,20%,8%)]/80" />
 
-        <div className="max-w-5xl mx-auto text-center relative">
+        <div className="relative z-10 max-w-5xl mx-auto text-center px-6 text-[hsl(40,30%,92%)]">
           <FadeSection>
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[hsl(145,45%,28%)]/20 bg-[hsl(145,45%,28%)]/5 text-[hsl(145,45%,28%)] text-xs font-semibold tracking-wide mb-8">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[hsl(80,55%,55%)]/25 bg-[hsl(80,55%,55%)]/10 text-[hsl(80,55%,55%)] text-xs font-semibold tracking-wide mb-8">
               <Sprout className="w-3.5 h-3.5" />
               DO TUPI: AVANÇAR
             </div>
@@ -98,17 +154,17 @@ export default function Institucional() {
 
           <FadeSection delay={100}>
             <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-display font-extrabold tracking-tight leading-[0.95]">
-              <span className="text-[hsl(145,45%,28%)]">Guatã</span>
+              <span className="text-[hsl(80,55%,55%)]">Guatã</span>
             </h1>
-            <p className="text-xl sm:text-2xl md:text-3xl font-display font-light text-[hsl(150,10%,45%)] mt-4 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-xl sm:text-2xl md:text-3xl font-display font-light text-white/60 mt-4 max-w-3xl mx-auto leading-relaxed">
               O futuro digital do crédito rural no Brasil
             </p>
           </FadeSection>
 
           <FadeSection delay={200}>
-            <p className="text-base sm:text-lg text-[hsl(150,10%,45%)] max-w-2xl mx-auto mt-8 leading-relaxed">
-              Somos um <strong className="text-[hsl(150,25%,12%)] font-semibold">corban digital especializado em agronegócio</strong>, 
-              conectando produtor, engenheiro, banco e parceiros em uma única plataforma — 
+            <p className="text-base sm:text-lg text-white/50 max-w-2xl mx-auto mt-8 leading-relaxed">
+              Somos um <strong className="text-white/80 font-semibold">corban digital especializado em agronegócio</strong>,
+              conectando produtor, engenheiro, banco e parceiros em uma única plataforma —
               distribuindo produtos financeiros e não financeiros do Banco da Amazônia.
             </p>
           </FadeSection>
@@ -117,14 +173,14 @@ export default function Institucional() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center mt-10">
               <button
                 onClick={() => navigate("/auth")}
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-[hsl(145,45%,28%)] text-white text-base font-bold hover:bg-[hsl(145,45%,24%)] transition shadow-xl shadow-[hsl(145,45%,28%)]/25"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-[hsl(80,55%,55%)] text-[hsl(150,25%,10%)] text-base font-bold hover:bg-[hsl(80,55%,60%)] transition shadow-xl shadow-[hsl(80,55%,55%)]/25"
               >
                 Começar Agora
                 <ArrowRight className="w-5 h-5" />
               </button>
               <a
                 href="#problema"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl border-2 border-[hsl(40,18%,87%)] text-[hsl(150,10%,45%)] text-base font-semibold hover:border-[hsl(145,45%,28%)]/30 hover:text-[hsl(145,45%,28%)] transition"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl border border-white/20 text-white/70 text-base font-semibold hover:bg-white/5 transition"
               >
                 Saiba mais
                 <ChevronDown className="w-5 h-5" />
@@ -140,15 +196,20 @@ export default function Institucional() {
                 { icon: Lock, label: "Dados Seguros" },
                 { icon: Zap, label: "Crédito Rápido" },
               ].map((t, i) => (
-                <div key={i} className="flex flex-col items-center gap-2 text-[hsl(150,10%,45%)]">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[hsl(145,45%,28%)]/8 border border-[hsl(145,45%,28%)]/10">
-                    <t.icon className="w-5 h-5 text-[hsl(145,45%,28%)]" />
+                <div key={i} className="flex flex-col items-center gap-2 text-white/50">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.08] border border-white/[0.1]">
+                    <t.icon className="w-5 h-5 text-[hsl(80,55%,55%)]" />
                   </div>
                   <span className="text-xs font-semibold">{t.label}</span>
                 </div>
               ))}
             </div>
           </FadeSection>
+        </div>
+
+        {/* Scroll indicator */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 animate-bounce">
+          <ChevronDown className="w-6 h-6 text-white/30" />
         </div>
       </section>
 
@@ -161,7 +222,7 @@ export default function Institucional() {
               O produtor rural ainda enfrenta um grande desafio para acessar crédito.
             </h2>
             <p className="text-lg text-white/50 mt-4 max-w-3xl">
-              Processos lentos, burocracia pesada, dependência de intermediários caros e, muitas vezes, 
+              Processos lentos, burocracia pesada, dependência de intermediários caros e, muitas vezes,
               vendas casadas e taxas adicionais que encarecem demais o financiamento.
             </p>
           </FadeSection>
@@ -197,13 +258,13 @@ export default function Institucional() {
                 Nasce a <span className="text-[hsl(145,45%,28%)]">Guatã</span>
               </h2>
               <p className="text-lg text-[hsl(150,10%,45%)] mt-6 leading-relaxed">
-                A Guatã nasceu para mudar esse cenário. Somos um corban digital especializado em agronegócio, 
+                A Guatã nasceu para mudar esse cenário. Somos um corban digital especializado em agronegócio,
                 responsáveis por distribuir produtos financeiros e não financeiros do Banco da Amazônia.
               </p>
               <div className="mt-8 p-6 rounded-2xl bg-[hsl(145,45%,28%)]/5 border border-[hsl(145,45%,28%)]/15">
                 <p className="text-sm font-medium text-[hsl(145,45%,28%)] mb-1">Etimologia</p>
                 <p className="text-base italic text-[hsl(150,25%,12%)]">
-                  "Guatã, do tupi, significa <strong>avançar</strong>. E é exatamente isso que fazemos: 
+                  "Guatã, do tupi, significa <strong>avançar</strong>. E é exatamente isso que fazemos:
                   avançamos o crédito rural para o futuro digital."
                 </p>
               </div>
@@ -239,7 +300,7 @@ export default function Institucional() {
                 Crédito simples, rápido e <span className="text-[hsl(145,45%,28%)]">justo</span>
               </h2>
               <p className="text-lg text-[hsl(150,10%,45%)] mt-4 max-w-2xl mx-auto">
-                O produtor rural acessa a plataforma, faz o pedido de crédito de forma totalmente remota, 
+                O produtor rural acessa a plataforma, faz o pedido de crédito de forma totalmente remota,
                 rápida e segura — direto na palma da mão.
               </p>
             </div>
@@ -265,8 +326,25 @@ export default function Institucional() {
             ))}
           </div>
 
-          {/* Trust badges */}
+          {/* Screenshots da plataforma - Login */}
           <FadeSection delay={300}>
+            <div className="mt-16 max-w-2xl mx-auto">
+              <div className="rounded-3xl overflow-hidden border border-[hsl(40,18%,87%)] shadow-2xl">
+                <img
+                  src="/images/guata-login.png"
+                  alt="Tela de login da plataforma Guatã"
+                  className="w-full object-cover"
+                  loading="lazy"
+                />
+              </div>
+              <p className="text-center text-sm text-[hsl(150,10%,45%)] mt-4">
+                Acesso simplificado e seguro à plataforma
+              </p>
+            </div>
+          </FadeSection>
+
+          {/* Trust badges */}
+          <FadeSection delay={400}>
             <div className="flex flex-wrap justify-center gap-4 mt-12">
               {["Sem vendas casadas", "Sem taxas escondidas", "Transparência total"].map((badge, i) => (
                 <div key={i} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-[hsl(145,45%,28%)]/20 bg-[hsl(145,45%,28%)]/5 text-sm font-medium text-[hsl(145,45%,28%)]">
@@ -289,8 +367,8 @@ export default function Institucional() {
                 Garantias inteligentes com <span className="text-[hsl(80,55%,55%)]">imagens de satélite</span>
               </h2>
               <p className="text-lg text-white/50 mt-6 leading-relaxed">
-                Usamos imagens de satélite para processar garantias e dar mais agilidade às análises. 
-                Nossa tecnologia integra dados e documentação diretamente ao banco, com envio seguro 
+                Usamos imagens de satélite para processar garantias e dar mais agilidade às análises.
+                Nossa tecnologia integra dados e documentação diretamente ao banco, com envio seguro
                 por VPN ou criptografia.
               </p>
 
@@ -310,42 +388,14 @@ export default function Institucional() {
             </FadeSection>
 
             <FadeSection delay={200}>
-              <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-[hsl(145,45%,28%)]/20 to-[hsl(80,55%,55%)]/10 border border-white/[0.08] p-10 flex items-center justify-center min-h-[400px]">
-                {/* Stylized satellite visual */}
-                <div className="text-center space-y-6">
-                  <div className="relative mx-auto w-32 h-32">
-                    <div className="absolute inset-0 rounded-full bg-[hsl(80,55%,55%)]/20 animate-pulse" />
-                    <div className="absolute inset-4 rounded-full bg-[hsl(80,55%,55%)]/10 border-2 border-dashed border-[hsl(80,55%,55%)]/30" />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Satellite className="w-12 h-12 text-[hsl(80,55%,55%)]" />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-sm font-semibold text-[hsl(80,55%,55%)]">Processamento em Tempo Real</p>
-                    <p className="text-xs text-white/40 max-w-xs mx-auto">
-                      Análise automatizada de áreas rurais com resolução de alta precisão para validação de garantias.
-                    </p>
-                  </div>
-                  {/* Connection lines */}
-                  <div className="flex justify-center gap-8 text-white/30">
-                    <div className="flex flex-col items-center gap-1">
-                      <div className="w-px h-8 bg-[hsl(80,55%,55%)]/30" />
-                      <Globe className="w-5 h-5 text-[hsl(80,55%,55%)]/50" />
-                      <span className="text-[10px]">Dados</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-1">
-                      <div className="w-px h-8 bg-[hsl(80,55%,55%)]/30" />
-                      <Lock className="w-5 h-5 text-[hsl(80,55%,55%)]/50" />
-                      <span className="text-[10px]">Segurança</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-1">
-                      <div className="w-px h-8 bg-[hsl(80,55%,55%)]/30" />
-                      <Building2 className="w-5 h-5 text-[hsl(80,55%,55%)]/50" />
-                      <span className="text-[10px]">Banco</span>
-                    </div>
-                  </div>
+              <VideoBlock src="/videos/guata-satelite.mp4" overlay>
+                <div className="text-white space-y-2">
+                  <p className="text-sm font-semibold text-[hsl(80,55%,55%)]">Processamento em Tempo Real</p>
+                  <p className="text-xs text-white/60 max-w-sm">
+                    Análise automatizada de áreas rurais com resolução de alta precisão para validação de garantias.
+                  </p>
                 </div>
-              </div>
+              </VideoBlock>
             </FadeSection>
           </div>
         </div>
@@ -366,6 +416,7 @@ export default function Institucional() {
             </div>
           </FadeSection>
 
+          {/* Profile cards with real screenshots */}
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
               {
@@ -435,18 +486,56 @@ export default function Institucional() {
               </FadeSection>
             ))}
           </div>
+
+          {/* Screenshots reais da plataforma */}
+          <FadeSection>
+            <div className="mt-20 text-center mb-10">
+              <h3 className="text-2xl sm:text-3xl font-display font-bold">
+                A plataforma em <span className="text-[hsl(145,45%,28%)]">ação</span>
+              </h3>
+              <p className="text-[hsl(150,10%,45%)] mt-2">Cada perfil tem sua visão personalizada e otimizada.</p>
+            </div>
+          </FadeSection>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <FadeSection delay={0}>
+              <ScreenshotShowcase src="/images/guata-produtor.png" role="Produtor" label="Dashboard com KPIs, atalhos e pipeline de operações" />
+            </FadeSection>
+            <FadeSection delay={100}>
+              <ScreenshotShowcase src="/images/guata-engenheiro.png" role="Engenheiro" label="Demandas, laudos ativos e controle de pagamentos" />
+            </FadeSection>
+            <FadeSection delay={200}>
+              <ScreenshotShowcase src="/images/guata-mesa.png" role="Mesa de Produtos" label="Esteira completa com filtros, SLA e abas de status" />
+            </FadeSection>
+            <FadeSection delay={300}>
+              <ScreenshotShowcase src="/images/guata-admin.png" role="Administrador" label="Visão 360° com métricas, gráficos e acesso rápido" />
+            </FadeSection>
+            <FadeSection delay={400}>
+              <ScreenshotShowcase src="/images/guata-banco.png" role="Banco Parceiro" label="Painel dedicado para análise e aprovação" />
+            </FadeSection>
+            <FadeSection delay={500}>
+              <ScreenshotShowcase src="/images/guata-login.png" role="Acesso Seguro" label="Login simplificado com autenticação segura" />
+            </FadeSection>
+          </div>
         </div>
       </section>
 
-      {/* ═══ BLOCO 6 — FECHAMENTO / CTA ═══ */}
-      <section className="py-32 px-6 bg-[hsl(150,20%,8%)] text-[hsl(40,30%,92%)] relative overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-[hsl(145,45%,28%)]/5 blur-[100px]" />
-        </div>
+      {/* ═══ BLOCO 6 — FECHAMENTO / CTA com vídeo ═══ */}
+      <section className="relative py-32 px-6 overflow-hidden">
+        {/* Video background */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
+          src="/videos/guata-fechamento.mp4"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-[hsl(150,20%,8%)]/80 via-[hsl(150,20%,8%)]/70 to-[hsl(150,20%,8%)]/90" />
 
-        <div className="max-w-4xl mx-auto text-center relative">
+        <div className="max-w-4xl mx-auto text-center relative z-10 text-[hsl(40,30%,92%)]">
           <FadeSection>
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[hsl(80,55%,55%)]/25 bg-[hsl(80,55%,55%)]/8 text-[hsl(80,55%,55%)] text-xs font-semibold tracking-wide mb-8">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[hsl(80,55%,55%)]/25 bg-[hsl(80,55%,55%)]/10 text-[hsl(80,55%,55%)] text-xs font-semibold tracking-wide mb-8">
               <Leaf className="w-3.5 h-3.5" />
               AVANÇAR É DO NOSSO NOME
             </div>
@@ -460,7 +549,7 @@ export default function Institucional() {
 
           <FadeSection delay={200}>
             <p className="text-lg text-white/50 mt-6 max-w-2xl mx-auto leading-relaxed">
-              Avançamos juntos com quem produz, simplificando o crédito e 
+              Avançamos juntos com quem produz, simplificando o crédito e
               potencializando resultados no campo.
             </p>
           </FadeSection>
@@ -484,8 +573,13 @@ export default function Institucional() {
           </FadeSection>
 
           <FadeSection delay={400}>
-            <p className="text-xs text-white/20 mt-16">
+            <p className="text-xs text-white/25 mt-16">
               Guatã · Corban Digital do Agronegócio · Banco da Amazônia
+            </p>
+            <p className="text-[10px] text-white/15 mt-2 max-w-xl mx-auto italic">
+              "Guatã é um corban digital que conecta produtor rural, engenheiros, agrobankers e o Banco da Amazônia
+              em uma única plataforma. Com uso de imagens de satélite, integração segura de dados e jornadas 100% remotas,
+              simplificamos a tomada de crédito, reduzimos custos e eliminamos vendas casadas."
             </p>
           </FadeSection>
         </div>
