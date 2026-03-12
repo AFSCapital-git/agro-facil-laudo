@@ -12,6 +12,7 @@ interface Empresa {
   id: string;
   razao_social: string;
   nome_fantasia: string;
+  tipo: string;
   status: string;
   uf: string;
   municipio: string;
