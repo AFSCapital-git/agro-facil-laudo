@@ -44,6 +44,12 @@ import MesaAgroBankers from "@/pages/mesa/MesaAgroBankers";
 import Pitch from "./pages/Pitch";
 import Institucional from "./pages/Institucional";
 import NotFound from "./pages/NotFound";
+import { OnboardingLayout } from "@/components/onboarding/OnboardingLayout";
+import OnboardingDashboard from "@/pages/onboarding/OnboardingDashboard";
+import OnboardingCadastro from "@/pages/onboarding/OnboardingCadastro";
+import OnboardingEmpresas from "@/pages/onboarding/OnboardingEmpresas";
+import OnboardingEstrutura from "@/pages/onboarding/OnboardingEstrutura";
+import OnboardingCompliance from "@/pages/onboarding/OnboardingCompliance";
 
 const queryClient = new QueryClient();
 
