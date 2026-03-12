@@ -156,7 +156,7 @@ export default function OnboardingRMDashboard() {
                           <p className="text-[10px] text-muted-foreground">Ativos</p>
                         </div>
                         <div className="text-center flex-1 bg-muted/30 rounded p-2">
-                          <p className="text-lg font-bold text-amber-600">{empMembros.length - ativos}</p>
+                          <p className="text-lg font-bold text-destructive">{empMembros.length - ativos}</p>
                           <p className="text-[10px] text-muted-foreground">Pendentes</p>
                         </div>
                       </div>
