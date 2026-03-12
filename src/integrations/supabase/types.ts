@@ -1228,6 +1228,251 @@ export type Database = {
           },
         ]
       }
+      onboarding_rede_membros: {
+        Row: {
+          area_atuacao: string | null
+          bairro: string | null
+          capacidade_civil: string | null
+          cep: string | null
+          cidade: string | null
+          cnpj: string | null
+          complemento: string | null
+          comprovante_endereco: string | null
+          corresp_bairro: string | null
+          corresp_cep: string | null
+          corresp_cidade: string | null
+          corresp_complemento: string | null
+          corresp_imovel_proprio: boolean | null
+          corresp_logradouro: string | null
+          corresp_numero: string | null
+          corresp_perimetro: string | null
+          corresp_tipo_imovel: string | null
+          corresp_uf: string | null
+          cpf: string | null
+          cpf_conjuge: string | null
+          crea: string | null
+          created_at: string
+          created_by: string | null
+          dados_receita: Json | null
+          data_nascimento: string | null
+          ddd: string | null
+          documento_cidade: string | null
+          documento_data_emissao: string | null
+          documento_numero_registro: string | null
+          documento_numero_via: string | null
+          documento_orgao_emissor: string | null
+          documento_uf: string | null
+          documento_unidade_funai: string | null
+          email: string | null
+          empresa_id: string
+          endereco_correspondencia: boolean | null
+          estado_civil: string | null
+          genero: string | null
+          grau_instrucao: string | null
+          id: string
+          imovel_proprio: boolean | null
+          inscricao_estadual: string | null
+          local_correio: boolean | null
+          logradouro: string | null
+          nacionalidade: string | null
+          nome_completo: string
+          nome_conjuge: string | null
+          nome_fantasia: string | null
+          nome_mae: string | null
+          nome_pai: string | null
+          numero: string | null
+          numero_documento: string | null
+          numero_licenca: string | null
+          perimetro: string | null
+          pessoa_exposta_politicamente: boolean | null
+          razao_social: string | null
+          regime_casamento: string | null
+          rg: string | null
+          rg_orgao_emissor: string | null
+          rg_uf: string | null
+          segmento: string
+          segmento_outro: string | null
+          situacao_cadastral: string | null
+          status: string
+          telefone: string | null
+          tempo_utilizacao_meses: number | null
+          tipo_documento: string | null
+          tipo_endereco: string | null
+          tipo_imovel: string | null
+          tipo_licenca: string | null
+          tipo_pessoa: string
+          uf: string | null
+          updated_at: string
+          user_criado: boolean | null
+          user_id: string | null
+          zona_urbana: boolean | null
+        }
+        Insert: {
+          area_atuacao?: string | null
+          bairro?: string | null
+          capacidade_civil?: string | null
+          cep?: string | null
+          cidade?: string | null
+          cnpj?: string | null
+          complemento?: string | null
+          comprovante_endereco?: string | null
+          corresp_bairro?: string | null
+          corresp_cep?: string | null
+          corresp_cidade?: string | null
+          corresp_complemento?: string | null
+          corresp_imovel_proprio?: boolean | null
+          corresp_logradouro?: string | null
+          corresp_numero?: string | null
+          corresp_perimetro?: string | null
+          corresp_tipo_imovel?: string | null
+          corresp_uf?: string | null
+          cpf?: string | null
+          cpf_conjuge?: string | null
+          crea?: string | null
+          created_at?: string
+          created_by?: string | null
+          dados_receita?: Json | null
+          data_nascimento?: string | null
+          ddd?: string | null
+          documento_cidade?: string | null
+          documento_data_emissao?: string | null
+          documento_numero_registro?: string | null
+          documento_numero_via?: string | null
+          documento_orgao_emissor?: string | null
+          documento_uf?: string | null
+          documento_unidade_funai?: string | null
+          email?: string | null
+          empresa_id: string
+          endereco_correspondencia?: boolean | null
+          estado_civil?: string | null
+          genero?: string | null
+          grau_instrucao?: string | null
+          id?: string
+          imovel_proprio?: boolean | null
+          inscricao_estadual?: string | null
+          local_correio?: boolean | null
+          logradouro?: string | null
+          nacionalidade?: string | null
+          nome_completo?: string
+          nome_conjuge?: string | null
+          nome_fantasia?: string | null
+          nome_mae?: string | null
+          nome_pai?: string | null
+          numero?: string | null
+          numero_documento?: string | null
+          numero_licenca?: string | null
+          perimetro?: string | null
+          pessoa_exposta_politicamente?: boolean | null
+          razao_social?: string | null
+          regime_casamento?: string | null
+          rg?: string | null
+          rg_orgao_emissor?: string | null
+          rg_uf?: string | null
+          segmento?: string
+          segmento_outro?: string | null
+          situacao_cadastral?: string | null
+          status?: string
+          telefone?: string | null
+          tempo_utilizacao_meses?: number | null
+          tipo_documento?: string | null
+          tipo_endereco?: string | null
+          tipo_imovel?: string | null
+          tipo_licenca?: string | null
+          tipo_pessoa?: string
+          uf?: string | null
+          updated_at?: string
+          user_criado?: boolean | null
+          user_id?: string | null
+          zona_urbana?: boolean | null
+        }
+        Update: {
+          area_atuacao?: string | null
+          bairro?: string | null
+          capacidade_civil?: string | null
+          cep?: string | null
+          cidade?: string | null
+          cnpj?: string | null
+          complemento?: string | null
+          comprovante_endereco?: string | null
+          corresp_bairro?: string | null
+          corresp_cep?: string | null
+          corresp_cidade?: string | null
+          corresp_complemento?: string | null
+          corresp_imovel_proprio?: boolean | null
+          corresp_logradouro?: string | null
+          corresp_numero?: string | null
+          corresp_perimetro?: string | null
+          corresp_tipo_imovel?: string | null
+          corresp_uf?: string | null
+          cpf?: string | null
+          cpf_conjuge?: string | null
+          crea?: string | null
+          created_at?: string
+          created_by?: string | null
+          dados_receita?: Json | null
+          data_nascimento?: string | null
+          ddd?: string | null
+          documento_cidade?: string | null
+          documento_data_emissao?: string | null
+          documento_numero_registro?: string | null
+          documento_numero_via?: string | null
+          documento_orgao_emissor?: string | null
+          documento_uf?: string | null
+          documento_unidade_funai?: string | null
+          email?: string | null
+          empresa_id?: string
+          endereco_correspondencia?: boolean | null
+          estado_civil?: string | null
+          genero?: string | null
+          grau_instrucao?: string | null
+          id?: string
+          imovel_proprio?: boolean | null
+          inscricao_estadual?: string | null
+          local_correio?: boolean | null
+          logradouro?: string | null
+          nacionalidade?: string | null
+          nome_completo?: string
+          nome_conjuge?: string | null
+          nome_fantasia?: string | null
+          nome_mae?: string | null
+          nome_pai?: string | null
+          numero?: string | null
+          numero_documento?: string | null
+          numero_licenca?: string | null
+          perimetro?: string | null
+          pessoa_exposta_politicamente?: boolean | null
+          razao_social?: string | null
+          regime_casamento?: string | null
+          rg?: string | null
+          rg_orgao_emissor?: string | null
+          rg_uf?: string | null
+          segmento?: string
+          segmento_outro?: string | null
+          situacao_cadastral?: string | null
+          status?: string
+          telefone?: string | null
+          tempo_utilizacao_meses?: number | null
+          tipo_documento?: string | null
+          tipo_endereco?: string | null
+          tipo_imovel?: string | null
+          tipo_licenca?: string | null
+          tipo_pessoa?: string
+          uf?: string | null
+          updated_at?: string
+          user_criado?: boolean | null
+          user_id?: string | null
+          zona_urbana?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_rede_membros_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onboarding_responsaveis: {
         Row: {
           cargo: string | null
