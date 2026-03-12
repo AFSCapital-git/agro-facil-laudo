@@ -95,6 +95,7 @@ const adminNav: NavItem[] = [
   { title: "Treinamento", icon: GraduationCap, path: "/admin/treinamento" },
   { title: "Feature Flags", icon: ToggleLeft, path: "/admin/feature-flags" },
   { title: "Configurações", icon: Settings, path: "/admin/configuracoes" },
+  { title: "Onboarding", icon: Briefcase, path: "/onboarding" },
 ];
 
 export function AppSidebar() {

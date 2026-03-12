@@ -106,6 +106,15 @@ const App = () => (
               <Route path="/admin/esteira" element={<AdminEsteira />} />
               <Route path="/admin/treinamento" element={<AdminTreinamento />} />
             </Route>
+
+            <Route element={<ProtectedRoute><OnboardingLayout /></ProtectedRoute>}>
+              <Route path="/onboarding" element={<OnboardingDashboard />} />
+              <Route path="/onboarding/cadastro" element={<OnboardingCadastro />} />
+              <Route path="/onboarding/empresas" element={<OnboardingEmpresas />} />
+              <Route path="/onboarding/estrutura" element={<OnboardingEstrutura />} />
+              <Route path="/onboarding/compliance" element={<OnboardingCompliance />} />
+            </Route>
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
