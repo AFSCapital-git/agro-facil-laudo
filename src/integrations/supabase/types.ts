@@ -2657,6 +2657,7 @@ export type Database = {
       get_engenheiro_id: { Args: never; Returns: string }
       get_engenheiro_laudo_solicitacao_ids: { Args: never; Returns: string[] }
       get_onboarding_empresa_id: { Args: never; Returns: string }
+      get_onboarding_rm_id: { Args: never; Returns: string }
       get_produtor_grupo_ids: { Args: never; Returns: string[] }
       get_produtor_id: { Args: never; Returns: string }
       get_produtor_solicitacao_ids: { Args: never; Returns: string[] }
@@ -2674,6 +2675,7 @@ export type Database = {
       is_engenheiro: { Args: never; Returns: boolean }
       is_mesa_produtos: { Args: never; Returns: boolean }
       is_produtor: { Args: never; Returns: boolean }
+      is_rm_comercial: { Args: never; Returns: boolean }
       is_subestabelecido: { Args: never; Returns: boolean }
     }
     Enums: {
