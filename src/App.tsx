@@ -50,6 +50,7 @@ import OnboardingCadastro from "@/pages/onboarding/OnboardingCadastro";
 import OnboardingEmpresas from "@/pages/onboarding/OnboardingEmpresas";
 import OnboardingEstrutura from "@/pages/onboarding/OnboardingEstrutura";
 import OnboardingCompliance from "@/pages/onboarding/OnboardingCompliance";
+import OnboardingRede from "@/pages/onboarding/OnboardingRede";
 
 const queryClient = new QueryClient();
 
@@ -111,6 +112,7 @@ const App = () => (
               <Route path="/onboarding" element={<OnboardingDashboard />} />
               <Route path="/onboarding/cadastro" element={<OnboardingCadastro />} />
               <Route path="/onboarding/empresas" element={<OnboardingEmpresas />} />
+              <Route path="/onboarding/rede" element={<OnboardingRede />} />
               <Route path="/onboarding/estrutura" element={<OnboardingEstrutura />} />
               <Route path="/onboarding/compliance" element={<OnboardingCompliance />} />
             </Route>

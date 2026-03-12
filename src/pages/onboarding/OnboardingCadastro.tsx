@@ -328,7 +328,10 @@ export default function OnboardingCadastro() {
                 </Select>
               </div>
               <div className="space-y-2"><Label>Região de Atuação</Label><Input placeholder="Ex: Norte do Mato Grosso" value={form.regiao_atuacao} onChange={(e) => updateForm("regiao_atuacao", e.target.value)} /></div>
-              <div className="space-y-2"><Label>Comissão (%)</Label><Input type="number" min={0} max={100} step={0.5} value={form.comissao_percentual} onChange={(e) => updateForm("comissao_percentual", parseFloat(e.target.value) || 0)} /></div>
+              <div className="space-y-2">
+                <Label className="text-muted-foreground">Comissão</Label>
+                <p className="text-xs text-muted-foreground bg-muted p-3 rounded-lg">A comissão será configurada por produto no módulo de comissões (em breve).</p>
+              </div>
             </div>
           )}
 
@@ -346,7 +349,7 @@ export default function OnboardingCadastro() {
                     <span className="text-muted-foreground">CPF:</span><span>{form.responsavel_cpf}</span>
                     <span className="text-muted-foreground">Documentos:</span><span>{files.length} enviado(s)</span>
                     <span className="text-muted-foreground">Vinculado a:</span><span>{parents.find((p) => p.id === form.parent_id)?.nome_fantasia || "—"}</span>
-                    <span className="text-muted-foreground">Comissão:</span><span>{form.comissao_percentual}%</span>
+                    <span className="text-muted-foreground">Comissão:</span><span className="text-xs italic text-muted-foreground">Por produto (em breve)</span>
                     {cnpjStatus && (
                       <>
                         <span className="text-muted-foreground">Receita Federal:</span>

@@ -9,5 +9,6 @@ export const onboardingDb = {
   responsaveis: () => db.from("onboarding_responsaveis"),
   documentos: () => db.from("onboarding_documentos"),
   compliance: () => db.from("onboarding_compliance"),
+  redeMembros: () => db.from("onboarding_rede_membros"),
   storage: () => supabase.storage.from("onboarding-docs"),
 };
