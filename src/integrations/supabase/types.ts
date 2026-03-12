@@ -1033,6 +1033,206 @@ export type Database = {
         }
         Relationships: []
       }
+      onboarding_compliance: {
+        Row: {
+          created_at: string
+          descricao: string | null
+          empresa_id: string
+          id: string
+          item: string
+          observacoes: string | null
+          status: string
+          verificado_em: string | null
+          verificado_por: string | null
+        }
+        Insert: {
+          created_at?: string
+          descricao?: string | null
+          empresa_id: string
+          id?: string
+          item?: string
+          observacoes?: string | null
+          status?: string
+          verificado_em?: string | null
+          verificado_por?: string | null
+        }
+        Update: {
+          created_at?: string
+          descricao?: string | null
+          empresa_id?: string
+          id?: string
+          item?: string
+          observacoes?: string | null
+          status?: string
+          verificado_em?: string | null
+          verificado_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_compliance_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onboarding_documentos: {
+        Row: {
+          caminho_arquivo: string
+          created_at: string
+          empresa_id: string
+          id: string
+          nome_arquivo: string
+          observacoes: string | null
+          status: string
+          tipo_documento: string
+          updated_at: string
+        }
+        Insert: {
+          caminho_arquivo?: string
+          created_at?: string
+          empresa_id: string
+          id?: string
+          nome_arquivo?: string
+          observacoes?: string | null
+          status?: string
+          tipo_documento?: string
+          updated_at?: string
+        }
+        Update: {
+          caminho_arquivo?: string
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          nome_arquivo?: string
+          observacoes?: string | null
+          status?: string
+          tipo_documento?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_documentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onboarding_empresas: {
+        Row: {
+          cnpj: string
+          comissao_percentual: number | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          endereco: string | null
+          id: string
+          municipio: string
+          nome_fantasia: string
+          parent_id: string | null
+          razao_social: string
+          regiao_atuacao: string | null
+          status: string
+          telefone: string | null
+          tipo: string
+          uf: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          cnpj?: string
+          comissao_percentual?: number | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          endereco?: string | null
+          id?: string
+          municipio?: string
+          nome_fantasia?: string
+          parent_id?: string | null
+          razao_social?: string
+          regiao_atuacao?: string | null
+          status?: string
+          telefone?: string | null
+          tipo?: string
+          uf?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          cnpj?: string
+          comissao_percentual?: number | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          endereco?: string | null
+          id?: string
+          municipio?: string
+          nome_fantasia?: string
+          parent_id?: string | null
+          razao_social?: string
+          regiao_atuacao?: string | null
+          status?: string
+          telefone?: string | null
+          tipo?: string
+          uf?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_empresas_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onboarding_responsaveis: {
+        Row: {
+          cargo: string | null
+          cpf: string
+          created_at: string
+          email: string
+          empresa_id: string
+          id: string
+          nome: string
+          telefone: string | null
+        }
+        Insert: {
+          cargo?: string | null
+          cpf?: string
+          created_at?: string
+          email?: string
+          empresa_id: string
+          id?: string
+          nome?: string
+          telefone?: string | null
+        }
+        Update: {
+          cargo?: string | null
+          cpf?: string
+          created_at?: string
+          email?: string
+          empresa_id?: string
+          id?: string
+          nome?: string
+          telefone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_responsaveis_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orcamento_custeio_itens: {
         Row: {
           categoria: string
@@ -2071,6 +2271,7 @@ export type Database = {
       get_engenheiro_assistente_grupo_ids: { Args: never; Returns: string[] }
       get_engenheiro_id: { Args: never; Returns: string }
       get_engenheiro_laudo_solicitacao_ids: { Args: never; Returns: string[] }
+      get_onboarding_empresa_id: { Args: never; Returns: string }
       get_produtor_grupo_ids: { Args: never; Returns: string[] }
       get_produtor_id: { Args: never; Returns: string }
       get_produtor_solicitacao_ids: { Args: never; Returns: string[] }
@@ -2084,9 +2285,11 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
       is_agrobanker: { Args: never; Returns: boolean }
       is_banco: { Args: never; Returns: boolean }
+      is_coban_master: { Args: never; Returns: boolean }
       is_engenheiro: { Args: never; Returns: boolean }
       is_mesa_produtos: { Args: never; Returns: boolean }
       is_produtor: { Args: never; Returns: boolean }
+      is_subestabelecido: { Args: never; Returns: boolean }
     }
     Enums: {
       app_role:
@@ -2096,6 +2299,8 @@ export type Database = {
         | "mesa_produtos"
         | "banco"
         | "agrobanker"
+        | "coban_master"
+        | "subestabelecido"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2230,6 +2435,8 @@ export const Constants = {
         "mesa_produtos",
         "banco",
         "agrobanker",
+        "coban_master",
+        "subestabelecido",
       ],
     },
   },

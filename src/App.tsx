@@ -44,6 +44,12 @@ import MesaAgroBankers from "@/pages/mesa/MesaAgroBankers";
 import Pitch from "./pages/Pitch";
 import Institucional from "./pages/Institucional";
 import NotFound from "./pages/NotFound";
+import { OnboardingLayout } from "@/components/onboarding/OnboardingLayout";
+import OnboardingDashboard from "@/pages/onboarding/OnboardingDashboard";
+import OnboardingCadastro from "@/pages/onboarding/OnboardingCadastro";
+import OnboardingEmpresas from "@/pages/onboarding/OnboardingEmpresas";
+import OnboardingEstrutura from "@/pages/onboarding/OnboardingEstrutura";
+import OnboardingCompliance from "@/pages/onboarding/OnboardingCompliance";
 
 const queryClient = new QueryClient();
 
@@ -100,6 +106,15 @@ const App = () => (
               <Route path="/admin/esteira" element={<AdminEsteira />} />
               <Route path="/admin/treinamento" element={<AdminTreinamento />} />
             </Route>
+
+            <Route element={<ProtectedRoute><OnboardingLayout /></ProtectedRoute>}>
+              <Route path="/onboarding" element={<OnboardingDashboard />} />
+              <Route path="/onboarding/cadastro" element={<OnboardingCadastro />} />
+              <Route path="/onboarding/empresas" element={<OnboardingEmpresas />} />
+              <Route path="/onboarding/estrutura" element={<OnboardingEstrutura />} />
+              <Route path="/onboarding/compliance" element={<OnboardingCompliance />} />
+            </Route>
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
