@@ -25,6 +25,7 @@ const navItems = [
   { title: "Dashboard", icon: LayoutDashboard, path: "/onboarding" },
   { title: "Novo Cadastro", icon: UserPlus, path: "/onboarding/cadastro" },
   { title: "Empresas", icon: Building2, path: "/onboarding/empresas" },
+  { title: "Minha Rede", icon: Users, path: "/onboarding/rede" },
   { title: "Estrutura Comercial", icon: GitBranch, path: "/onboarding/estrutura" },
   { title: "Compliance", icon: ShieldCheck, path: "/onboarding/compliance" },
 ];
