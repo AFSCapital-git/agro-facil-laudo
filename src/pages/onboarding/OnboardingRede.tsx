@@ -125,7 +125,7 @@ export default function OnboardingRede() {
             <CadastroMembroWizard
               onSuccess={() => {
                 setDialogOpen(false);
-                loadMembros();
+                loadData();
                 toast({ title: "Membro cadastrado!", description: "O membro foi adicionado à sua rede." });
               }}
               onCancel={() => setDialogOpen(false)}
