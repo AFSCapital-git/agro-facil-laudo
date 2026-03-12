@@ -1036,34 +1036,49 @@ export type Database = {
       onboarding_compliance: {
         Row: {
           created_at: string
+          dados_validacao: Json | null
           descricao: string | null
           empresa_id: string
+          fonte_validacao: string | null
           id: string
           item: string
           observacoes: string | null
+          proxima_verificacao: string | null
           status: string
+          ultima_verificacao_auto: string | null
+          valido_ate: string | null
           verificado_em: string | null
           verificado_por: string | null
         }
         Insert: {
           created_at?: string
+          dados_validacao?: Json | null
           descricao?: string | null
           empresa_id: string
+          fonte_validacao?: string | null
           id?: string
           item?: string
           observacoes?: string | null
+          proxima_verificacao?: string | null
           status?: string
+          ultima_verificacao_auto?: string | null
+          valido_ate?: string | null
           verificado_em?: string | null
           verificado_por?: string | null
         }
         Update: {
           created_at?: string
+          dados_validacao?: Json | null
           descricao?: string | null
           empresa_id?: string
+          fonte_validacao?: string | null
           id?: string
           item?: string
           observacoes?: string | null
+          proxima_verificacao?: string | null
           status?: string
+          ultima_verificacao_auto?: string | null
+          valido_ate?: string | null
           verificado_em?: string | null
           verificado_por?: string | null
         }
@@ -1081,10 +1096,14 @@ export type Database = {
         Row: {
           caminho_arquivo: string
           created_at: string
+          dados_extraidos: Json | null
+          data_emissao: string | null
+          data_validade: string | null
           empresa_id: string
           id: string
           nome_arquivo: string
           observacoes: string | null
+          orgao_emissor: string | null
           status: string
           tipo_documento: string
           updated_at: string
@@ -1092,10 +1111,14 @@ export type Database = {
         Insert: {
           caminho_arquivo?: string
           created_at?: string
+          dados_extraidos?: Json | null
+          data_emissao?: string | null
+          data_validade?: string | null
           empresa_id: string
           id?: string
           nome_arquivo?: string
           observacoes?: string | null
+          orgao_emissor?: string | null
           status?: string
           tipo_documento?: string
           updated_at?: string
@@ -1103,10 +1126,14 @@ export type Database = {
         Update: {
           caminho_arquivo?: string
           created_at?: string
+          dados_extraidos?: Json | null
+          data_emissao?: string | null
+          data_validade?: string | null
           empresa_id?: string
           id?: string
           nome_arquivo?: string
           observacoes?: string | null
+          orgao_emissor?: string | null
           status?: string
           tipo_documento?: string
           updated_at?: string
@@ -1127,6 +1154,7 @@ export type Database = {
           comissao_percentual: number | null
           created_at: string
           created_by: string | null
+          dados_receita: Json | null
           email: string | null
           endereco: string | null
           id: string
@@ -1135,10 +1163,12 @@ export type Database = {
           parent_id: string | null
           razao_social: string
           regiao_atuacao: string | null
+          situacao_cadastral: string | null
           status: string
           telefone: string | null
           tipo: string
           uf: string
+          ultima_consulta_cnpj: string | null
           updated_at: string
           user_id: string | null
         }
@@ -1147,6 +1177,7 @@ export type Database = {
           comissao_percentual?: number | null
           created_at?: string
           created_by?: string | null
+          dados_receita?: Json | null
           email?: string | null
           endereco?: string | null
           id?: string
@@ -1155,10 +1186,12 @@ export type Database = {
           parent_id?: string | null
           razao_social?: string
           regiao_atuacao?: string | null
+          situacao_cadastral?: string | null
           status?: string
           telefone?: string | null
           tipo?: string
           uf?: string
+          ultima_consulta_cnpj?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -1167,6 +1200,7 @@ export type Database = {
           comissao_percentual?: number | null
           created_at?: string
           created_by?: string | null
+          dados_receita?: Json | null
           email?: string | null
           endereco?: string | null
           id?: string
@@ -1175,10 +1209,12 @@ export type Database = {
           parent_id?: string | null
           razao_social?: string
           regiao_atuacao?: string | null
+          situacao_cadastral?: string | null
           status?: string
           telefone?: string | null
           tipo?: string
           uf?: string
+          ultima_consulta_cnpj?: string | null
           updated_at?: string
           user_id?: string | null
         }
