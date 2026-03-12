@@ -160,7 +160,15 @@ export default function OnboardingRede() {
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0">{m.tipo_pessoa === 'pj' ? 'PJ' : 'PF'}</Badge>
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0">{segLabel}</Badge>
                       </div>
-                      <p className="text-xs text-muted-foreground font-mono">{displayDoc || "—"}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-xs text-muted-foreground font-mono">{displayDoc || "—"}</p>
+                        {getEmpresaNome(m.empresa_id) && (
+                          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                            <Building2 className="h-3 w-3" />
+                            {getEmpresaNome(m.empresa_id)}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       {m.uf && <span className="text-xs text-muted-foreground">{m.uf}</span>}
