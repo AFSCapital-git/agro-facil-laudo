@@ -95,6 +95,8 @@ export const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   rejeitado: { label: 'Rejeitado', color: 'bg-red-100 text-red-800' },
   ativo: { label: 'Ativo', color: 'bg-emerald-100 text-emerald-800' },
   inativo: { label: 'Inativo', color: 'bg-gray-100 text-gray-800' },
+  pendente_renovacao: { label: 'Renovação Pendente', color: 'bg-orange-100 text-orange-800' },
+  enviado: { label: 'Enviado', color: 'bg-blue-100 text-blue-800' },
 };
 
 export const TIPO_LABELS: Record<string, string> = {

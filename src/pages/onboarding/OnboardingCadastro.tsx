@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, UserCheck, GitBranch, ShieldCheck, ChevronRight, ChevronLeft, Check, Upload, X, FileText } from "lucide-react";
+import { useCnpjLookup, useDocumentExtraction } from "@/hooks/useOnboardingAutomation";
+import { Building2, UserCheck, GitBranch, ShieldCheck, ChevronRight, ChevronLeft, Check, Upload, X, FileText, Search, Loader2, Sparkles, AlertTriangle } from "lucide-react";
 import { UF_LIST, COMPLIANCE_CHECKLIST, DOC_TYPES } from "@/types/onboarding";
 import type { CadastroFormData, OnboardingEmpresa } from "@/types/onboarding";
 
@@ -31,11 +32,14 @@ const initialForm: CadastroFormData = {
 export default function OnboardingCadastro() {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<CadastroFormData>(initialForm);
-  const [files, setFiles] = useState<{ tipo: string; file: File }[]>([]);
+  const [files, setFiles] = useState<{ tipo: string; file: File; extracted?: Record<string, any> }[]>([]);
   const [parents, setParents] = useState<OnboardingEmpresa[]>([]);
   const [saving, setSaving] = useState(false);
+  const [cnpjStatus, setCnpjStatus] = useState<{ situacao: string; ativa: boolean } | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { lookup: lookupCnpj, loading: cnpjLoading } = useCnpjLookup();
+  const { extract: extractDoc, loading: extracting } = useDocumentExtraction();
 
   useEffect(() => {
     onboardingDb.empresas()
@@ -49,8 +53,51 @@ export default function OnboardingCadastro() {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
-  function addFile(tipo: string, file: File) {
+  async function handleCnpjLookup() {
+    const result = await lookupCnpj(form.cnpj);
+    if (result) {
+      setForm((prev) => ({
+        ...prev,
+        razao_social: result.razao_social || prev.razao_social,
+        nome_fantasia: result.nome_fantasia || prev.nome_fantasia,
+        endereco: result.endereco || prev.endereco,
+        municipio: result.municipio || prev.municipio,
+        uf: result.uf || prev.uf,
+        telefone: result.telefone || prev.telefone,
+        email: result.email || prev.email,
+      }));
+      setCnpjStatus({
+        situacao: result.situacao_cadastral,
+        ativa: result.situacao_cadastral === "ATIVA",
+      });
+    }
+  }
+
+  async function handleFileUpload(tipo: string, file: File) {
     setFiles((prev) => [...prev.filter((f) => f.tipo !== tipo), { tipo, file }]);
+
+    // Auto-extract data from uploaded document
+    const extracted = await extractDoc(file, tipo);
+    if (extracted) {
+      setFiles((prev) =>
+        prev.map((f) => (f.tipo === tipo ? { ...f, extracted } : f))
+      );
+
+      // Auto-fill form fields from extracted data
+      setForm((prev) => ({
+        ...prev,
+        ...(extracted.cnpj && !prev.cnpj ? { cnpj: extracted.cnpj } : {}),
+        ...(extracted.razao_social && !prev.razao_social ? { razao_social: extracted.razao_social } : {}),
+        ...(extracted.nome_fantasia && !prev.nome_fantasia ? { nome_fantasia: extracted.nome_fantasia } : {}),
+        ...(extracted.endereco && !prev.endereco ? { endereco: extracted.endereco } : {}),
+        ...(extracted.municipio && !prev.municipio ? { municipio: extracted.municipio } : {}),
+        ...(extracted.uf && !prev.uf ? { uf: extracted.uf } : {}),
+        ...(extracted.responsavel_nome && !prev.responsavel_nome ? { responsavel_nome: extracted.responsavel_nome } : {}),
+        ...(extracted.responsavel_cpf && !prev.responsavel_cpf ? { responsavel_cpf: extracted.responsavel_cpf } : {}),
+      }));
+
+      toast({ title: "Dados extraídos do documento", description: "Campos preenchidos automaticamente. Verifique e ajuste se necessário." });
+    }
   }
 
   function removeFile(tipo: string) {
@@ -77,6 +124,7 @@ export default function OnboardingCadastro() {
           telefone: form.telefone, email: form.email, parent_id: form.parent_id || null,
           regiao_atuacao: form.regiao_atuacao, comissao_percentual: form.comissao_percentual,
           created_by: user.user.id, status: "pendente",
+          ...(cnpjStatus ? { situacao_cadastral: cnpjStatus.situacao } : {}),
         })
         .select("id")
         .single();
@@ -88,13 +136,17 @@ export default function OnboardingCadastro() {
         email: form.responsavel_email, telefone: form.responsavel_telefone, cargo: form.responsavel_cargo,
       });
 
-      for (const { tipo, file } of files) {
+      for (const { tipo, file, extracted } of files) {
         const path = `${empresa.id}/${tipo}-${file.name}`;
         const { error: upErr } = await onboardingDb.storage().upload(path, file);
         if (!upErr) {
           await onboardingDb.documentos().insert({
             empresa_id: empresa.id, tipo_documento: tipo, nome_arquivo: file.name,
             caminho_arquivo: path, status: "enviado",
+            dados_extraidos: extracted || {},
+            data_validade: extracted?.data_validade || null,
+            data_emissao: extracted?.data_emissao || null,
+            orgao_emissor: extracted?.orgao_emissor || "",
           });
         }
       }
@@ -102,10 +154,20 @@ export default function OnboardingCadastro() {
       for (const item of COMPLIANCE_CHECKLIST) {
         await onboardingDb.compliance().insert({
           empresa_id: empresa.id, item: item.item, descricao: item.descricao, status: "pendente",
+          fonte_validacao: "manual",
         });
       }
 
-      toast({ title: "Cadastro criado!", description: "A empresa foi registrada e está pendente de análise." });
+      // Trigger automatic compliance validation
+      try {
+        await supabase.functions.invoke("validate-compliance", {
+          body: { empresa_id: empresa.id, cnpj: form.cnpj, action: "validate_all" },
+        });
+      } catch {
+        // Non-blocking - validation can be retried later
+      }
+
+      toast({ title: "Cadastro criado!", description: "A empresa foi registrada. Validações automáticas em andamento." });
       navigate("/onboarding/empresas");
     } catch (err: any) {
       toast({ title: "Erro ao cadastrar", description: err.message, variant: "destructive" });
@@ -150,7 +212,22 @@ export default function OnboardingCadastro() {
         <CardContent className="pt-6 space-y-5">
           {step === 0 && (
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2"><Label>CNPJ *</Label><Input placeholder="00.000.000/0001-00" value={form.cnpj} onChange={(e) => updateForm("cnpj", e.target.value)} /></div>
+              <div className="sm:col-span-2 space-y-2">
+                <Label>CNPJ *</Label>
+                <div className="flex gap-2">
+                  <Input placeholder="00.000.000/0001-00" value={form.cnpj} onChange={(e) => updateForm("cnpj", e.target.value)} className="flex-1" />
+                  <Button type="button" variant="outline" onClick={handleCnpjLookup} disabled={cnpjLoading || !form.cnpj}>
+                    {cnpjLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                    <span className="ml-1 hidden sm:inline">Consultar</span>
+                  </Button>
+                </div>
+                {cnpjStatus && (
+                  <div className={`flex items-center gap-2 text-xs p-2 rounded ${cnpjStatus.ativa ? "bg-primary/10 text-primary" : "bg-destructive/10 text-destructive"}`}>
+                    {cnpjStatus.ativa ? <Check className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+                    Situação cadastral: <strong>{cnpjStatus.situacao}</strong>
+                  </div>
+                )}
+              </div>
               <div className="space-y-2"><Label>Razão Social *</Label><Input value={form.razao_social} onChange={(e) => updateForm("razao_social", e.target.value)} /></div>
               <div className="space-y-2"><Label>Nome Fantasia</Label><Input value={form.nome_fantasia} onChange={(e) => updateForm("nome_fantasia", e.target.value)} /></div>
               <div className="space-y-2">
@@ -190,24 +267,40 @@ export default function OnboardingCadastro() {
                 </div>
               </div>
               <div>
-                <h3 className="font-semibold mb-3">Documentação</h3>
+                <div className="flex items-center gap-2 mb-3">
+                  <h3 className="font-semibold">Documentação</h3>
+                  {extracting && (
+                    <span className="flex items-center gap-1 text-xs text-primary">
+                      <Sparkles className="h-3 w-3 animate-pulse" /> Extraindo dados...
+                    </span>
+                  )}
+                </div>
                 <div className="grid gap-3">
                   {DOC_TYPES.map((doc) => {
                     const uploaded = files.find((f) => f.tipo === doc.value);
                     return (
                       <div key={doc.value} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
                         <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
-                        <span className="text-sm flex-1">{doc.label}</span>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm">{doc.label}</span>
+                          {uploaded?.extracted && (
+                            <p className="text-xs text-primary mt-0.5 flex items-center gap-1">
+                              <Sparkles className="h-3 w-3" /> Dados extraídos automaticamente
+                            </p>
+                          )}
+                        </div>
                         {uploaded ? (
                           <div className="flex items-center gap-2">
-                            <span className="text-xs text-primary font-medium">{uploaded.file.name}</span>
+                            <span className="text-xs text-primary font-medium truncate max-w-[120px]">{uploaded.file.name}</span>
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeFile(doc.value)}>
                               <X className="h-4 w-4" />
                             </Button>
                           </div>
                         ) : (
                           <label className="cursor-pointer">
-                            <input type="file" className="hidden" accept=".pdf,.jpg,.png,.jpeg" onChange={(e) => { const file = e.target.files?.[0]; if (file) addFile(doc.value, file); }} />
+                            <input type="file" className="hidden" accept=".pdf,.jpg,.png,.jpeg"
+                              onChange={(e) => { const file = e.target.files?.[0]; if (file) handleFileUpload(doc.value, file); }}
+                              disabled={extracting} />
                             <div className="flex items-center gap-1 text-xs text-primary hover:underline"><Upload className="h-3 w-3" /> Enviar</div>
                           </label>
                         )}
@@ -254,19 +347,47 @@ export default function OnboardingCadastro() {
                     <span className="text-muted-foreground">Documentos:</span><span>{files.length} enviado(s)</span>
                     <span className="text-muted-foreground">Vinculado a:</span><span>{parents.find((p) => p.id === form.parent_id)?.nome_fantasia || "—"}</span>
                     <span className="text-muted-foreground">Comissão:</span><span>{form.comissao_percentual}%</span>
+                    {cnpjStatus && (
+                      <>
+                        <span className="text-muted-foreground">Receita Federal:</span>
+                        <span className={cnpjStatus.ativa ? "text-primary font-medium" : "text-destructive font-medium"}>
+                          {cnpjStatus.situacao}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
               <div>
                 <h3 className="font-semibold mb-3">Checklist de Compliance</h3>
-                <p className="text-xs text-muted-foreground mb-2">Os itens abaixo serão criados automaticamente para verificação posterior.</p>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Os itens abaixo serão validados automaticamente junto aos órgãos reguladores. Você também pode fazer a validação manual a qualquer momento.
+                </p>
                 <div className="space-y-2">
-                  {COMPLIANCE_CHECKLIST.map((item) => (
-                    <div key={item.item} className="flex items-center gap-3 p-2.5 rounded-lg border text-sm">
-                      <div className="h-5 w-5 rounded-full border-2 border-muted-foreground/30 shrink-0" />
-                      <span>{item.descricao}</span>
-                    </div>
-                  ))}
+                  {COMPLIANCE_CHECKLIST.map((item) => {
+                    const docExtracted = files.some(f => f.extracted);
+                    const hasCnpjCheck = cnpjStatus && item.item === "cnpj_valido";
+                    return (
+                      <div key={item.item} className="flex items-center gap-3 p-2.5 rounded-lg border text-sm">
+                        <div className={`h-5 w-5 rounded-full border-2 shrink-0 flex items-center justify-center ${
+                          hasCnpjCheck && cnpjStatus.ativa ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/30"
+                        }`}>
+                          {hasCnpjCheck && cnpjStatus.ativa && <Check className="h-3 w-3" />}
+                        </div>
+                        <span className="flex-1">{item.descricao}</span>
+                        {hasCnpjCheck && (
+                          <span className={`text-xs px-2 py-0.5 rounded ${cnpjStatus.ativa ? "bg-primary/10 text-primary" : "bg-destructive/10 text-destructive"}`}>
+                            Auto ✓
+                          </span>
+                        )}
+                        {!hasCnpjCheck && (
+                          <span className="text-xs text-muted-foreground px-2 py-0.5 rounded bg-muted">
+                            {docExtracted ? "Auto + Manual" : "Manual"}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
