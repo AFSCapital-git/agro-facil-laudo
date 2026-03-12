@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { onboardingDb } from "@/lib/onboarding-db";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,8 +33,7 @@ export default function OnboardingEmpresas() {
   useEffect(() => { loadEmpresas(); }, []);
 
   async function loadEmpresas() {
-    const { data } = await supabase
-      .from("onboarding_empresas")
+    const { data } = await onboardingDb.empresas()
       .select("*")
       .neq("tipo", "master")
       .order("created_at", { ascending: false });
@@ -45,9 +44,9 @@ export default function OnboardingEmpresas() {
   async function openDetail(empresa: OnboardingEmpresa) {
     setSelected(empresa);
     const [resp, docs, comp] = await Promise.all([
-      supabase.from("onboarding_responsaveis").select("*").eq("empresa_id", empresa.id),
-      supabase.from("onboarding_documentos").select("*").eq("empresa_id", empresa.id),
-      supabase.from("onboarding_compliance").select("*").eq("empresa_id", empresa.id),
+      onboardingDb.responsaveis().select("*").eq("empresa_id", empresa.id),
+      onboardingDb.documentos().select("*").eq("empresa_id", empresa.id),
+      onboardingDb.compliance().select("*").eq("empresa_id", empresa.id),
     ]);
     setDetailData({
       responsaveis: (resp.data as OnboardingResponsavel[]) || [],
@@ -57,8 +56,8 @@ export default function OnboardingEmpresas() {
   }
 
   async function toggleStatus(empresa: OnboardingEmpresa) {
-    const newStatus = empresa.status === "ativo" ? "inativo" : empresa.status === "pendente" ? "ativo" : "ativo";
-    await supabase.from("onboarding_empresas").update({ status: newStatus } as any).eq("id", empresa.id);
+    const newStatus = empresa.status === "ativo" ? "inativo" : "ativo";
+    await onboardingDb.empresas().update({ status: newStatus }).eq("id", empresa.id);
     toast({ title: `Status alterado para ${STATUS_LABELS[newStatus]?.label || newStatus}` });
     loadEmpresas();
   }
@@ -76,11 +75,7 @@ export default function OnboardingEmpresas() {
         title="Empresas Cadastradas"
         description="Gerencie todas as empresas do ecossistema"
         icon={<Building2 className="h-5 w-5" />}
-        actions={
-          <Button onClick={() => navigate("/onboarding/cadastro")}>
-            <UserPlus className="mr-2 h-4 w-4" /> Novo Cadastro
-          </Button>
-        }
+        actions={<Button onClick={() => navigate("/onboarding/cadastro")}><UserPlus className="mr-2 h-4 w-4" /> Novo Cadastro</Button>}
       />
 
       <Card>
@@ -113,9 +108,7 @@ export default function OnboardingEmpresas() {
           </div>
 
           {loading ? (
-            <div className="space-y-3">
-              {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}
-            </div>
+            <div className="space-y-3">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}</div>
           ) : filtered.length === 0 ? (
             <p className="text-sm text-muted-foreground py-12 text-center">Nenhuma empresa encontrada.</p>
           ) : (
@@ -140,19 +133,13 @@ export default function OnboardingEmpresas() {
                       <TableCell className="text-muted-foreground font-mono text-xs">{empresa.cnpj}</TableCell>
                       <TableCell>{TIPO_LABELS[empresa.tipo] || empresa.tipo}</TableCell>
                       <TableCell>{empresa.uf}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className={statusInfo.color}>{statusInfo.label}</Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {new Date(empresa.created_at).toLocaleDateString("pt-BR")}
-                      </TableCell>
+                      <TableCell><Badge variant="secondary" className={statusInfo.color}>{statusInfo.label}</Badge></TableCell>
+                      <TableCell className="text-muted-foreground text-sm">{new Date(empresa.created_at).toLocaleDateString("pt-BR")}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openDetail(empresa)}>
-                            <Eye className="h-4 w-4" />
-                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openDetail(empresa)}><Eye className="h-4 w-4" /></Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggleStatus(empresa)}>
-                            {empresa.status === "ativo" ? <ToggleRight className="h-4 w-4 text-green-600" /> : <ToggleLeft className="h-4 w-4" />}
+                            {empresa.status === "ativo" ? <ToggleRight className="h-4 w-4 text-primary" /> : <ToggleLeft className="h-4 w-4" />}
                           </Button>
                         </div>
                       </TableCell>
@@ -165,12 +152,9 @@ export default function OnboardingEmpresas() {
         </CardContent>
       </Card>
 
-      {/* Detail Dialog */}
       <Dialog open={!!selected} onOpenChange={() => { setSelected(null); setDetailData(null); }}>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{selected?.nome_fantasia || selected?.razao_social}</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>{selected?.nome_fantasia || selected?.razao_social}</DialogTitle></DialogHeader>
           {selected && detailData && (
             <div className="space-y-4 text-sm">
               <div className="grid grid-cols-2 gap-2 bg-muted/30 p-3 rounded-lg">
@@ -180,7 +164,6 @@ export default function OnboardingEmpresas() {
                 <span className="text-muted-foreground">Status:</span>
                 <Badge variant="secondary" className={STATUS_LABELS[selected.status]?.color}>{STATUS_LABELS[selected.status]?.label}</Badge>
               </div>
-
               {detailData.responsaveis.length > 0 && (
                 <div>
                   <h4 className="font-semibold mb-2">Responsável Legal</h4>
@@ -194,7 +177,6 @@ export default function OnboardingEmpresas() {
                   ))}
                 </div>
               )}
-
               {detailData.documentos.length > 0 && (
                 <div>
                   <h4 className="font-semibold mb-2">Documentos ({detailData.documentos.length})</h4>
@@ -202,22 +184,19 @@ export default function OnboardingEmpresas() {
                     {detailData.documentos.map((d) => (
                       <div key={d.id} className="flex items-center gap-2 p-2 rounded border text-xs">
                         <span className="flex-1">{d.nome_arquivo}</span>
-                        <Badge variant="secondary" className={STATUS_LABELS[d.status]?.color || ""}>
-                          {STATUS_LABELS[d.status]?.label || d.status}
-                        </Badge>
+                        <Badge variant="secondary" className={STATUS_LABELS[d.status]?.color || ""}>{STATUS_LABELS[d.status]?.label || d.status}</Badge>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
-
               {detailData.compliance.length > 0 && (
                 <div>
                   <h4 className="font-semibold mb-2">Compliance</h4>
                   <div className="space-y-1.5">
                     {detailData.compliance.map((c) => (
                       <div key={c.id} className="flex items-center gap-2 p-2 rounded border text-xs">
-                        <div className={`h-3 w-3 rounded-full shrink-0 ${c.status === "aprovado" ? "bg-green-500" : c.status === "rejeitado" ? "bg-red-500" : "bg-yellow-400"}`} />
+                        <div className={`h-3 w-3 rounded-full shrink-0 ${c.status === "aprovado" ? "bg-primary" : c.status === "rejeitado" ? "bg-destructive" : "bg-accent"}`} />
                         <span className="flex-1">{c.descricao}</span>
                       </div>
                     ))}

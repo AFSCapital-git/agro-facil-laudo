@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { onboardingDb } from "@/lib/onboarding-db";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,8 +22,7 @@ export default function OnboardingDashboard() {
   }, []);
 
   async function loadEmpresas() {
-    const { data } = await supabase
-      .from("onboarding_empresas")
+    const { data } = await onboardingDb.empresas()
       .select("*")
       .neq("tipo", "master")
       .order("created_at", { ascending: false });
@@ -58,10 +57,10 @@ export default function OnboardingDashboard() {
           ))
         ) : (
           <>
-            <StatCard title="Total Empresas" value={total} icon={<Building2 className="h-5 w-5" />} />
-            <StatCard title="Pendentes" value={pendentes} icon={<Clock className="h-5 w-5" />} />
-            <StatCard title="Aprovadas / Ativas" value={aprovadas} icon={<CheckCircle2 className="h-5 w-5" />} />
-            <StatCard title="Rejeitadas" value={rejeitadas} icon={<XCircle className="h-5 w-5" />} />
+            <StatCard title="Total Empresas" value={String(total)} icon={<Building2 className="h-5 w-5" />} />
+            <StatCard title="Pendentes" value={String(pendentes)} icon={<Clock className="h-5 w-5" />} />
+            <StatCard title="Aprovadas / Ativas" value={String(aprovadas)} icon={<CheckCircle2 className="h-5 w-5" />} />
+            <StatCard title="Rejeitadas" value={String(rejeitadas)} icon={<XCircle className="h-5 w-5" />} />
           </>
         )}
       </div>
@@ -94,7 +93,7 @@ export default function OnboardingDashboard() {
               </TableHeader>
               <TableBody>
                 {recentes.map((empresa) => {
-                  const statusInfo = STATUS_LABELS[empresa.status] || { label: empresa.status, color: "bg-gray-100 text-gray-800" };
+                  const statusInfo = STATUS_LABELS[empresa.status] || { label: empresa.status, color: "bg-muted text-muted-foreground" };
                   return (
                     <TableRow key={empresa.id} className="cursor-pointer" onClick={() => navigate("/onboarding/empresas")}>
                       <TableCell className="font-medium">{empresa.nome_fantasia || empresa.razao_social}</TableCell>

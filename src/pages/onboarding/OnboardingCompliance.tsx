@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { onboardingDb } from "@/lib/onboarding-db";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,8 +23,8 @@ export default function OnboardingCompliance() {
 
   async function loadData() {
     const [empRes, compRes] = await Promise.all([
-      supabase.from("onboarding_empresas").select("id, nome_fantasia, razao_social, status").neq("tipo", "master"),
-      supabase.from("onboarding_compliance").select("*").order("created_at"),
+      onboardingDb.empresas().select("id, nome_fantasia, razao_social, status").neq("tipo", "master"),
+      onboardingDb.compliance().select("*").order("created_at"),
     ]);
     const emps = (empRes.data as OnboardingEmpresa[]) || [];
     const comps = (compRes.data as OnboardingComplianceItem[]) || [];
@@ -39,25 +40,18 @@ export default function OnboardingCompliance() {
 
   async function updateItemStatus(itemId: string, newStatus: "aprovado" | "rejeitado") {
     const { data: user } = await supabase.auth.getUser();
-    await supabase
-      .from("onboarding_compliance")
-      .update({
-        status: newStatus,
-        verificado_por: user.user?.id,
-        verificado_em: new Date().toISOString(),
-      } as any)
+    await onboardingDb.compliance()
+      .update({ status: newStatus, verificado_por: user.user?.id, verificado_em: new Date().toISOString() })
       .eq("id", itemId);
     toast({ title: `Item ${newStatus === "aprovado" ? "aprovado" : "rejeitado"} com sucesso` });
     loadData();
   }
 
   const filtered = selectedEmpresa === "all" ? compliance : compliance.filter((c) => c.empresa_id === selectedEmpresa);
-
   const totalPendente = filtered.filter((c) => c.status === "pendente").length;
   const totalAprovado = filtered.filter((c) => c.status === "aprovado").length;
   const totalRejeitado = filtered.filter((c) => c.status === "rejeitado").length;
 
-  // Group by empresa
   const grouped = filtered.reduce<Record<string, (OnboardingComplianceItem & { empresa_nome?: string })[]>>((acc, item) => {
     const key = item.empresa_id;
     if (!acc[key]) acc[key] = [];
@@ -67,40 +61,21 @@ export default function OnboardingCompliance() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <PageHeader
-        title="Compliance"
-        description="Verificação e conformidade de cadastros"
-        icon={<ShieldCheck className="h-5 w-5" />}
-      />
+      <PageHeader title="Compliance" description="Verificação e conformidade de cadastros" icon={<ShieldCheck className="h-5 w-5" />} />
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <Card>
-          <CardContent className="pt-4 pb-3 flex items-center gap-3">
-            <Clock className="h-8 w-8 text-yellow-500" />
-            <div>
-              <p className="text-2xl font-bold">{totalPendente}</p>
-              <p className="text-xs text-muted-foreground">Pendentes</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3 flex items-center gap-3">
-            <CheckCircle2 className="h-8 w-8 text-green-500" />
-            <div>
-              <p className="text-2xl font-bold">{totalAprovado}</p>
-              <p className="text-xs text-muted-foreground">Aprovados</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3 flex items-center gap-3">
-            <XCircle className="h-8 w-8 text-red-500" />
-            <div>
-              <p className="text-2xl font-bold">{totalRejeitado}</p>
-              <p className="text-xs text-muted-foreground">Rejeitados</p>
-            </div>
-          </CardContent>
-        </Card>
+        <Card><CardContent className="pt-4 pb-3 flex items-center gap-3">
+          <Clock className="h-8 w-8 text-accent-foreground" />
+          <div><p className="text-2xl font-bold">{totalPendente}</p><p className="text-xs text-muted-foreground">Pendentes</p></div>
+        </CardContent></Card>
+        <Card><CardContent className="pt-4 pb-3 flex items-center gap-3">
+          <CheckCircle2 className="h-8 w-8 text-primary" />
+          <div><p className="text-2xl font-bold">{totalAprovado}</p><p className="text-xs text-muted-foreground">Aprovados</p></div>
+        </CardContent></Card>
+        <Card><CardContent className="pt-4 pb-3 flex items-center gap-3">
+          <XCircle className="h-8 w-8 text-destructive" />
+          <div><p className="text-2xl font-bold">{totalRejeitado}</p><p className="text-xs text-muted-foreground">Rejeitados</p></div>
+        </CardContent></Card>
       </div>
 
       <div className="flex items-center gap-3">
@@ -108,23 +83,15 @@ export default function OnboardingCompliance() {
           <SelectTrigger className="w-[280px]"><SelectValue placeholder="Filtrar por empresa" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas as Empresas</SelectItem>
-            {empresas.map((e) => (
-              <SelectItem key={e.id} value={e.id}>{e.nome_fantasia || e.razao_social}</SelectItem>
-            ))}
+            {empresas.map((e) => <SelectItem key={e.id} value={e.id}>{e.nome_fantasia || e.razao_social}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
 
       {loading ? (
-        <div className="space-y-4">
-          {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-40 w-full" />)}
-        </div>
+        <div className="space-y-4">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-40 w-full" />)}</div>
       ) : Object.keys(grouped).length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            Nenhum item de compliance encontrado.
-          </CardContent>
-        </Card>
+        <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">Nenhum item de compliance encontrado.</CardContent></Card>
       ) : (
         Object.entries(grouped).map(([empresaId, items]) => {
           const empresaNome = items[0]?.empresa_nome || "—";
@@ -134,29 +101,27 @@ export default function OnboardingCompliance() {
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base">{empresaNome}</CardTitle>
-                  {allApproved && (
-                    <Badge className="bg-green-100 text-green-800">✓ Conforme</Badge>
-                  )}
+                  {allApproved && <Badge className="bg-primary/10 text-primary">✓ Conforme</Badge>}
                 </div>
               </CardHeader>
               <CardContent className="space-y-2">
                 {items.map((item) => (
                   <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg border">
                     <div className={`h-4 w-4 rounded-full shrink-0 ${
-                      item.status === "aprovado" ? "bg-green-500" : item.status === "rejeitado" ? "bg-red-500" : "bg-yellow-400"
+                      item.status === "aprovado" ? "bg-primary" : item.status === "rejeitado" ? "bg-destructive" : "bg-accent"
                     }`} />
                     <span className="flex-1 text-sm">{item.descricao || item.item}</span>
                     {item.status === "pendente" ? (
                       <div className="flex items-center gap-1">
-                        <Button size="sm" variant="outline" className="h-7 text-xs text-green-700 border-green-300 hover:bg-green-50" onClick={() => updateItemStatus(item.id, "aprovado")}>
+                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => updateItemStatus(item.id, "aprovado")}>
                           <CheckCircle2 className="h-3 w-3 mr-1" /> Aprovar
                         </Button>
-                        <Button size="sm" variant="outline" className="h-7 text-xs text-red-700 border-red-300 hover:bg-red-50" onClick={() => updateItemStatus(item.id, "rejeitado")}>
+                        <Button size="sm" variant="outline" className="h-7 text-xs text-destructive" onClick={() => updateItemStatus(item.id, "rejeitado")}>
                           <XCircle className="h-3 w-3 mr-1" /> Rejeitar
                         </Button>
                       </div>
                     ) : (
-                      <Badge variant="secondary" className={`text-[10px] ${STATUS_LABELS[item.status]?.color || ""}`}>
+                      <Badge variant="secondary" className={STATUS_LABELS[item.status]?.color || ""}>
                         {STATUS_LABELS[item.status]?.label || item.status}
                       </Badge>
                     )}
