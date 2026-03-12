@@ -7,9 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { useCnpjLookup } from "@/hooks/useOnboardingAutomation";
-import { ChevronLeft, ChevronRight, Check, Search, Loader2, Sparkles, User, Building2, MapPin, Phone } from "lucide-react";
+import { useCnpjLookup, useDocumentExtraction } from "@/hooks/useOnboardingAutomation";
+import { ChevronLeft, ChevronRight, Check, Search, Loader2, Sparkles, User, Building2, MapPin, Phone, FileUp, Upload } from "lucide-react";
 import { UF_LIST } from "@/types/onboarding";
 import {
   SEGMENTOS, GENEROS, ESTADOS_CIVIS, REGIMES_CASAMENTO,
@@ -23,6 +24,14 @@ const STEPS = [
   { label: "Documento", icon: Building2 },
   { label: "Localização", icon: MapPin },
   { label: "Contato", icon: Phone },
+  { label: "Anexos", icon: FileUp },
+];
+
+const DOC_UPLOAD_TYPES = [
+  { key: "rg_cnh", label: "RG / CNH / CTPS", required: true },
+  { key: "comprovante_endereco", label: "Comprovante de Endereço", required: true },
+  { key: "contrato_social", label: "Contrato Social / CNPJ (PJ)", required: false, pjOnly: true },
+  { key: "crea_licenca", label: "CREA / Licença Profissional", required: false, segmentos: ["engenheiro", "projetista"] },
 ];
 
 interface Props {
@@ -46,8 +55,10 @@ export function CadastroMembroWizard({ onSuccess, onCancel }: Props) {
     pessoa_exposta_politicamente: false,
     corresp_imovel_proprio: false,
   });
+  const [uploads, setUploads] = useState<Record<string, { file: File; uploading: boolean; done: boolean }>>({});
   const { toast } = useToast();
   const { lookup: lookupCnpj, loading: cnpjLoading } = useCnpjLookup();
+  const { extract: extractDoc, loading: extracting } = useDocumentExtraction();
 
   const u = (field: string, value: any) => setForm((p) => ({ ...p, [field]: value }));
 
@@ -69,6 +80,39 @@ export function CadastroMembroWizard({ onSuccess, onCancel }: Props) {
     }
   }
 
+  async function handleFileUpload(docKey: string, file: File) {
+    setUploads(prev => ({ ...prev, [docKey]: { file, uploading: true, done: false } }));
+    
+    // Try OCR extraction
+    const extracted = await extractDoc(file, docKey);
+    
+    if (extracted) {
+      // Auto-fill form fields based on extracted data
+      setForm((p) => {
+        const updates: Record<string, any> = {};
+        if (extracted.cnpj && !p.cnpj) updates.cnpj = extracted.cnpj;
+        if (extracted.razao_social && !p.razao_social) updates.razao_social = extracted.razao_social;
+        if (extracted.nome_fantasia && !p.nome_fantasia) updates.nome_fantasia = extracted.nome_fantasia;
+        if (extracted.endereco && !p.logradouro) updates.logradouro = extracted.endereco;
+        if (extracted.municipio && !p.cidade) updates.cidade = extracted.municipio;
+        if (extracted.uf && !p.uf) updates.uf = extracted.uf;
+        if (extracted.responsavel_nome && !p.nome_completo) updates.nome_completo = extracted.responsavel_nome;
+        if (extracted.responsavel_cpf && !p.cpf) updates.cpf = extracted.responsavel_cpf;
+        return { ...p, ...updates };
+      });
+    }
+    
+    setUploads(prev => ({ ...prev, [docKey]: { file, uploading: false, done: true } }));
+  }
+
+  function getVisibleDocTypes() {
+    return DOC_UPLOAD_TYPES.filter(d => {
+      if (d.pjOnly && form.tipo_pessoa !== 'pj') return false;
+      if (d.segmentos && !d.segmentos.includes(form.segmento)) return false;
+      return true;
+    });
+  }
+
   function canAdvance(): boolean {
     if (step === 0) return !!(form.tipo_pessoa && form.segmento);
     if (step === 1) return !!(form.nome_completo && (form.tipo_pessoa === 'pf' ? form.cpf : form.cnpj));
@@ -81,7 +125,6 @@ export function CadastroMembroWizard({ onSuccess, onCancel }: Props) {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) throw new Error("Não autenticado");
 
-      // Get the empresa_id of the current user's onboarding empresa
       const { data: empresas } = await (onboardingDb as any).empresas()
         .select("id")
         .eq("user_id", user.user.id)
@@ -89,7 +132,6 @@ export function CadastroMembroWizard({ onSuccess, onCancel }: Props) {
 
       let empresaId = empresas?.[0]?.id;
 
-      // Fallback: get any empresa the user created
       if (!empresaId) {
         const { data: created } = await (onboardingDb as any).empresas()
           .select("id")
@@ -98,7 +140,6 @@ export function CadastroMembroWizard({ onSuccess, onCancel }: Props) {
         empresaId = created?.[0]?.id;
       }
 
-      // Fallback: get master
       if (!empresaId) {
         const { data: master } = await (onboardingDb as any).empresas()
           .select("id")
@@ -109,14 +150,33 @@ export function CadastroMembroWizard({ onSuccess, onCancel }: Props) {
 
       if (!empresaId) throw new Error("Nenhuma empresa vinculada encontrada");
 
-      const { error } = await (onboardingDb as any).redeMembros()
+      // Insert member
+      const { data: membro, error } = await (onboardingDb as any).redeMembros()
         .insert({
           empresa_id: empresaId,
           created_by: user.user.id,
           ...form,
-        });
+        })
+        .select("id")
+        .single();
 
       if (error) throw error;
+
+      // Upload documents to storage and register
+      const uploadedDocs = Object.entries(uploads).filter(([_, v]) => v.done && v.file);
+      for (const [docKey, { file }] of uploadedDocs) {
+        const filePath = `rede/${membro.id}/${docKey}_${Date.now()}_${file.name}`;
+        const { error: storageError } = await onboardingDb.storage().upload(filePath, file);
+        if (!storageError) {
+          await (onboardingDb as any).redeDocumentos().insert({
+            membro_id: membro.id,
+            tipo_documento: docKey,
+            nome_arquivo: file.name,
+            caminho_arquivo: filePath,
+          });
+        }
+      }
+
       onSuccess();
     } catch (err: any) {
       toast({ title: "Erro ao cadastrar membro", description: err.message, variant: "destructive" });
@@ -143,7 +203,7 @@ export function CadastroMembroWizard({ onSuccess, onCancel }: Props) {
                 }`}>
                   {isDone ? <Check className="h-3 w-3" /> : <Icon className="h-3 w-3" />}
                 </div>
-                <span className={`text-[10px] text-center truncate max-w-[70px] ${isActive ? "font-semibold text-primary" : "text-muted-foreground"}`}>{s.label}</span>
+                <span className={`text-[10px] text-center truncate max-w-[60px] ${isActive ? "font-semibold text-primary" : "text-muted-foreground"}`}>{s.label}</span>
               </div>
               {i < STEPS.length - 1 && <div className={`flex-1 h-0.5 mb-5 mx-1 ${isDone ? "bg-primary" : "bg-muted-foreground/20"}`} />}
             </div>
@@ -345,22 +405,10 @@ export function CadastroMembroWizard({ onSuccess, onCancel }: Props) {
           </div>
 
           <div className="flex flex-wrap gap-6 pt-2">
-            <div className="flex items-center space-x-2">
-              <Switch checked={form.zona_urbana || false} onCheckedChange={(v) => u('zona_urbana', v)} />
-              <Label>Zona Urbana</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Switch checked={form.endereco_correspondencia || false} onCheckedChange={(v) => u('endereco_correspondencia', v)} />
-              <Label>Endereço Correspondência</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Switch checked={form.local_correio || false} onCheckedChange={(v) => u('local_correio', v)} />
-              <Label>Local Correio</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Switch checked={form.imovel_proprio || false} onCheckedChange={(v) => u('imovel_proprio', v)} />
-              <Label>Imóvel Próprio</Label>
-            </div>
+            <div className="flex items-center space-x-2"><Switch checked={form.zona_urbana || false} onCheckedChange={(v) => u('zona_urbana', v)} /><Label>Zona Urbana</Label></div>
+            <div className="flex items-center space-x-2"><Switch checked={form.endereco_correspondencia || false} onCheckedChange={(v) => u('endereco_correspondencia', v)} /><Label>Endereço Correspondência</Label></div>
+            <div className="flex items-center space-x-2"><Switch checked={form.local_correio || false} onCheckedChange={(v) => u('local_correio', v)} /><Label>Local Correio</Label></div>
+            <div className="flex items-center space-x-2"><Switch checked={form.imovel_proprio || false} onCheckedChange={(v) => u('imovel_proprio', v)} /><Label>Imóvel Próprio</Label></div>
           </div>
 
           {!form.imovel_proprio && (
@@ -393,10 +441,7 @@ export function CadastroMembroWizard({ onSuccess, onCancel }: Props) {
                 <div className="sm:col-span-2 space-y-2"><Label>Complemento</Label><Input value={form.corresp_complemento || ''} onChange={(e) => u('corresp_complemento', e.target.value)} /></div>
               </div>
               <div className="flex flex-wrap gap-6 pt-2">
-                <div className="flex items-center space-x-2">
-                  <Switch checked={form.corresp_imovel_proprio || false} onCheckedChange={(v) => u('corresp_imovel_proprio', v)} />
-                  <Label>Imóvel Próprio</Label>
-                </div>
+                <div className="flex items-center space-x-2"><Switch checked={form.corresp_imovel_proprio || false} onCheckedChange={(v) => u('corresp_imovel_proprio', v)} /><Label>Imóvel Próprio</Label></div>
                 {!form.corresp_imovel_proprio && (
                   <div className="space-y-2">
                     <Select value={form.corresp_tipo_imovel || ''} onValueChange={(v) => u('corresp_tipo_imovel', v)}>
@@ -422,6 +467,62 @@ export function CadastroMembroWizard({ onSuccess, onCancel }: Props) {
           <div className="pt-2">
             <h4 className="font-semibold text-primary mb-3">Email</h4>
             <div className="space-y-2"><Label>Email *</Label><Input type="email" value={form.email || ''} onChange={(e) => u('email', e.target.value)} /></div>
+          </div>
+        </div>
+      )}
+
+      {/* Step 5: Anexos / Document Upload */}
+      {step === 5 && (
+        <div className="space-y-4">
+          <h4 className="font-semibold text-primary">Documentos Obrigatórios</h4>
+          <p className="text-xs text-muted-foreground">Faça o upload dos documentos. A IA extrairá dados automaticamente para preencher campos do cadastro.</p>
+          
+          <div className="space-y-3">
+            {getVisibleDocTypes().map((doc) => {
+              const upload = uploads[doc.key];
+              return (
+                <div key={doc.key} className="flex items-center gap-3 p-3 rounded-lg border hover:border-primary/50 transition-colors">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
+                    <FileUp className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{doc.label}</span>
+                      {doc.required && <Badge variant="destructive" className="text-[9px] px-1 py-0">Obrigatório</Badge>}
+                    </div>
+                    {upload?.done && (
+                      <p className="text-xs text-muted-foreground truncate">{upload.file.name}</p>
+                    )}
+                  </div>
+                  <div className="shrink-0">
+                    {upload?.uploading || (extracting && upload?.file) ? (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Sparkles className="h-3 w-3 text-primary" />
+                        <span>Extraindo...</span>
+                      </div>
+                    ) : upload?.done ? (
+                      <Badge variant="outline" className="text-primary border-primary"><Check className="h-3 w-3 mr-1" />Enviado</Badge>
+                    ) : (
+                      <label className="cursor-pointer">
+                        <Input
+                          type="file"
+                          className="hidden"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleFileUpload(doc.key, file);
+                          }}
+                        />
+                        <Button variant="outline" size="sm" asChild>
+                          <span><Upload className="h-3 w-3 mr-1" />Upload</span>
+                        </Button>
+                      </label>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
