@@ -9,13 +9,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Plus, Search, Filter, Eye } from "lucide-react";
+import { Users, Plus, Search, Filter, Eye, Building2 } from "lucide-react";
 import { SEGMENTOS, STATUS_MEMBRO_LABELS } from "@/types/rede-membro";
 import type { RedeMembro } from "@/types/rede-membro";
 import { CadastroMembroWizard } from "@/components/onboarding/CadastroMembroWizard";
 
+interface Empresa {
+  id: string;
+  razao_social: string;
+  nome_fantasia: string;
+}
+
 export default function OnboardingRede() {
   const [membros, setMembros] = useState<RedeMembro[]>([]);
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterSegmento, setFilterSegmento] = useState("todos");
@@ -24,25 +31,30 @@ export default function OnboardingRede() {
   const [viewMembro, setViewMembro] = useState<RedeMembro | null>(null);
   const { toast } = useToast();
 
-  const loadMembros = () => {
+  const loadData = async () => {
     setLoading(true);
-    (onboardingDb as any).redeMembros()
-      .select("*")
-      .order("created_at", { ascending: false })
-      .then(({ data, error }: any) => {
-        if (error) {
-          toast({ title: "Erro ao carregar rede", description: error.message, variant: "destructive" });
-        }
-        setMembros((data as RedeMembro[]) || []);
-        setLoading(false);
-      });
+    const [{ data: memData, error }, { data: empData }] = await Promise.all([
+      (onboardingDb as any).redeMembros().select("*").order("created_at", { ascending: false }),
+      (onboardingDb as any).empresas().select("id, razao_social, nome_fantasia"),
+    ]);
+    if (error) {
+      toast({ title: "Erro ao carregar rede", description: error.message, variant: "destructive" });
+    }
+    setMembros((memData as RedeMembro[]) || []);
+    setEmpresas((empData as Empresa[]) || []);
+    setLoading(false);
   };
 
-  useEffect(() => { loadMembros(); }, []);
+  useEffect(() => { loadData(); }, []);
+
+  const getEmpresaNome = (empresaId: string) => {
+    const emp = empresas.find(e => e.id === empresaId);
+    return emp ? (emp.nome_fantasia || emp.razao_social) : "";
+  };
 
   const filtered = membros.filter((m) => {
     const name = m.tipo_pessoa === 'pj' ? (m.nome_fantasia || m.razao_social) : m.nome_completo;
-    const matchSearch = !searchTerm || name.toLowerCase().includes(searchTerm.toLowerCase()) || m.cpf.includes(searchTerm) || m.cnpj.includes(searchTerm);
+    const matchSearch = !searchTerm || name.toLowerCase().includes(searchTerm.toLowerCase()) || m.cpf?.includes(searchTerm) || m.cnpj?.includes(searchTerm);
     const matchSegmento = filterSegmento === "todos" || m.segmento === filterSegmento;
     const matchStatus = filterStatus === "todos" || m.status === filterStatus;
     return matchSearch && matchSegmento && matchStatus;
@@ -113,7 +125,7 @@ export default function OnboardingRede() {
             <CadastroMembroWizard
               onSuccess={() => {
                 setDialogOpen(false);
-                loadMembros();
+                loadData();
                 toast({ title: "Membro cadastrado!", description: "O membro foi adicionado à sua rede." });
               }}
               onCancel={() => setDialogOpen(false)}
@@ -148,7 +160,15 @@ export default function OnboardingRede() {
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0">{m.tipo_pessoa === 'pj' ? 'PJ' : 'PF'}</Badge>
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0">{segLabel}</Badge>
                       </div>
-                      <p className="text-xs text-muted-foreground font-mono">{displayDoc || "—"}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-xs text-muted-foreground font-mono">{displayDoc || "—"}</p>
+                        {getEmpresaNome(m.empresa_id) && (
+                          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                            <Building2 className="h-3 w-3" />
+                            {getEmpresaNome(m.empresa_id)}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       {m.uf && <span className="text-xs text-muted-foreground">{m.uf}</span>}

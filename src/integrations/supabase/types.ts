@@ -1163,6 +1163,7 @@ export type Database = {
           parent_id: string | null
           razao_social: string
           regiao_atuacao: string | null
+          rm_id: string | null
           situacao_cadastral: string | null
           status: string
           telefone: string | null
@@ -1186,6 +1187,7 @@ export type Database = {
           parent_id?: string | null
           razao_social?: string
           regiao_atuacao?: string | null
+          rm_id?: string | null
           situacao_cadastral?: string | null
           status?: string
           telefone?: string | null
@@ -1209,6 +1211,7 @@ export type Database = {
           parent_id?: string | null
           razao_social?: string
           regiao_atuacao?: string | null
+          rm_id?: string | null
           situacao_cadastral?: string | null
           status?: string
           telefone?: string | null
@@ -1224,6 +1227,54 @@ export type Database = {
             columns: ["parent_id"]
             isOneToOne: false
             referencedRelation: "onboarding_empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_empresas_rm_id_fkey"
+            columns: ["rm_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_rm"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onboarding_rede_documentos: {
+        Row: {
+          caminho_arquivo: string
+          created_at: string
+          dados_extraidos: Json | null
+          id: string
+          membro_id: string
+          nome_arquivo: string
+          status: string
+          tipo_documento: string
+        }
+        Insert: {
+          caminho_arquivo?: string
+          created_at?: string
+          dados_extraidos?: Json | null
+          id?: string
+          membro_id: string
+          nome_arquivo?: string
+          status?: string
+          tipo_documento?: string
+        }
+        Update: {
+          caminho_arquivo?: string
+          created_at?: string
+          dados_extraidos?: Json | null
+          id?: string
+          membro_id?: string
+          nome_arquivo?: string
+          status?: string
+          tipo_documento?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_rede_documentos_membro_id_fkey"
+            columns: ["membro_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_rede_membros"
             referencedColumns: ["id"]
           },
         ]
@@ -1507,6 +1558,59 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "onboarding_responsaveis_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onboarding_rm: {
+        Row: {
+          cargo: string | null
+          cpf: string
+          created_at: string
+          created_by: string | null
+          email: string
+          empresa_id: string
+          id: string
+          nome: string
+          status: string
+          telefone: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          cargo?: string | null
+          cpf?: string
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          empresa_id: string
+          id?: string
+          nome?: string
+          status?: string
+          telefone?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          cargo?: string | null
+          cpf?: string
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          empresa_id?: string
+          id?: string
+          nome?: string
+          status?: string
+          telefone?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_rm_empresa_id_fkey"
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "onboarding_empresas"
@@ -2553,6 +2657,7 @@ export type Database = {
       get_engenheiro_id: { Args: never; Returns: string }
       get_engenheiro_laudo_solicitacao_ids: { Args: never; Returns: string[] }
       get_onboarding_empresa_id: { Args: never; Returns: string }
+      get_onboarding_rm_id: { Args: never; Returns: string }
       get_produtor_grupo_ids: { Args: never; Returns: string[] }
       get_produtor_id: { Args: never; Returns: string }
       get_produtor_solicitacao_ids: { Args: never; Returns: string[] }
@@ -2570,6 +2675,7 @@ export type Database = {
       is_engenheiro: { Args: never; Returns: boolean }
       is_mesa_produtos: { Args: never; Returns: boolean }
       is_produtor: { Args: never; Returns: boolean }
+      is_rm_comercial: { Args: never; Returns: boolean }
       is_subestabelecido: { Args: never; Returns: boolean }
     }
     Enums: {
@@ -2582,6 +2688,7 @@ export type Database = {
         | "agrobanker"
         | "coban_master"
         | "subestabelecido"
+        | "rm_comercial"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2718,6 +2825,7 @@ export const Constants = {
         "agrobanker",
         "coban_master",
         "subestabelecido",
+        "rm_comercial",
       ],
     },
   },

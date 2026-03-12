@@ -20,6 +20,8 @@ import {
   ArrowLeft,
   Leaf,
   Users,
+  Briefcase,
+  BarChart3,
 } from "lucide-react";
 
 const navItems = [
@@ -27,6 +29,8 @@ const navItems = [
   { title: "Novo Cadastro", icon: UserPlus, path: "/onboarding/cadastro" },
   { title: "Empresas", icon: Building2, path: "/onboarding/empresas" },
   { title: "Minha Rede", icon: Users, path: "/onboarding/rede" },
+  { title: "Time Comercial", icon: Briefcase, path: "/onboarding/time-comercial" },
+  { title: "Dashboard RM", icon: BarChart3, path: "/onboarding/rm-dashboard" },
   { title: "Estrutura Comercial", icon: GitBranch, path: "/onboarding/estrutura" },
   { title: "Compliance", icon: ShieldCheck, path: "/onboarding/compliance" },
 ];
