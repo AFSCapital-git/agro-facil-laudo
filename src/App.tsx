@@ -112,6 +112,7 @@ const App = () => (
               <Route path="/onboarding" element={<OnboardingDashboard />} />
               <Route path="/onboarding/cadastro" element={<OnboardingCadastro />} />
               <Route path="/onboarding/empresas" element={<OnboardingEmpresas />} />
+              <Route path="/onboarding/rede" element={<OnboardingRede />} />
               <Route path="/onboarding/estrutura" element={<OnboardingEstrutura />} />
               <Route path="/onboarding/compliance" element={<OnboardingCompliance />} />
             </Route>

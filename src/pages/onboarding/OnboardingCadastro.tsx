@@ -349,7 +349,7 @@ export default function OnboardingCadastro() {
                     <span className="text-muted-foreground">CPF:</span><span>{form.responsavel_cpf}</span>
                     <span className="text-muted-foreground">Documentos:</span><span>{files.length} enviado(s)</span>
                     <span className="text-muted-foreground">Vinculado a:</span><span>{parents.find((p) => p.id === form.parent_id)?.nome_fantasia || "—"}</span>
-                    <span className="text-muted-foreground">Comissão:</span><span>{form.comissao_percentual}%</span>
+                    <span className="text-muted-foreground">Comissão:</span><span className="text-xs italic text-muted-foreground">Por produto (em breve)</span>
                     {cnpjStatus && (
                       <>
                         <span className="text-muted-foreground">Receita Federal:</span>

@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   ArrowLeft,
   Leaf,
+  Users,
 } from "lucide-react";
 
 const navItems = [
