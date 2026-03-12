@@ -5,3 +5,12 @@ verify_jwt = false
 
 [functions.ai-assistant]
 verify_jwt = false
+
+[functions.consulta-cnpj]
+verify_jwt = false
+
+[functions.extract-document-data]
+verify_jwt = false
+
+[functions.validate-compliance]
+verify_jwt = false
