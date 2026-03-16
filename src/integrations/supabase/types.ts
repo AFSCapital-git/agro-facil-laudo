@@ -2655,11 +2655,15 @@ export type Database = {
       get_banco_parceiro_id: { Args: never; Returns: string }
       get_engenheiro_assistente_grupo_ids: { Args: never; Returns: string[] }
       get_engenheiro_id: { Args: never; Returns: string }
+      get_engenheiro_laudo_ids: { Args: never; Returns: string[] }
       get_engenheiro_laudo_solicitacao_ids: { Args: never; Returns: string[] }
+      get_engenheiro_solicitacao_id_texts: { Args: never; Returns: string[] }
       get_onboarding_empresa_id: { Args: never; Returns: string }
       get_onboarding_rm_id: { Args: never; Returns: string }
       get_produtor_grupo_ids: { Args: never; Returns: string[] }
       get_produtor_id: { Args: never; Returns: string }
+      get_produtor_laudo_ids: { Args: never; Returns: string[] }
+      get_produtor_solicitacao_id_texts: { Args: never; Returns: string[] }
       get_produtor_solicitacao_ids: { Args: never; Returns: string[] }
       has_role: {
         Args: {
