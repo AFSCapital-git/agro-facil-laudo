@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { getErrorMessage } from "@/lib/error-messages";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -211,7 +212,7 @@ export default function MeusLaudos() {
       setSelectedLaudo(updated);
     },
     onError: (err: Error) => {
-      toast({ title: "Erro", description: err.message, variant: "destructive" });
+      toast({ title: "Erro", description: getErrorMessage(err), variant: "destructive" });
     },
   });
 
@@ -232,7 +233,7 @@ export default function MeusLaudos() {
       toast({ title: "Laudo salvo!" });
     },
     onError: (err: Error) => {
-      toast({ title: "Erro ao salvar", description: err.message, variant: "destructive" });
+      toast({ title: "Erro ao salvar", description: getErrorMessage(err), variant: "destructive" });
     },
   });
 
@@ -253,48 +254,27 @@ export default function MeusLaudos() {
       setSelectedLaudo(null);
     },
     onError: (err: Error) => {
-      toast({ title: "Erro", description: err.message, variant: "destructive" });
+      toast({ title: "Erro", description: getErrorMessage(err), variant: "destructive" });
     },
   });
 
   const signMutation = useMutation({
     mutationFn: async () => {
-      const content = JSON.stringify({
-        laudo_id: selectedLaudo.id,
-        ...form,
-        timestamp: new Date().toISOString(),
+      // Server-side signature via edge function
+      const { data: signResult, error: signErr } = await supabase.functions.invoke("sign-laudo", {
+        body: { laudo_id: selectedLaudo.id },
       });
-      const encoder = new TextEncoder();
-      const data = encoder.encode(content);
-      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 
-      const { data: engId } = await supabase.rpc("get_engenheiro_id");
+      if (signErr) throw signErr;
+      if (signResult?.error) throw new Error(signResult.error);
 
-      const { error: sigErr } = await supabase.from("assinatura_laudo").insert({
-        laudo_id: selectedLaudo.id,
-        engenheiro_id: engId!,
-        hash_assinatura: hashHex,
-        tipo_assinatura: "simples_mvp",
-        ip_assinatura: "",
-      });
-      if (sigErr) throw sigErr;
-
-      const { error: laudoErr } = await supabase
-        .from("laudos")
-        .update({ status_laudo: "finalizado" })
-        .eq("id", selectedLaudo.id);
-      if (laudoErr) throw laudoErr;
-
-      // status_solicitacao is managed by Mesa, no update needed here
-
+      // Generate PDF after successful signing
       try {
         await supabase.functions.invoke("generate-laudo-pdf", {
           body: { laudo_id: selectedLaudo.id },
         });
       } catch {
-        console.warn("PDF generation failed, can be retried later");
+        // PDF generation is non-critical, can be retried later
       }
     },
     onSuccess: () => {
@@ -303,7 +283,7 @@ export default function MeusLaudos() {
       setSelectedLaudo(null);
     },
     onError: (err: Error) => {
-      toast({ title: "Erro na assinatura", description: err.message, variant: "destructive" });
+      toast({ title: "Erro na assinatura", description: getErrorMessage(err), variant: "destructive" });
     },
   });
 
