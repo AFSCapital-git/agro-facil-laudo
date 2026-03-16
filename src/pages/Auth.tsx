@@ -292,6 +292,18 @@ export default function Auth() {
                 </p>
               )}
             </div>
+
+            {showInstall && (
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-3 w-full gap-2"
+                onClick={handleInstall}
+              >
+                <Download className="h-4 w-4" />
+                Instalar aplicativo
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>
