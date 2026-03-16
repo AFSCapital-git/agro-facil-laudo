@@ -254,7 +254,7 @@ export default function MeusLaudos() {
       setSelectedLaudo(null);
     },
     onError: (err: Error) => {
-      toast({ title: "Erro", description: err.message, variant: "destructive" });
+      toast({ title: "Erro", description: getErrorMessage(err), variant: "destructive" });
     },
   });
 
