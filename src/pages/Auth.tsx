@@ -15,6 +15,29 @@ type AuthMode = "login" | "register";
 type UserRole = "produtor" | "engenheiro" | "agrobanker";
 
 export default function Auth() {
+  const [deferredPrompt, setDeferredPrompt] = useStatePWA<any>(null);
+  const [showInstall, setShowInstall] = useStatePWA(false);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstall(true);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === "accepted") {
+      setShowInstall(false);
+      setDeferredPrompt(null);
+    }
+  };
+
   const [mode, setMode] = useState<AuthMode>("login");
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
