@@ -233,7 +233,7 @@ export default function MeusLaudos() {
       toast({ title: "Laudo salvo!" });
     },
     onError: (err: Error) => {
-      toast({ title: "Erro ao salvar", description: err.message, variant: "destructive" });
+      toast({ title: "Erro ao salvar", description: getErrorMessage(err), variant: "destructive" });
     },
   });
 
