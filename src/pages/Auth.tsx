@@ -7,13 +7,37 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Leaf, ArrowRight } from "lucide-react";
+import { Leaf, ArrowRight, Download } from "lucide-react";
+import { useEffect, useState as useStatePWA } from "react";
 import { AgroBankerFields } from "@/components/auth/AgroBankerFields";
 
 type AuthMode = "login" | "register";
 type UserRole = "produtor" | "engenheiro" | "agrobanker";
 
 export default function Auth() {
+  const [deferredPrompt, setDeferredPrompt] = useStatePWA<any>(null);
+  const [showInstall, setShowInstall] = useStatePWA(false);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstall(true);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === "accepted") {
+      setShowInstall(false);
+      setDeferredPrompt(null);
+    }
+  };
+
   const [mode, setMode] = useState<AuthMode>("login");
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -268,6 +292,18 @@ export default function Auth() {
                 </p>
               )}
             </div>
+
+            {showInstall && (
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-3 w-full gap-2"
+                onClick={handleInstall}
+              >
+                <Download className="h-4 w-4" />
+                Instalar aplicativo
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>
