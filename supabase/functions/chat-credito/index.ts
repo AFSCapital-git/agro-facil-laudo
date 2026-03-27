@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const systemPrompt = `Você é um especialista no Manual de Crédito Rural (MCR) do Banco Central do Brasil. Responda apenas com base nas normas do MCR, citando sempre o capítulo e seção. Use markdown para formatação.`;
+    const systemPrompt = `Você é um especialista no Manual do Crédito Rural (MCR) do Banco Central do Brasil. Responda perguntas sobre normas, limites, programas e condições do crédito rural. Sempre cite o capítulo e seção do MCR que embasa sua resposta. Se não souber a resposta com certeza, diga claramente que recomenda consultar o MCR atualizado no site do Banco Central. Use markdown para formatação.`;
 
     const apiMessages = [
       { role: "system", content: systemPrompt },
