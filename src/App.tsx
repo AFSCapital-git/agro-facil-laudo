@@ -43,6 +43,7 @@ import AgroBankerTreinamentos from "@/pages/agrobanker/AgroBankerTreinamentos";
 import MesaAgroBankers from "@/pages/mesa/MesaAgroBankers";
 import Pitch from "./pages/Pitch";
 import Institucional from "./pages/Institucional";
+import ChatCredito from "@/pages/ChatCredito";
 import NotFound from "./pages/NotFound";
 import { OnboardingLayout } from "@/components/onboarding/OnboardingLayout";
 import OnboardingDashboard from "@/pages/onboarding/OnboardingDashboard";
@@ -82,6 +83,7 @@ const App = () => (
               <Route path="/pagamentos" element={<Pagamentos />} />
               <Route path="/relatorios-engenheiro" element={<RelatorioEngenheiro />} />
               <Route path="/relatorios-produtor" element={<RelatorioProdutor />} />
+              <Route path="/chat-credito" element={<ChatCredito />} />
               <Route path="/mesa" element={<MesaDashboard />} />
               <Route path="/mesa/esteira" element={<MesaProdutos />} />
               <Route path="/mesa/envios-banco" element={<MesaEnviosBanco />} />
