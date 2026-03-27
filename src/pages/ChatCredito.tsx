@@ -30,7 +30,7 @@ export default function ChatCredito() {
   const [enquadramento, setEnquadramento] = useState<Enquadramento | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -100,8 +100,11 @@ export default function ChatCredito() {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const canPersistConsulta = role === "produtor" && Boolean(produtorId);
+
   const createConsulta = async () => {
-    if (!produtorId) return null;
+    if (!canPersistConsulta) return null;
+
     const { data, error } = await supabase
       .from("consulta_enquadramento")
       .insert({
@@ -110,8 +113,9 @@ export default function ChatCredito() {
       })
       .select("id")
       .single();
-    if (error) throw error;
-    return data.id;
+
+    if (error) return null;
+    return data?.id ?? null;
   };
 
   const saveMessage = async (cId: string, role: string, content: string) => {
@@ -135,7 +139,7 @@ export default function ChatCredito() {
     try {
       // Create consulta on first message
       let cId = consultaId;
-      if (!cId) {
+      if (!cId && canPersistConsulta) {
         cId = await createConsulta();
         setConsultaId(cId);
       }
@@ -271,14 +275,16 @@ export default function ChatCredito() {
                 <p><strong>Condições:</strong> {enquadramento.condicoes}</p>
                 <p className="text-muted-foreground text-xs mt-1">{enquadramento.justificativa}</p>
               </div>
-              <Button
-                onClick={handleCreateSolicitacao}
-                className="mt-3 gap-2 bg-green-600 hover:bg-green-700"
-                size="sm"
-              >
-                <FileText className="h-4 w-4" />
-                Criar Solicitação com este Enquadramento
-              </Button>
+              {role === "produtor" && (
+                <Button
+                  onClick={handleCreateSolicitacao}
+                  className="mt-3 gap-2 bg-green-600 hover:bg-green-700"
+                  size="sm"
+                >
+                  <FileText className="h-4 w-4" />
+                  Criar Solicitação com este Enquadramento
+                </Button>
+              )}
             </div>
           </div>
         </Card>
