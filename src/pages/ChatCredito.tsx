@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
-import { Send, Bot, User, Loader2 } from "lucide-react";
+import { Send, Bot, User, Loader2, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import ReactMarkdown from "react-markdown";
@@ -38,10 +38,10 @@ export default function ChatCredito() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       setMessages((prev) => [...prev, { role: "assistant", content: data.content }]);
-    } catch (err: any) {
+    } catch {
       toast({
         title: "Erro",
-        description: err.message || "Não foi possível obter resposta.",
+        description: "Não foi possível obter resposta. Tente novamente.",
         variant: "destructive",
       });
     } finally {
@@ -49,32 +49,56 @@ export default function ChatCredito() {
     }
   };
 
+  const resetChat = () => {
+    setMessages([]);
+    setInput("");
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-7rem)] max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Chat Crédito Rural</h1>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Consulta MCR</h1>
+          <p className="text-sm text-muted-foreground">Assistente do Crédito Rural</p>
+        </div>
+        {messages.length > 0 && (
+          <Button variant="outline" size="sm" onClick={resetChat} className="gap-2">
+            <RotateCcw className="h-4 w-4" />
+            Nova conversa
+          </Button>
+        )}
+      </div>
 
-      <Card className="flex-1 flex flex-col overflow-hidden">
+      <Card className="flex-1 flex flex-col overflow-hidden bg-background border">
         <ScrollArea className="flex-1 p-4">
           <div className="space-y-4">
             {messages.length === 0 && (
-              <div className="text-center text-muted-foreground py-12 space-y-2">
-                <Bot className="mx-auto h-10 w-10" />
-                <p className="text-lg font-medium">Olá! Sou seu assistente de crédito rural.</p>
-                <p className="text-sm">Pergunte sobre PRONAF, financiamentos, documentação e mais.</p>
+              <div className="text-center text-muted-foreground py-16 space-y-3">
+                <div className="mx-auto h-14 w-14 rounded-full bg-green-100 flex items-center justify-center">
+                  <Bot className="h-7 w-7 text-green-700" />
+                </div>
+                <p className="text-lg font-semibold text-foreground">Assistente do Crédito Rural</p>
+                <p className="text-sm max-w-md mx-auto">
+                  Pergunte sobre normas do MCR, PRONAF, limites de financiamento, documentação e condições do crédito rural.
+                </p>
               </div>
             )}
+
             {messages.map((m, i) => (
-              <div key={i} className={`flex gap-3 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div
+                key={i}
+                className={`flex gap-3 ${m.role === "user" ? "justify-end" : "justify-start"}`}
+              >
                 {m.role === "assistant" && (
-                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <Bot className="h-4 w-4 text-primary" />
+                  <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center shrink-0 mt-1">
+                    <Bot className="h-4 w-4 text-green-700" />
                   </div>
                 )}
                 <div
-                  className={`rounded-lg px-4 py-3 max-w-[80%] ${
+                  className={`rounded-2xl px-4 py-3 max-w-[80%] ${
                     m.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted"
+                      ? "bg-green-600 text-white"
+                      : "bg-muted text-foreground"
                   }`}
                 >
                   {m.role === "assistant" ? (
@@ -86,19 +110,21 @@ export default function ChatCredito() {
                   )}
                 </div>
                 {m.role === "user" && (
-                  <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center shrink-0">
-                    <User className="h-4 w-4 text-primary-foreground" />
+                  <div className="h-8 w-8 rounded-full bg-green-600 flex items-center justify-center shrink-0 mt-1">
+                    <User className="h-4 w-4 text-white" />
                   </div>
                 )}
               </div>
             ))}
+
             {isLoading && (
               <div className="flex gap-3">
-                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <Bot className="h-4 w-4 text-primary" />
+                <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                  <Bot className="h-4 w-4 text-green-700" />
                 </div>
-                <div className="bg-muted rounded-lg px-4 py-3">
+                <div className="bg-muted rounded-2xl px-4 py-3 flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
+                  Digitando...
                 </div>
               </div>
             )}
@@ -106,15 +132,21 @@ export default function ChatCredito() {
           </div>
         </ScrollArea>
 
-        <div className="border-t p-4 flex gap-2">
+        <div className="border-t p-4 flex gap-2 bg-background">
           <Input
-            placeholder="Digite sua pergunta sobre crédito rural..."
+            placeholder="Digite sua pergunta sobre o MCR..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()}
             disabled={isLoading}
+            className="rounded-full"
           />
-          <Button onClick={send} disabled={isLoading || !input.trim()} size="icon">
+          <Button
+            onClick={send}
+            disabled={isLoading || !input.trim()}
+            size="icon"
+            className="rounded-full bg-green-600 hover:bg-green-700 shrink-0"
+          >
             <Send className="h-4 w-4" />
           </Button>
         </div>
