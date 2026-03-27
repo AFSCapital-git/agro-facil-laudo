@@ -59,6 +59,7 @@ const engenheiroNav: NavItem[] = [
   { title: "Meus Laudos", icon: FileText, path: "/meus-laudos" },
   { title: "Pagamentos", icon: CreditCard, path: "/pagamentos" },
   { title: "Relatórios", icon: BarChart3, path: "/relatorios-engenheiro" },
+  { title: "Consulta MCR", icon: MessageCircle, path: "/chat-credito" },
 ];
 
 const mesaNav: NavItem[] = [
@@ -66,10 +67,12 @@ const mesaNav: NavItem[] = [
   { title: "Esteira", icon: ClipboardCheck, path: "/mesa/esteira" },
   { title: "AgroBankers", icon: Briefcase, path: "/mesa/agrobankers" },
   { title: "Envios ao Banco", icon: CreditCard, path: "/mesa/envios-banco" },
+  { title: "Consulta MCR", icon: MessageCircle, path: "/chat-credito" },
 ];
 
 const bancoNav: NavItem[] = [
   { title: "Painel", icon: Home, path: "/banco" },
+  { title: "Consulta MCR", icon: MessageCircle, path: "/chat-credito" },
 ];
 
 const agrobankerNav: NavItem[] = [

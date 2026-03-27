@@ -592,6 +592,104 @@ export type Database = {
         }
         Relationships: []
       }
+      consulta_enquadramento: {
+        Row: {
+          capitulo_mcr: string | null
+          condicoes_resumo: string | null
+          created_at: string
+          dados_contexto: Json | null
+          finalizado_em: string | null
+          id: string
+          justificativa: string | null
+          produto_sugerido_nome: string | null
+          produtor_id: string
+          pronaf_produto_sugerido_id: string | null
+          resultado_enquadramento: Json | null
+          solicitacao_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          capitulo_mcr?: string | null
+          condicoes_resumo?: string | null
+          created_at?: string
+          dados_contexto?: Json | null
+          finalizado_em?: string | null
+          id?: string
+          justificativa?: string | null
+          produto_sugerido_nome?: string | null
+          produtor_id: string
+          pronaf_produto_sugerido_id?: string | null
+          resultado_enquadramento?: Json | null
+          solicitacao_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          capitulo_mcr?: string | null
+          condicoes_resumo?: string | null
+          created_at?: string
+          dados_contexto?: Json | null
+          finalizado_em?: string | null
+          id?: string
+          justificativa?: string | null
+          produto_sugerido_nome?: string | null
+          produtor_id?: string
+          pronaf_produto_sugerido_id?: string | null
+          resultado_enquadramento?: Json | null
+          solicitacao_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consulta_enquadramento_pronaf_produto_sugerido_id_fkey"
+            columns: ["pronaf_produto_sugerido_id"]
+            isOneToOne: false
+            referencedRelation: "pronaf_produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consulta_enquadramento_solicitacao_id_fkey"
+            columns: ["solicitacao_id"]
+            isOneToOne: false
+            referencedRelation: "solicitacoes_laudo"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      consulta_enquadramento_mensagens: {
+        Row: {
+          consulta_id: string
+          content: string
+          created_at: string
+          id: string
+          role: string
+        }
+        Insert: {
+          consulta_id: string
+          content: string
+          created_at?: string
+          id?: string
+          role?: string
+        }
+        Update: {
+          consulta_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consulta_enquadramento_mensagens_consulta_id_fkey"
+            columns: ["consulta_id"]
+            isOneToOne: false
+            referencedRelation: "consulta_enquadramento"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       engenheiros: {
         Row: {
           area_atuacao: string | null
@@ -2105,6 +2203,7 @@ export type Database = {
           docs_habilitados: boolean
           engenheiro_assistente_id: string | null
           engenheiro_atribuido_id: string | null
+          enquadramento_id: string | null
           grupo_id: string | null
           id: string
           notas_mesa: string | null
@@ -2137,6 +2236,7 @@ export type Database = {
           docs_habilitados?: boolean
           engenheiro_assistente_id?: string | null
           engenheiro_atribuido_id?: string | null
+          enquadramento_id?: string | null
           grupo_id?: string | null
           id?: string
           notas_mesa?: string | null
@@ -2169,6 +2269,7 @@ export type Database = {
           docs_habilitados?: boolean
           engenheiro_assistente_id?: string | null
           engenheiro_atribuido_id?: string | null
+          enquadramento_id?: string | null
           grupo_id?: string | null
           id?: string
           notas_mesa?: string | null
@@ -2213,6 +2314,13 @@ export type Database = {
             columns: ["engenheiro_atribuido_id"]
             isOneToOne: false
             referencedRelation: "engenheiros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_laudo_enquadramento_id_fkey"
+            columns: ["enquadramento_id"]
+            isOneToOne: false
+            referencedRelation: "consulta_enquadramento"
             referencedColumns: ["id"]
           },
           {

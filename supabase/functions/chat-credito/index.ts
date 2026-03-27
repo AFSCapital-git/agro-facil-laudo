@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { messages } = body;
+    const { messages, contexto, produtos_disponiveis } = body;
 
     if (!Array.isArray(messages) || messages.length === 0 || messages.length > 50) {
       return new Response(JSON.stringify({ error: "Mensagens inválidas" }), {
@@ -54,7 +54,67 @@ Deno.serve(async (req) => {
       });
     }
 
-    const systemPrompt = `Você é um especialista no Manual do Crédito Rural (MCR) do Banco Central do Brasil. Responda perguntas sobre normas, limites, programas e condições do crédito rural. Sempre cite o capítulo e seção do MCR que embasa sua resposta. Se não souber a resposta com certeza, diga claramente que recomenda consultar o MCR atualizado no site do Banco Central. Use markdown para formatação.`;
+    // Build context block
+    let contextoBlock = "";
+    if (contexto) {
+      const parts: string[] = [];
+      if (contexto.propriedades?.length) {
+        parts.push("PROPRIEDADES DO PRODUTOR:");
+        for (const p of contexto.propriedades) {
+          parts.push(`- ${p.nome_propriedade}: ${p.area_total_ha}ha em ${p.municipio}/${p.uf}, Solo: ${p.tipo_solo || 'não informado'}, Fonte água: ${p.fonte_agua || 'não informado'}`);
+        }
+      }
+      if (contexto.historico_solicitacoes?.length) {
+        parts.push("\nHISTÓRICO DE SOLICITAÇÕES:");
+        for (const s of contexto.historico_solicitacoes) {
+          parts.push(`- ${s.produto}: ${s.cultura}, R$ ${s.valor}, Status: ${s.status}`);
+        }
+      }
+      if (parts.length) contextoBlock = "\n\n--- DADOS DO PRODUTOR ---\n" + parts.join("\n") + "\n--- FIM DADOS ---\n";
+    }
+
+    let produtosBlock = "";
+    if (produtos_disponiveis?.length) {
+      produtosBlock = "\n\n--- PRODUTOS PRONAF DISPONÍVEIS ---\n";
+      for (const p of produtos_disponiveis) {
+        produtosBlock += `- ${p.nome}: ${p.finalidade}, Grupo: ${p.grupo_alvo}, Limite: ${p.limite_valor}, Juros: ${p.juros}, Carência: ${p.carencia}, Prazo: ${p.prazo_reembolso}, Financia: ${p.o_que_financia}\n`;
+      }
+      produtosBlock += "--- FIM PRODUTOS ---\n";
+    }
+
+    const systemPrompt = `Você é o **Assistente de Enquadramento de Crédito Rural** da plataforma AgroLaudo. Seu objetivo é **guiar o produtor rural** até encontrar o melhor enquadramento de produto PRONAF para sua necessidade.
+
+## MODO DE OPERAÇÃO
+Você deve conduzir a conversa de forma **proativa e estruturada**:
+
+1. **COLETA DE INFORMAÇÕES**: Faça perguntas objetivas, uma ou duas por vez, para entender:
+   - Qual a finalidade do crédito (custeio, investimento, industrialização)
+   - Qual a atividade/cultura pretendida
+   - Valor aproximado necessário
+   - Região e características da propriedade
+   - Se é primeiro acesso ao PRONAF
+
+2. **ANÁLISE E REFINAMENTO**: Com base nas respostas, cruze com as normas do MCR e os produtos disponíveis para sugerir as melhores opções.
+
+3. **RECOMENDAÇÃO FINAL**: Quando tiver informações suficientes, apresente a recomendação no seguinte formato EXATO (para que o sistema possa extrair):
+
+\`\`\`enquadramento
+PRODUTO: [nome exato do produto PRONAF]
+CAPÍTULO MCR: [capítulo e seção]
+JUSTIFICATIVA: [por que este produto é o mais adequado]
+CONDIÇÕES: [resumo das condições - juros, prazo, carência, limite]
+VALOR SUGERIDO: [faixa de valor recomendada, se aplicável]
+\`\`\`
+
+## REGRAS
+- Sempre cite capítulo e seção do MCR que embasa sua análise
+- Use os dados do produtor já disponíveis para evitar perguntas redundantes
+- Se houver mais de uma opção viável, apresente até 3 alternativas ranqueadas
+- Se não souber com certeza, recomende consultar o MCR atualizado no site do Banco Central
+- Use markdown para formatação
+- Seja objetivo e profissional, mas amigável
+- NÃO apresente o bloco \`\`\`enquadramento\`\`\` até ter informações suficientes
+${contextoBlock}${produtosBlock}`;
 
     const apiMessages = [
       { role: "system", content: systemPrompt },
@@ -93,7 +153,25 @@ Deno.serve(async (req) => {
     const result = await response.json();
     const content = result.choices?.[0]?.message?.content || "Sem resposta da IA.";
 
-    return new Response(JSON.stringify({ content }), {
+    // Extract enquadramento if present
+    let enquadramento = null;
+    const match = content.match(/```enquadramento\n([\s\S]*?)```/);
+    if (match) {
+      const block = match[1];
+      const extract = (key: string) => {
+        const r = new RegExp(`${key}:\\s*(.+)`, "i");
+        return r.exec(block)?.[1]?.trim() || "";
+      };
+      enquadramento = {
+        produto_sugerido: extract("PRODUTO"),
+        capitulo_mcr: extract("CAPÍTULO MCR"),
+        justificativa: extract("JUSTIFICATIVA"),
+        condicoes: extract("CONDIÇÕES"),
+        valor_sugerido: extract("VALOR SUGERIDO"),
+      };
+    }
+
+    return new Response(JSON.stringify({ content, enquadramento }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
