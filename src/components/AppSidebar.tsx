@@ -36,6 +36,7 @@ import {
   TrendingUp,
   DollarSign,
   GraduationCap,
+  MessageCircle,
 } from "lucide-react";
 
 interface NavItem {
@@ -49,6 +50,7 @@ const produtorNav: NavItem[] = [
   { title: "Propriedades", icon: MapPin, path: "/propriedades" },
   { title: "Solicitações", icon: FileText, path: "/solicitacoes" },
   { title: "Meu Histórico", icon: BarChart3, path: "/relatorios-produtor" },
+  { title: "Chat Crédito", icon: MessageCircle, path: "/chat-credito" },
 ];
 
 const engenheiroNav: NavItem[] = [
