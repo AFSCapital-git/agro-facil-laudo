@@ -1,111 +1,43 @@
+## Objetivo
 
+Deixar o cliente HTTP da API Python (`http://187.127.24.128:8001`) pronto e bem configurado para ser usado em módulos novos/integrações específicas, **sem tocar no fluxo de autenticação atual** (Supabase / Lovable Cloud), que continua sustentando `Auth.tsx`, `useAuth`, roles, RLS e todo o resto do app.
 
-# AgroLaudo - Plataforma de Laudos Agronômicos
+## O que será feito
 
-## Visão Geral
-Plataforma tipo "Uber de laudos agronômicos" conectando produtores rurais a engenheiros agrônomos para emissão de laudos de viabilidade exigidos por bancos no Plano Safra.
+### 1. `src/lib/api-client.ts` (já existe — revisar e ajustar)
+- Confirmar `baseURL` = `http://187.127.24.128:8001` via env (`VITE_API_URL`) com fallback hardcoded.
+- Interceptor de request: injeta `Authorization: Bearer <token>` lendo de `localStorage.getItem('access_token')`.
+- Interceptor de response: em `401`, limpa `access_token` + `user_id` do localStorage e redireciona para `/auth`.
+- Garantir tipagem TS estrita (sem `any`).
+- **Importante:** usar uma chave de localStorage separada (`api_access_token`) para não colidir com a sessão do Supabase, evitando que um 401 da API Python desconecte o usuário do Supabase.
 
----
+### 2. `src/services/auth-service.ts` (já existe — revisar)
+- Manter `register`, `login`, `getCurrentUser` (consome `GET /api/auth/me` já existente no servidor), `logout`, helpers `getToken`, `getUserId`, `isAuthenticated`.
+- Ajustar para usar a mesma chave `api_access_token`.
+- Tipos: `UserRegisterRequest`, `UserLoginRequest`, `TokenResponse`, `UserResponse` exportados.
 
-## Fase 1 — Autenticação e Perfis de Usuário
+### 3. NÃO alterar
+- `src/pages/Auth.tsx` — continua usando Supabase.
+- `src/hooks/useAuth.tsx` — continua usando Supabase.
+- `src/hooks/useAuth-python.tsx` — fica disponível como hook opcional para módulos futuros que queiram a API Python, mas não é montado no `App.tsx`.
+- Nenhuma página, rota ou ProtectedRoute.
 
-- **Cadastro e login** com email/senha via Supabase Auth
-- **3 papéis**: Produtor, Engenheiro e Admin (tabela separada de roles)
-- **Cadastro do Produtor**: nome, CPF/CNPJ, telefone
-- **Cadastro do Engenheiro**: CREA, área de atuação, raio de atendimento, dados bancários — status inicial "pendente"
-- **Redirecionamento pós-login** conforme o papel do usuário (dashboard específico)
+### 4. Teste visual
+- Como a mudança é só na camada de serviço (não há UI nova), o "teste visual" será:
+  - Verificar que `/auth` continua carregando normal (login Supabase intacto).
+  - Confirmar build sem erros de TS.
 
----
+## O que NÃO será feito (e por quê)
 
-## Fase 2 — Cadastro de Propriedades (Produtor)
+- **Não vou migrar `Auth.tsx` para a API Python** — você escolheu "Coexistir". Migrar quebraria `useAuth`, `ProtectedRoute`, roles, RLS e ~todas as páginas que fazem queries Supabase.
+- **Não vou criar o endpoint `GET /api/auth/me`** — esse endpoint vive no servidor Python (FastAPI em `187.127.24.128:8001`), fora do escopo do Lovable. Você confirmou que já está implementado lá.
+- **Não vou redirecionar para `/dashboard` após login** — `Auth.tsx` não muda neste plano.
 
-- Tela "Minhas Propriedades" com listagem e botão "Nova Propriedade"
-- Formulário: nome, endereço, área total (ha), coordenadas GPS (opcional)
-- Campo preparado para código CAR (futuro)
+## Arquivos afetados
 
----
+- `src/lib/api-client.ts` (ajuste pequeno: chave de token isolada + tipos)
+- `src/services/auth-service.ts` (ajuste: mesma chave isolada)
 
-## Fase 3 — Solicitação de Laudo (Produtor)
+## Próximo passo recomendado (fora deste plano)
 
-- Tela "Nova Solicitação" com seleção de propriedade, tipo de crédito, valor, cultura principal, área de cultivo, banco destino e observações
-- Criação do registro com status "aberta"
-- Tela "Minhas Solicitações" com listagem, filtros por status e timeline visual do progresso
-- Download do PDF quando laudo finalizado
-
----
-
-## Fase 4 — Fluxo do Engenheiro
-
-- **Lista de demandas disponíveis** (solicitações abertas) com detalhes e botão "Aceitar"
-- Ao aceitar: cria o Laudo vinculado, status passa para "em_vistoria"
-- **Checklist de vistoria guiado**: situação da cultura, tipo de solo, histórico de produtividade, disponibilidade hídrica, riscos, garantias, observações
-- **Upload de fotos** vinculadas ao laudo (com campos preparados para geolocalização)
-- Botão "Concluir Vistoria" → status "aguardando_assinatura"
-
----
-
-## Fase 5 — Assinatura Digital e Geração de PDF
-
-- Tela de revisão completa do laudo preenchido
-- Checkbox de declaração + botão "Assinar digitalmente"
-- Geração de hash simples (conteúdo + timestamp), registro de IP e data/hora
-- Campo `tipo_assinatura` preparado para ICP-Brasil no futuro
-- **Geração de PDF** padronizado com dados do produtor, propriedade, dados técnicos, parecer final, dados do engenheiro e hash da assinatura
-- Status do laudo atualizado para "finalizado"
-
----
-
-## Fase 6 — Pagamentos ao Engenheiro
-
-- Criação automática de registro de pagamento pendente ao finalizar laudo
-- Valor baseado nas configurações da plataforma
-- Tela "Meus Pagamentos" para o engenheiro ver pendentes e pagos
-- Admin marca pagamentos como "pago" manualmente (MVP)
-
----
-
-## Fase 7 — Painel Admin
-
-- **Dashboard** com métricas: nº produtores, engenheiros, laudos por status, valor pendente
-- **Aprovação de engenheiros**: lista de pendentes com ações aprovar/reprovar
-- **Configurações**: valor base por laudo, prazo padrão de pagamento
-- **Gestão de pagamentos**: listagem com filtros e ação "Marcar como pago"
-
----
-
-## Fase 8 — Relatórios
-
-- **Admin**: laudos finalizados por período, valor total pendente, laudos por engenheiro (com exportação CSV)
-- **Engenheiro**: laudos no mês, soma de valores pendentes e pagos
-- **Produtor**: histórico de solicitações com data, propriedade, status e link do PDF
-
----
-
-## Arquitetura Técnica
-
-- **Backend**: Lovable Cloud (Supabase) para autenticação, banco de dados, storage (fotos/PDFs) e edge functions
-- **Banco de dados**: todas as entidades descritas (User/Profiles, Produtor, Engenheiro, Propriedade, SolicitacaoLaudo, Laudo, MidiaLaudo, AssinaturaLaudo, PagamentoEngenheiro, ConfiguracoesPlataforma) com RLS policies por papel
-- **Storage**: buckets para fotos de vistoria e PDFs de laudos
-- **PDF**: geração via edge function
-- **Campos "futuro"** mantidos na modelagem: score_risco, codigo_car, banco_destino, tipo_assinatura, percentual_taxa_plataforma
-
----
-
-## Fase 9 — AgroBanker (Canal de Originação B2B)
-
-- **Perfil AgroBanker**: Canal de captação similar a assessores de investimentos (XP/BTG)
-- **Tipos de entidade**: Revenda Agrícola, Cooperativa Agropecuária, Sindicato Rural, Associação de Produtores, Consultoria Agronômica, Escritório de Contabilidade Rural, Corretora de Seguros Agrícolas, Casa Agropecuária, ATER, Trading/Cerealista, Outro
-- **Tabelas**: `agrobankers`, `agrobanker_produtores` (vínculo com níveis indicação/gestão_ativa), `agrobanker_comissoes`
-- **Vínculo com solicitações**: campo `agrobanker_id` em `solicitacoes_laudo` para rastreio de origem
-- **Dois níveis de acesso**: indicação (rastreio) e gestão ativa (criar/gerenciar solicitações em nome do produtor)
-- **Dashboard**: Carteira de clientes, métricas de captação, financeiro e gestão de solicitações
-- **Monetização**: Estrutura preparada, modelo a definir
-
-
-## Design e UX
-
-- Interface limpa e funcional, otimizada para uso em campo (mobile-friendly)
-- Cores que remetam ao agronegócio (tons de verde e terra)
-- Navegação simples com sidebar por papel de usuário
-- Formulários com validação clara e feedback visual de progresso
-
+Quando você tiver um módulo específico que deva usar a API Python (ex.: uma nova feature isolada), me diga qual e eu integro usando `apiClient` + `authService` já preparados.
