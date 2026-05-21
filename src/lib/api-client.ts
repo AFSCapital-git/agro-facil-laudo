@@ -6,7 +6,7 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse, AxiosError } from "axios";
 
 export const API_URL: string =
-  (import.meta.env.VITE_API_URL as string | undefined) ?? "http://187.127.24.128:8001";
+  (import.meta.env.VITE_API_URL as string | undefined) ?? "https://187.127.24.128";
 
 export const API_TOKEN_KEY = "api_access_token";
 export const API_USER_ID_KEY = "api_user_id";
