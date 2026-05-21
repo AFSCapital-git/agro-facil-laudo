@@ -14,8 +14,45 @@ serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // --- AuthN: validate caller's JWT ---
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    if (!token) {
+      return new Response(JSON.stringify({ error: "Não autorizado" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
+    const { data: userData, error: userErr } = await userClient.auth.getUser(token);
+    if (userErr || !userData?.user) {
+      return new Response(JSON.stringify({ error: "Não autorizado" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const userId = userData.user.id;
+
+    // --- AuthZ: only admin or coban_master may trigger compliance ---
+    const supabase = createClient(supabaseUrl, serviceKey);
+    const { data: roles } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId);
+    const roleList = (roles ?? []).map((r: { role: string }) => r.role);
+    const allowed = roleList.includes("admin") || roleList.includes("coban_master");
+    if (!allowed) {
+      return new Response(JSON.stringify({ error: "Permissão insuficiente" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const { empresa_id, cnpj, action } = await req.json();
 
@@ -52,7 +89,6 @@ serve(async (req) => {
               verificado_em: new Date().toISOString(),
             };
 
-            // Update empresa with Receita data
             await supabase
               .from("onboarding_empresas")
               .update({
@@ -69,9 +105,10 @@ serve(async (req) => {
             };
           }
         } catch (e) {
+          console.error("[INTERNAL] cnpj fetch", e);
           results.cnpj_valido = {
             status: "pendente",
-            dados: { erro: String(e) },
+            dados: { erro: "Falha na consulta externa" },
             fonte: "receita_federal_brasilapi",
           };
         }
@@ -121,7 +158,6 @@ serve(async (req) => {
         }
       }
 
-      // Check if required docs exist
       const docTypes = docs.map((d: any) => d.tipo_documento);
       if (docTypes.includes("contrato_social") && !results.contrato_social) {
         results.contrato_social = {
@@ -174,7 +210,6 @@ serve(async (req) => {
         .eq("item", item);
     }
 
-    // 5. Check if company should be blocked due to expired docs
     const hasExpired = Object.values(results).some(
       (r: any) => r.status === "rejeitado" && r.dados?.vencido
     );
@@ -194,9 +229,9 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error("Error:", error);
+    console.error("[INTERNAL] validate-compliance", error);
     return new Response(
-      JSON.stringify({ error: "Erro na validação", details: String(error) }),
+      JSON.stringify({ error: "Erro interno" }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -216,8 +251,6 @@ async function getCnpj(supabase: any, empresaId: string): Promise<string | null>
 
 function getNextVerification(item: string): string {
   const now = new Date();
-  // CNPJ: re-check every 30 days
-  // Documents: re-check every 7 days when close to expiry
   const daysMap: Record<string, number> = {
     cnpj_valido: 30,
     certidao_negativa: 7,
