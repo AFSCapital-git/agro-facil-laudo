@@ -45,6 +45,7 @@ import Pitch from "./pages/Pitch";
 import Institucional from "./pages/Institucional";
 import ChatCredito from "@/pages/ChatCredito";
 import NotFound from "./pages/NotFound";
+import TestApi from "@/pages/TestApi";
 import { OnboardingLayout } from "@/components/onboarding/OnboardingLayout";
 import OnboardingDashboard from "@/pages/onboarding/OnboardingDashboard";
 import OnboardingCadastro from "@/pages/onboarding/OnboardingCadastro";
@@ -67,6 +68,8 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/pitch" element={<Pitch />} />
             <Route path="/institucional" element={<Institucional />} />
+            <Route path="/test-api" element={<TestApi />} />
+            
             
             <Route
               element={
