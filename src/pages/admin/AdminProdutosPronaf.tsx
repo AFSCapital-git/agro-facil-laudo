@@ -191,7 +191,7 @@ export default function AdminProdutosPronaf() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Produtos PRONAF"
+        title="Produtos Financeiros"
         description="Gerencie modalidades e documentações exigidas."
         icon={<Package className="h-5 w-5" />}
         actions={
