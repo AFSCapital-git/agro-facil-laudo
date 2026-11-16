@@ -62,7 +62,7 @@ export default function AdminConfiguracoes() {
     <div className="space-y-6">
       <PageHeader
         title="Configurações Gerais"
-        description="Valores padrão da plataforma. A remuneração do engenheiro é configurada individualmente por produto na aba Produtos PRONAF."
+        description="Valores padrão da plataforma. A remuneração do engenheiro é configurada individualmente por produto na aba Produtos Financeiros."
         icon={<Settings className="h-5 w-5" />}
       />
 

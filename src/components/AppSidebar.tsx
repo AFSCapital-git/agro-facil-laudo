@@ -87,7 +87,7 @@ const adminNav: NavItem[] = [
   { title: "Dashboard", icon: Home, path: "/" },
   { title: "Esteira & Desempenho", icon: GitBranch, path: "/admin/esteira" },
   { title: "Usuários", icon: Users, path: "/admin/usuarios" },
-  { title: "Produtos PRONAF", icon: Package, path: "/admin/produtos-pronaf" },
+  { title: "Produtos Financeiros", icon: Package, path: "/admin/produtos-pronaf" },
   { title: "Engenheiros", icon: Users, path: "/admin/engenheiros" },
   { title: "Bancos", icon: Landmark, path: "/admin/bancos" },
   { title: "Regiões", icon: Map, path: "/admin/regioes" },

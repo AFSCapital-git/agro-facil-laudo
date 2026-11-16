@@ -120,7 +120,7 @@ export default function AdminDashboard() {
   const quickActions = [
     { label: "Esteira", desc: "Funil & Desempenho", icon: GitBranch, path: "/admin/esteira", color: "bg-primary/10 text-primary" },
     { label: "Usuários", desc: "Gestão de perfis", icon: Users, path: "/admin/usuarios", color: "bg-accent/10 text-accent" },
-    { label: "Produtos", desc: "PRONAF", icon: Package, path: "/admin/produtos-pronaf", color: "bg-success/10 text-success" },
+    { label: "Produtos", desc: "Financeiros", icon: Package, path: "/admin/produtos-pronaf", color: "bg-success/10 text-success" },
     { label: "Relatórios", desc: "Exportar dados", icon: BarChart3, path: "/admin/relatorios", color: "bg-warning/10 text-warning" },
     { label: "Auditoria", desc: "Logs do sistema", icon: Shield, path: "/admin/auditoria", color: "bg-destructive/10 text-destructive" },
     { label: "Configurações", desc: "Plataforma", icon: Settings, path: "/admin/configuracoes", color: "bg-muted text-muted-foreground" },

@@ -559,7 +559,7 @@ export default function Solicitacoes() {
 
               {/* Multi-product selection */}
               <div className="space-y-2">
-                <Label>Produtos PRONAF * <span className="text-xs text-muted-foreground font-normal">(selecione um ou mais)</span></Label>
+                <Label>Produtos Financeiros * <span className="text-xs text-muted-foreground font-normal">(selecione um ou mais)</span></Label>
                 <div className="border rounded-md p-2 max-h-52 overflow-y-auto space-y-1">
                   {pronafProdutos?.map((p) => {
                     const isSelected = form.pronaf_produto_ids.includes(p.id);
